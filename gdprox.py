@@ -1,25 +1,59 @@
 import numpy as np
+from scipy import optimize
+from scipy import linalg
 
 __version__ = '0.1'
 
 
 def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
-                maxiter=10000, verbose=False, default_step_size=1.):
+                maxiter=1000, verbose=0, default_step_size=1.):
     """
-    solve optimization problems of the form
+    proximal gradient-descent solver for optimization problems of the form
 
-        minimize_x f(x) + g(x)
+                       minimize_x f(x) + g(x)
+
+    where f is a smooth function and g is a (possibly non-smooth)
+    function for which the proximal operator is known.
 
     Parameters
     ----------
     f : callable
-    g_prox : callable of the form g_prox(x, alpha)
-    """
+        f(x) returns the value of f at x.
 
+    f_prime : callable
+        f_prime(x) returns the gradient of f.
+
+    g_prox : callable of the form g_prox(x, alpha)
+        g_prox(x, alpha) returns the proximal operator of g at x
+        with parameter alpha.
+
+    x0 : array-like
+        Initial guess
+
+    maxiter : int
+        Maximum number of iterations.
+
+    verbose : int
+        Verbosity level, from 0 (no output) to 2 (output on each iteration)
+
+    default_step_size : float
+        Starting value for the line-search procedure.
+
+    Returns
+    -------
+    res : OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
+    """
     xk = x0
     fk_old = np.inf
 
-    fk = f(xk)
+    fk, grad_fk = f(xk), fprime(xk)
+    success = False
     for it in range(maxiter):
         # .. step 1 ..
         # Find suitable step size
@@ -41,11 +75,15 @@ def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
 
         xk -= step_size * Gt
         fk_old = fk
-        fk = f(xk)
+        fk, grad_fk = f(xk), fprime(xk)
+
+        if verbose > 1:
+            print("Iteration %s, Error: %s" % (it, linalg.norm(Gt)))
 
         if np.abs(fk_old - fk) / fk < rtol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
+                success = True
             break
-    return xk
-
+    return optimize.OptimizationResult(
+        x=xk, success=success, fun=fk, jac=grad_fk, nit=it)
