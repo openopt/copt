@@ -85,5 +85,5 @@ def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
                 print("Achieved relative tolerance at iteration %s" % it)
                 success = True
             break
-    return optimize.OptimizationResult(
+    return optimize.OptimizeResult(
         x=xk, success=success, fun=fk, jac=grad_fk, nit=it)
