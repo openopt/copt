@@ -18,12 +18,12 @@ def test_optimize():
 
     def g_prox(x, alpha):
         return x
-    w_ = fmin_cgprox(
+    opt = fmin_cgprox(
         logloss, fprime_logloss, g_prox, np.zeros(n_features),
         rtol=1e-12)
     out = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)
-    assert linalg.norm(out[0] - w_) < 1e-3
+    assert linalg.norm(out[0] - opt.x) < 1e-3
 
 
 def test_sklearn():
@@ -45,8 +45,8 @@ def test_sklearn():
         clf = logistic.LogisticRegression(
             penalty='l1', fit_intercept=False, C=1 / alpha)
         clf.fit(X, y)
-        w_ = fmin_cgprox(
+        opt = fmin_cgprox(
             logloss, fprime_logloss, g_prox, np.zeros(n_features),
             rtol=1e-12)
-        assert linalg.norm(w_ - clf.coef_) < 1e-3
+        assert linalg.norm(opt.x - clf.coef_) < 1e-3
 

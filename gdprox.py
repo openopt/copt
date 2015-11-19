@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from scipy import optimize
 from scipy import linalg
@@ -85,5 +86,10 @@ def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
                 print("Achieved relative tolerance at iteration %s" % it)
                 success = True
             break
+    else:
+        warnings.warn(
+            "fmin_cgprox did not reach the desired tolerance level",
+            RuntimeWarning)
+
     return optimize.OptimizeResult(
         x=xk, success=success, fun=fk, jac=grad_fk, nit=it)
