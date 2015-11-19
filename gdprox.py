@@ -3,7 +3,7 @@ import numpy as np
 from scipy import optimize
 from scipy import linalg
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
