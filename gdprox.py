@@ -6,7 +6,7 @@ from scipy import linalg
 __version__ = '0.3'
 
 
-def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
+def fmin_cgprox(f, f_prime, g_prox, x0, rtol=1e-6,
                 maxiter=1000, verbose=0, default_step_size=1.):
     """
     proximal gradient-descent solver for optimization problems of the form
@@ -53,13 +53,13 @@ def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
     xk = x0
     fk_old = np.inf
 
-    fk, grad_fk = f(xk), fprime(xk)
+    fk, grad_fk = f(xk), f_prime(xk)
     success = False
     for it in range(maxiter):
         # .. step 1 ..
         # Find suitable step size
         step_size = default_step_size  # initial guess
-        grad_fk = fprime(xk)
+        grad_fk = f_prime(xk)
         while True:  # adjust step size
             xk_grad = xk - step_size * grad_fk
             prx = g_prox(xk_grad, step_size)
@@ -76,7 +76,7 @@ def fmin_cgprox(f, fprime, g_prox, x0, rtol=1e-6,
 
         xk -= step_size * Gt
         fk_old = fk
-        fk, grad_fk = f(xk), fprime(xk)
+        fk, grad_fk = f(xk), f_prime(xk)
 
         if verbose > 1:
             print("Iteration %s, Error: %s" % (it, linalg.norm(Gt)))
