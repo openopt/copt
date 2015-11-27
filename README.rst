@@ -1,10 +1,10 @@
 .. image:: https://travis-ci.org/fabianp/gdprox.svg?branch=master
     :target: https://travis-ci.org/fabianp/gdprox
 
-gdprox, proximal gradient-descent algorithms
-============================================
+gdprox, proximal gradient-descent algorithms in Python
+======================================================
 
-Implements the proximal gradient-descent algorithm for composite objective functions, i.e. functions of the form :code:`f(x) + g(x)`, where f is a smooth function and g is a possibly non-smooth function for which the proximal operator is known. 
+Implements the proximal gradient-descent algorithm for composite objective functions, i.e. functions of the form :code:`f(x) + g(x)`, where f is a smooth function and g is a possibly non-smooth function for which the proximal operator is known. This package relies on numpy and scipy. scikit-learn is also required to run the test suite.
 
 The main function in this package is :code:`gdprox.fmin_cgprox`. This function follows a similar interface than the functions in :code:`scipy.optimize`. The definition of this function is:
 
