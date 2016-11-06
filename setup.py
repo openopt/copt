@@ -18,7 +18,7 @@ Operating System :: Unix
 
 setup(
     name='gdprox',
-    description='',
+    description='Proximal gradient descent algorithm in Python',
     long_description=open('README.rst').read(),
     version=gdprox.__version__,
     author='Fabian Pedregosa',
