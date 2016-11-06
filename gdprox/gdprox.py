@@ -5,8 +5,8 @@ from scipy import linalg
 
 
 def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, maxiter=1000,
-                 verbose=0, callback=None, default_step_size=1.,
-                 line_search_maxiter=20):
+                 verbose=0, callback=None, step_size='line-search',
+                 default_step_size=1., line_search_maxiter=20):
     """
     proximal gradient-descent solver for optimization problems of the form
 
@@ -29,6 +29,9 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, maxiter=1000,
 
     x0 : array-like
         Initial guess
+
+    step_size : 'line-search' or float
+        XXX Step size.
 
     maxiter : int
         Maximum number of iterations.
@@ -63,19 +66,22 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, maxiter=1000,
     for it in range(maxiter):
         # .. step 1 ..
         # Find suitable step size
-        step_size = default_step_size  # initial guess
-        grad_fk = f_prime(xk)
-        for _ in range(line_search_maxiter):
-            xk_grad = xk - step_size * grad_fk
-            x_next = g_prox(xk_grad, step_size)
-            incr = x_next - xk
-            f_next = f(x_next)
-            if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size):
-                # step size found
-                break
-            else:
-                # backtrack, reduce step size
-                step_size *= .4
+        if step_size == 'line-search':
+            step_size = default_step_size  # initial guess
+            grad_fk = f_prime(xk)
+            for _ in range(line_search_maxiter):
+                xk_grad = xk - step_size * grad_fk
+                x_next = g_prox(xk_grad, step_size)
+                incr = x_next - xk
+                f_next = f(x_next)
+                if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size):
+                    # step size found
+                    break
+                else:
+                    # backtrack, reduce step size
+                    step_size *= .4
+        else:
+            raise NotImplementedError
         xk = x_next
         fk = f_next
 

@@ -190,7 +190,7 @@ def prox_tv2d(w, stepsize, max_iter=500, tol=1e-3):
     Condat, Laurent. "A direct algorithm for 1D total variation denoising."
     IEEE Signal Processing Letters (2013)
 
-    Barbero, Álvaro, and Suvrit Sra. "Modular proximal optimization for
+    Barbero, Alvaro, and Suvrit Sra. "Modular proximal optimization for
     multidimensional total-variation regularization." arXiv preprint
     arXiv:1411.0589 (2014).
     """
