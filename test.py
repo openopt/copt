@@ -21,7 +21,7 @@ def test_optimize():
         return x
     opt = fmin_prox_gd(
         logloss, fprime_logloss, g_prox, np.zeros(n_features),
-        tol=1e-12, default_step_size=1)
+        tol=1e-12)
     out = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)
     assert linalg.norm(out[0] - opt.x) < 1e-3
