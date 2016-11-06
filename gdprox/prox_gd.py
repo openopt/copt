@@ -65,8 +65,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
         raise ValueError('Line search iterations need to be greater than 0')
 
     for it in range(max_iter):
-        # .. step 1 ..
-        # Find suitable step size
+        # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_prime(xk)
         x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
@@ -76,34 +75,34 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
             f_next = f(x_next)
             for _ in range(max_iter_ls):
                 if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
-                    # step size found
+                    # .. step size found ..
                     break
                 else:
-                    # backtrack, reduce step size
+                    # .. backtracking, reduce step size ..
                     current_step_size *= .4
                     x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
                     incr = x_next - xk
                     f_next = f(x_next)
         xk = x_next
 
-        norm_increment = linalg.norm(incr, np.inf)
+        norm_increment = linalg.norm(incr, np.inf) / current_step_size
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
+            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment))
 
-        if norm_increment < tol * backtracking:
+        if norm_increment < tol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
                 success = True
             break
 
         if callback is not None:
-            callback(xk)
+            callback(xk, norm_increment)
     else:
         warnings.warn(
             "fmin_cgprox did not reach the desired tolerance level",
             RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success, fun=fk,
+        x=xk, success=success,
         jac=incr / backtracking,  # prox-grad mapping
         nit=it)
