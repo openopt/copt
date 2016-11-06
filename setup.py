@@ -24,7 +24,7 @@ setup(
     author='Fabian Pedregosa',
     author_email='f@bianp.net',
     url='http://pypi.python.org/pypi/gdprox',
-    py_modules=['gdprox'],
+    packages=['gdprox'],
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     license='BSD'
 )

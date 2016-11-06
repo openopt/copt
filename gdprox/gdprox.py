@@ -3,11 +3,10 @@ import numpy as np
 from scipy import optimize
 from scipy import linalg
 
-__version__ = '0.3'
 
-
-def fmin_cgprox(f, f_prime, g_prox, x0, rtol=1e-6,
-                maxiter=1000, verbose=0, default_step_size=1.):
+def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, maxiter=1000,
+                 verbose=0, callback=None, default_step_size=1.,
+                 line_search_maxiter=20):
     """
     proximal gradient-descent solver for optimization problems of the form
 
@@ -40,6 +39,9 @@ def fmin_cgprox(f, f_prime, g_prox, x0, rtol=1e-6,
     default_step_size : float
         Starting value for the line-search procedure.
 
+    callback : callable
+        callback function (optional).
+
     Returns
     -------
     res : OptimizeResult
@@ -49,9 +51,12 @@ def fmin_cgprox(f, f_prime, g_prox, x0, rtol=1e-6,
         the optimizer exited successfully and ``message`` which describes
         the cause of the termination. See `scipy.optimize.OptimizeResult`
         for a description of other attributes.
+
+    References
+    ----------
+    TODO
     """
     xk = x0
-    fk_old = np.inf
 
     fk, grad_fk = f(xk), f_prime(xk)
     success = False
@@ -60,36 +65,37 @@ def fmin_cgprox(f, f_prime, g_prox, x0, rtol=1e-6,
         # Find suitable step size
         step_size = default_step_size  # initial guess
         grad_fk = f_prime(xk)
-        while True:  # adjust step size
+        for _ in range(line_search_maxiter):
             xk_grad = xk - step_size * grad_fk
-            prx = g_prox(xk_grad, step_size)
-            Gt = (xk - prx) / step_size
-            lhand = f(xk - step_size * Gt)
-            rhand = fk - step_size * grad_fk.dot(Gt) + \
-                (0.5 * step_size) * Gt.dot(Gt)
-            if lhand <= rhand:
+            x_next = g_prox(xk_grad, step_size)
+            incr = x_next - xk
+            f_next = f(x_next)
+            if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size):
                 # step size found
                 break
             else:
                 # backtrack, reduce step size
-                step_size *= .5
+                step_size *= .4
+        xk = x_next
+        fk = f_next
 
-        xk -= step_size * Gt
-        fk_old = fk
-        fk, grad_fk = f(xk), f_prime(xk)
+        if True:  #verbose > 0:
+            print("Iteration %s, Obj: %s, Error: %s, step size: %s" % (it, fk, linalg.norm(incr / step_size), step_size))
 
-        if verbose > 1:
-            print("Iteration %s, Error: %s" % (it, linalg.norm(Gt)))
-
-        if np.abs(fk_old - fk) / fk < rtol:
+        if linalg.norm(incr, np.inf) < tol * step_size:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
                 success = True
             break
+
+        if callback is not None:
+            callback(xk)
     else:
         warnings.warn(
             "fmin_cgprox did not reach the desired tolerance level",
             RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success, fun=fk, jac=grad_fk, nit=it)
+        x=xk, success=success, fun=fk,
+        jac=incr / step_size,  # prox-grad mapping
+        nit=it)
