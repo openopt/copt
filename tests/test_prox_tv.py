@@ -31,6 +31,7 @@ def test_tv2_prox():
     n_rows, n_cols = 6, 8
     n_features = n_rows * n_cols
     gamma = np.random.rand()
+    epsilon = 1e-6  # account for some numerica errors
 
     def tv_norm(x, n_rows, n_cols):
         X = x.reshape((n_rows, n_cols))
@@ -38,6 +39,6 @@ def test_tv2_prox():
 
     for nrun in range(200):
         x = np.random.randn(n_features)
-        x2 = prox_tv2d(x, gamma, n_rows, n_cols)
-        diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x, n_rows, n_cols)
-        assert diff_obj >= ((x - x2) ** 2).sum() / (2 * gamma)
+        x_next = prox_tv2d(x, gamma, n_rows, n_cols, tol=1e-24, max_iter=1000)
+        diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
+        assert (1 + epsilon) * diff_obj >= ((x - x_next) ** 2).sum() / gamma

@@ -42,10 +42,11 @@ f = lambda x: 0.5 * np.linalg.norm(b - A.dot(x)) ** 2 / A.shape[0] + 0.5 * alpha
 #                  max_iter=500)
 
 trace_gd = Trace(lambda x: f(x) + beta * TV(x))
-fmin_prox_gd(f, grad, prox_tv2d, np.zeros(n_features), callback=trace_gd, g_prox_args=(n_rows, n_cols))
+fmin_prox_gd(f, grad, prox_tv2d, np.zeros(n_features), callback=trace_gd, g_prox_args=(n_rows, n_cols, 1000, 1e-12), step_size=0.1)
 
 # fmin = np.min(trace_three.vals)
 # plt.plot(trace_three.times, np.array(trace_three.vals) - fmin)
+# plt.plot(trace_gd.times, np.array(trace_gd.vals) - fmin)
 # plt.yscale('log')
 # plt.grid()
 # plt.show()

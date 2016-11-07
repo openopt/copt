@@ -192,6 +192,7 @@ def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
             continue
         else:
             break
+    return x
 
 
 def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
@@ -228,5 +229,4 @@ def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
     """
 
     x = w.copy()
-    c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol)
-    return x.ravel()
+    return c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol)

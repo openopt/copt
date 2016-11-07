@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
+def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
                  verbose=0, callback=None, backtracking=True,
                  step_size=1., max_iter_ls=20, g_prox_args=()):
     """
@@ -68,7 +68,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_prime(xk)
-        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size, *g_prox_args)
+        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
         incr = x_next - xk
         if backtracking:
             fk = f(xk)
@@ -80,7 +80,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= .4
-                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size, *g_prox_args)
+                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
                     incr = x_next - xk
                     f_next = f(x_next)
         xk = x_next
