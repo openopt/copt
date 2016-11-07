@@ -6,11 +6,11 @@ from scipy import linalg
 
 def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
                  verbose=0, callback=None, backtracking=True,
-                 step_size=1., max_iter_ls=20):
+                 step_size=1., max_iter_ls=20, g_prox_args=()):
     """
     proximal gradient-descent solver for optimization problems of the form
 
-                       minimize_x f(x) + g(x)
+                       minimize_x f(x) + alpha * g(x) XXX
 
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
@@ -39,8 +39,8 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
     verbose : int
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    current_step_size : float
-        Starting value for the line-search procedure.
+    step_size : float
+        Starting value for the line-search procedure. XXX
 
     callback : callable
         callback function (optional).
@@ -59,7 +59,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
     ----------
     TODO
     """
-    xk = x0
+    xk = np.array(x0, copy=True)
     success = False
     if not max_iter_ls > 0:
         raise ValueError('Line search iterations need to be greater than 0')
@@ -68,7 +68,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_prime(xk)
-        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
+        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size, *g_prox_args)
         incr = x_next - xk
         if backtracking:
             fk = f(xk)
@@ -80,7 +80,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= .4
-                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
+                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size, *g_prox_args)
                     incr = x_next - xk
                     f_next = f(x_next)
         xk = x_next
@@ -96,7 +96,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, tol=1e-6, max_iter=1000,
             break
 
         if callback is not None:
-            callback(xk, norm_increment)
+            callback(xk)
     else:
         warnings.warn(
             "fmin_cgprox did not reach the desired tolerance level",

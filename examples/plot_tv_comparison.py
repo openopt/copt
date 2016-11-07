@@ -1,5 +1,9 @@
 import numpy as np
 from scipy import misc, linalg
+from gdprox.prox_tv import prox_tv1d_cols, prox_tv1d_rows, prox_tv2d
+from gdprox import fmin_three_split, fmin_prox_gd
+from gdprox.utils import Trace
+import pylab as plt
 
 face = misc.imresize(misc.face(gray=True), 0.15)
 face = face.astype(np.float) / 255.
@@ -10,7 +14,7 @@ face = face.astype(np.float) / 255.
 n_rows, n_cols = face.shape
 n_features = face.shape[0] * face.shape[1]
 np.random.seed(0)
-
+n_samples = n_features // 100
 
 
 print('n_samples: %s, n_features: %s (%s)' % (n_samples, n_features, face.shape))
@@ -27,25 +31,21 @@ def TV(w):
     tmp2 = np.abs(np.diff(img, axis=1))
     return tmp1.sum() + tmp2.sum()
 
-
-def loss(w):
-    return 0.5 * (b - A.dot(w)) ** 2
-
+alpha = 0.0
 beta = 1.0
-gd_loss = []
-gd_time = []
-from datetime import datetime
-start = datetime.now()
+grad = lambda x: - A.T.dot(b - A.dot(x)) / A.shape[0] + alpha * x
+f = lambda x: 0.5 * np.linalg.norm(b - A.dot(x)) ** 2 / A.shape[0] + 0.5 * alpha * x.dot(x)
 
-def gd_callback(w):
+# trace_three = Trace(lambda x: f(x) + beta * TV(x))
+# fmin_three_split(f, grad, prox_tv1d_cols, prox_tv1d_rows, np.zeros(n_features), verbose=False, step_size=100,
+#                  g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols), callback=trace_three,
+#                  max_iter=500)
 
-    full_loss = loss.mean() + beta * TV(w)
-    global n_iter
-    print(n_iter, full_loss)
-    n_iter += 1
-    gd_loss.append(full_loss)
-    gd_time.append((datetime.now() - start).total_seconds())
+trace_gd = Trace(lambda x: f(x) + beta * TV(x))
+fmin_prox_gd(f, grad, prox_tv2d, np.zeros(n_features), callback=trace_gd, g_prox_args=(n_rows, n_cols))
 
-from  gdprox import three_split
-
-three_split
+# fmin = np.min(trace_three.vals)
+# plt.plot(trace_three.times, np.array(trace_three.vals) - fmin)
+# plt.yscale('log')
+# plt.grid()
+# plt.show()

@@ -8,7 +8,6 @@ These are some helper functions to compute the proximal operator of some common 
 import numpy as np
 from numba import njit
 
-njit = lambda x: x
 
 def prox_tv1d(w, stepsize):
     """
@@ -33,8 +32,7 @@ def prox_tv1d(w, stepsize):
     IEEE Signal Processing Letters (2013)
     """
     tmp = w.copy()
-    c_prox_tv1d(tmp, stepsize)
-    return tmp
+    return c_prox_tv1d(tmp, stepsize)
 
 @njit
 def c_prox_tv1d(w, stepsize):
@@ -83,7 +81,7 @@ def c_prox_tv1d(w, stepsize):
                         k0 += 1
                         if k0 > k:
                             break
-                    return
+                    return w
             umin += w[incr * (k + 1)] - vmin
             if umin < minlambda:       # negative jump necessary
                 while True:
@@ -123,36 +121,70 @@ def c_prox_tv1d(w, stepsize):
                         kplus = k
                         vmax += (umax + stepsize) / (kplus - k0 + 1)
                         umax = minlambda
+    return w
 
 
 @njit
-def prox_col_pass(a, stepsize):
-    for i in range(a.shape[1]):
-        c_prox_tv1d(a[:, i], stepsize)
+def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
+    """
+
+    Parameters
+    ----------
+    a
+    stepsize
+    n_rows
+    n_cols
+
+    Returns
+    -------
+
+    """
+    A = a.reshape((n_rows, n_cols))
+    out = np.empty_like(A)
+    for i in range(n_cols):
+        out[:, i] = c_prox_tv1d(A[:, i], stepsize)
+    return out.ravel()
 
 
 @njit
-def prox_row_pass(a, stepsize):
-    for i in range(a.shape[1]):
-        c_prox_tv1d(a[:, i], stepsize)
+def prox_tv1d_rows(a, stepsize, n_rows, n_cols):
+    """
+
+    Parameters
+    ----------
+    a
+    stepsize
+    n_rows
+    n_cols
+
+    Returns
+    -------
+
+    """
+    A = a.reshape((n_rows, n_cols))
+    out = np.empty_like(A)
+    for i in range(n_rows):
+        out[i] = c_prox_tv1d(A[i, :], stepsize)
+    return out.ravel()
 
 
-def c_prox_tv2d(x, stepsize, max_iter, tol):
+def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
     """
     Douflas-Rachford to minimize a 2-dimensional total variation.
 
     Reference: https://arxiv.org/abs/1411.0589
     """
-    p = np.zeros(x.shape)
-    q = np.zeros(x.shape)
+    n_features = n_rows * n_cols
+    p = np.zeros(n_features)
+    q = np.zeros(n_features)
 
     # set X to the content of x
     for it in range(max_iter):
         y = x + p
-        prox_col_pass(y, stepsize)
+        prox_tv1d_cols(y, stepsize, n_rows, n_cols)
         p += x - y
         x = y + q
-        prox_row_pass(x, stepsize)
+        prox_tv1d_rows(x, stepsize, n_rows, n_cols)
         q += y - x
 
         # check convergence
@@ -162,7 +194,7 @@ def c_prox_tv2d(x, stepsize, max_iter, tol):
             break
 
 
-def prox_tv2d(w, stepsize, max_iter=500, tol=1e-3):
+def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
     """
     Computes the proximal operator of the 2-dimensional total variation operator.
 
@@ -196,5 +228,5 @@ def prox_tv2d(w, stepsize, max_iter=500, tol=1e-3):
     """
 
     x = w.copy()
-    c_prox_tv2d(x, stepsize, max_iter, tol)
-    return x
+    c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol)
+    return x.ravel()
