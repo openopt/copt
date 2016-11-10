@@ -4,13 +4,13 @@ from scipy import optimize
 from scipy import linalg
 
 
-def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
-                 verbose=0, callback=None, backtracking=True,
-                 step_size=1., max_iter_ls=20, g_prox_args=()):
+def primal_dual(f, f_prime, g_prox, h_prox, L, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+                 verbose=0, callback=None,
+                 gamma=1., sigma=1.0, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
     proximal gradient-descent solver for optimization problems of the form
 
-                       minimize_x f(x) + alpha * g(x) XXX
+                       minimize_x f(x) + alpha * g(x) + beta * h(L x)
 
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
@@ -27,7 +27,7 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
         g_prox(x, alpha) returns the proximal operator of g at x
         with parameter alpha.
 
-    x0 : array-like
+    y0 : array-like
         Initial guess
 
     backtracking : 'line-search' or float
@@ -39,8 +39,8 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
     verbose : int
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    step_size : float
-        Starting value for the line-search procedure. XXX
+    current_step_size : float
+        Starting value for the line-search procedure.
 
     callback : callable
         callback function (optional).
@@ -59,41 +59,25 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
     ----------
     TODO
     """
-    xk = np.array(x0, copy=True)
+    yk = np.array(y0, copy=True)
+    xk = yk.copy()
     success = False
     if not max_iter_ls > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
+    # .. main iteration ..
     for it in range(max_iter):
-        # .. compute gradient and step size
-        current_step_size = step_size
+
         grad_fk = f_prime(xk)
-        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
-        incr = x_next - xk
-        if backtracking:
-            fk = f(xk)
-            f_next = f(x_next)
-            for _ in range(max_iter_ls):
-                if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
-                    # .. step size found ..
-                    break
-                else:
-                    # .. backtracking, reduce step size ..
-                    current_step_size *= .4
-                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
-                    incr = x_next - xk
-                    f_next = f(x_next)
+        x_next = g_prox(xk - gamma * grad_fk - gamma * L.T.dot(xk), gamma * alpha, *g_prox_args)
+        z = yk + sigma * L.dot(2 * x_next - xk)
+        y_next =  z - sigma * h_prox(z, beta / sigma)
+
+        yk = y_next
         xk = x_next
 
-        norm_increment = linalg.norm(incr, np.inf) / current_step_size
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment))
-
-        if norm_increment < tol:
-            if verbose:
-                print("Achieved relative tolerance at iteration %s" % it)
-                success = True
-            break
+            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
 
         if callback is not None:
             callback(xk)
@@ -103,6 +87,5 @@ def fmin_prox_gd(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
             RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success,
-        jac=incr / backtracking,  # prox-grad mapping
+        x=yk, success=success,
         nit=it)

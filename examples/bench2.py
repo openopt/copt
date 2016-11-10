@@ -1,9 +1,10 @@
 import numpy as np
 from scipy import misc, linalg
-from copt.prox_tv import prox_tv1d, prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
+from structsparse.prox_fast import prox_tv1d, prox_tv2d
 from copt import fmin_three_split, proximal_gradient
 from copt.utils import Trace
 import pylab as plt
+plt.style.use('dark_background')
 
 face = misc.imresize(misc.face(gray=True), 0.15)
 face = face.astype(np.float) / 255.
@@ -39,42 +40,56 @@ def grad(x):
     return - A.T.dot(b - A.dot(x)) / A.shape[0] + l2_reg * x
 
 
+def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
+    A = a.reshape((n_rows, n_cols))
+    out = np.empty_like(A)
+    for i in range(n_cols):
+        out[:, i] = prox_tv1d(A[:, i], stepsize)
+    return out.ravel()
+
+
+def prox_tv1d_rows(a, stepsize, n_rows, n_cols):
+    A = a.reshape((n_rows, n_cols))
+    out = np.empty_like(A)
+    for i in range(n_rows):
+        out[i] = prox_tv1d(A[i, :], stepsize)
+    return out.ravel()
+
 from lightning.impl.sag import get_auto_step_size, get_dataset
 ds = get_dataset(A, order="c")
 eta = get_auto_step_size(ds, l2_reg, 'squared')
-# eta = A.shape[0] / linalg.norm(A.T.dot(A))  # XXX need to divide by A.shape[0]??
-# print(eta2, eta)
 
-for beta in [1e-1]:
+for beta in [0.01, 0.1, 1.0]:
 
-    max_iter = 50000
+    max_iter = 10000
     step_size = eta
     backtracking = False
-    # eta = 100 * eta
+    # from copt.prox_tv import prox_tv1d_cols, prox_tv1d_rows
     trace_three = Trace(lambda x: obj_fun(x) + beta * TV(x))
-    fmin_three_split(obj_fun, grad, prox_tv1d_cols, prox_tv1d_rows,
+    fmin_three_split(obj_fun, grad,
+                     prox_tv1d_cols,
+                     prox_tv1d_rows,
                      np.zeros(n_features), verbose=False,
                      step_size=step_size, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
                      callback=trace_three, max_iter=max_iter, tol=0., backtracking=backtracking)
 
+
+    def prox_2d(x, stepsize, *args):
+        return prox_tv2d(x.reshape(n_rows, n_cols), stepsize, *args).ravel()
     trace_gd = Trace(lambda x: obj_fun(x) + beta * TV(x))
-    proximal_gradient(obj_fun, grad, np.zeros(n_features), g_prox=prox_tv2d, callback=trace_gd,
-                      g_prox_args=(n_rows, n_cols, int(1e3), 1.0),
-                      step_size=step_size, max_iter=max_iter, tol=0.,
-                      backtracking=backtracking, verbose=False)
+    proximal_gradient(obj_fun, grad, prox_2d, np.zeros(n_features), callback=trace_gd, g_prox_args=(5, 1e-12),
+                      step_size=step_size, max_iter=max_iter, tol=0., backtracking=backtracking)
 
-
-    # plotting code
     fmin = min(np.min(trace_three.vals), np.min(trace_gd.vals))
     scale = (np.array(trace_three.vals) - fmin)[0]
     plt.figure()
     plt.title(r'$\lambda=%s$' % beta)
-    plt.plot(trace_three.times, (np.array(trace_three.vals) - fmin) / scale,
-             label='Three operator splitting', lw=4, marker='o',
-             markevery=5000)
-    plt.plot(np.array(trace_gd.times), (np.array(trace_gd.vals) - fmin) / scale, label='ProxGD', lw=4, marker='h',
-             markevery=5000)
+    plt.plot(trace_three.times, (np.array(trace_three.vals) - fmin) / scale, label='TOS', lw=4, marker='o',
+             markevery=500)
+    plt.plot(trace_gd.times, (np.array(trace_gd.vals) - fmin) / scale, label='ProxGD', lw=4, marker='h',
+             markevery=500)
     plt.legend()
     plt.yscale('log')
     plt.grid()
-    plt.show()
+    plt.savefig('bench2_%s.png' % beta)
+    # plt.show()

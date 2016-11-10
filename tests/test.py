@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import linalg, optimize
 from sklearn.linear_model import logistic
-from gdprox import fmin_prox_gd
+from copt import proximal_gradient
 
 n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
@@ -18,7 +18,7 @@ def test_optimize():
 
     def g_prox(x, _):
         return x
-    opt = fmin_prox_gd(
+    opt = proximal_gradient(
         logloss, fprime_logloss, g_prox, np.zeros(n_features),
         tol=1e-12)
     out = optimize.fmin_l_bfgs_b(
@@ -46,7 +46,7 @@ def test_sklearn():
         clf = logistic.LogisticRegression(
             penalty='l1', fit_intercept=False, C=1 / alpha)
         clf.fit(X, y)
-        opt = fmin_prox_gd(
+        opt = proximal_gradient(
             logloss, fprime_logloss, g_prox, np.zeros(n_features),
             tol=1e-12)
         assert linalg.norm(opt.x - clf.coef_) < 1e-3

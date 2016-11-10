@@ -1,4 +1,4 @@
-import gdprox
+import copt
 from distutils.core import setup
 import setuptools
 
@@ -17,14 +17,14 @@ Operating System :: Unix
 """
 
 setup(
-    name='gdprox',
+    name='copt',
     description='Proximal gradient descent algorithm in Python',
     long_description=open('README.rst').read(),
-    version=gdprox.__version__,
+    version=copt.__version__,
     author='Fabian Pedregosa',
     author_email='f@bianp.net',
-    url='http://pypi.python.org/pypi/gdprox',
-    packages=['gdprox'],
+    url='http://pypi.python.org/pypi/copt',
+    packages=['copt'],
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     license='BSD'
 )

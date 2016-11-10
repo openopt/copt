@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.linear_model import logistic
-from gdprox import fmin_prox_gd
+from copt import proximal_gradient
 
 n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
@@ -24,5 +24,5 @@ def g_prox(x, step_size):
         np.fmax(- x - step_size * alpha, 0)
 
 
-out = fmin_prox_gd(logloss, fprime_logloss, g_prox, np.zeros(n_features))
+out = proximal_gradient(logloss, fprime_logloss, g_prox, np.zeros(n_features))
 print('Solution', out)

@@ -67,8 +67,8 @@ def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e
     # .. main iteration ..
     for it in range(max_iter):
         current_step_size = step_size
-        grad_fk = f_prime(yk)
         x = g_prox(yk, current_step_size * alpha, *g_prox_args)
+        grad_fk = f_prime(x)
         z = h_prox(2 * x - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
         incr = z - x
         if backtracking:
@@ -84,20 +84,22 @@ def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e
                     z = h_prox(2 * x - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - x
                     fz = f(z)
+            else:
+                warnings.warn("Maxium number of line-search iterations reached")
         yk += incr
 
         norm_increment = linalg.norm(incr, np.inf)
         if verbose > 0:
             print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
 
-        if norm_increment < tol * backtracking:
+        if norm_increment < tol * current_step_size:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
                 success = True
             break
 
         if callback is not None:
-            callback(yk)
+            callback(g_prox(yk, current_step_size * alpha, *g_prox_args))
     else:
         warnings.warn(
             "fmin_cgprox did not reach the desired tolerance level",
