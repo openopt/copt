@@ -8,7 +8,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
                       verbose=0, callback=None, backtracking=True,
                       step_size=1., max_iter_backtracking=20, g_prox_args=()):
     """
-    proximal gradient-descent solver for optimization problems of the form
+    proximal gradient descent solver for optimization problems of the form
 
                        minimize_x f(x) + alpha * g(x)
 
@@ -65,7 +65,10 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
     if g_prox is None:
         g_prox = lambda x: x
 
-    for it in range(max_iter):
+    it = 1
+    # .. a while loop instead of a for loop ..
+    # .. allows for infinite of floating point max_iter ..
+    while it < max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_prime(xk)
@@ -100,12 +103,13 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
 
         if callback is not None:
             callback(xk)
-    else:
+        it += 1
+    if it >= max_iter:
         warnings.warn(
-            "fmin_cgprox did not reach the desired tolerance level",
+            "proximal_gradient did not reach the desired tolerance level",
             RuntimeWarning)
 
     return optimize.OptimizeResult(
         x=xk, success=success,
-        jac=incr / backtracking,  # prox-grad mapping
+        jac=incr / step_size,  # prox-grad mapping
         nit=it)

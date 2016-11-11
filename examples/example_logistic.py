@@ -1,3 +1,10 @@
+"""
+L1-regularized logistic regression
+==================================
+
+Implementation of L1-regularized logistic regression
+using copt.
+"""
 import numpy as np
 from sklearn.linear_model import logistic
 from copt import proximal_gradient

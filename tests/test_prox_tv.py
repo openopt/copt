@@ -1,6 +1,7 @@
 import numpy as np
 from copt import prox_tv1d, prox_tv2d
 from copt.prox_tv import prox_tv1d
+from numpy import testing
 
 
 def test_tv1_prox():
@@ -22,8 +23,8 @@ def test_tv1_prox():
         x = np.random.randn(n_features)
         x_next = prox_tv1d(x, gamma)
         diff_obj = tv_norm(x) - tv_norm(x_next)
-        print(diff_obj, ((x - x_next) ** 2).sum() / gamma)
-        assert (1 + epsilon) * diff_obj >= ((x - x_next) ** 2).sum() / gamma
+        testing.assert_array_less(
+            ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
 
 
 def test_tv2_prox():
@@ -44,4 +45,5 @@ def test_tv2_prox():
         x = np.random.randn(n_features)
         x_next = prox_tv2d(x, gamma, n_rows, n_cols, tol=1e-10, max_iter=100000)
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
-        assert (1 + epsilon) * diff_obj >= ((x - x_next) ** 2).sum() / gamma
+        testing.assert_array_less(
+            ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)

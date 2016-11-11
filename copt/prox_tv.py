@@ -35,11 +35,11 @@ def prox_tv1d(w, step_size):
 
     if w.dtype not in (np.float32, np.float64):
         raise ValueError('argument w must be array of floats')
-    return _prox_tv1d(w, step_size, 1)
+    return _prox_tv1d(w, step_size)
 
 
 @njit
-def _prox_tv1d(w, step_size, incr):
+def _prox_tv1d(w, step_size):
     """low level function call, no checks are performed"""
     output = w.copy()
     j = 0
@@ -56,6 +56,7 @@ def _prox_tv1d(w, step_size, incr):
     y_low[0] = y_up[0] = 0
     y_low[1] = w[0] - step_size
     y_up[1] = w[0] + step_size
+    incr = 1
 
     for i in range(2, width):
         y_low[i] = y_low[i-1] + w[(i - 1) * incr]
@@ -137,7 +138,7 @@ def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
     for i in range(n_cols):
-        out[:, i] = _prox_tv1d(A[:, i], stepsize, 1)
+        out[:, i] = _prox_tv1d(A[:, i], stepsize)
     return out.ravel()
 
 
@@ -148,7 +149,7 @@ def prox_tv1d_rows(a, stepsize, n_rows, n_cols):
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
     for i in range(n_rows):
-        out[i] = _prox_tv1d(A[i, :], stepsize, 1)
+        out[i] = _prox_tv1d(A[i, :], stepsize)
     return out.ravel()
 
 

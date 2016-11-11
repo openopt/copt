@@ -4,13 +4,13 @@ from scipy import optimize
 from scipy import linalg
 
 
-def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-                 verbose=0, callback=None, backtracking=True,
-                 step_size=1., max_iter_ls=20, g_prox_args=(), h_prox_args=()):
+def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+                verbose=0, callback=None, backtracking=True,
+                step_size=1., max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
-    proximal gradient-descent solver for optimization problems of the form
+    Davis-Yin three operator splitting schem for optimization problems of the form
 
-                       minimize_x f(x) + alpha * g(x) + beta * h(x)
+               minimize_x f(x) + alpha * g(x) + beta * h(x)
 
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
@@ -64,15 +64,17 @@ def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e
     if not max_iter_ls > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    # .. main iteration ..
-    for it in range(max_iter):
+    it = 1
+    # .. a while loop instead of a for loop ..
+    # .. allows for infinite of floating point max_iter ..
+    while it < max_iter:
         current_step_size = step_size
-        x = g_prox(yk, current_step_size * alpha, *g_prox_args)
-        grad_fk = f_prime(x)
-        z = h_prox(2 * x - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
-        incr = z - x
+        xk = g_prox(yk, current_step_size * alpha, *g_prox_args)
+        grad_fk = f_prime(xk)
+        z = h_prox(2 * xk - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
+        incr = z - xk
         if backtracking:
-            fx = f(x)
+            fx = f(xk)
             fz = f(z)
             for _ in range(max_iter_ls):
                 if fz <= fx + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
@@ -81,8 +83,8 @@ def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e
                 else:
                     # backtrack, reduce step size
                     current_step_size *= .4
-                    z = h_prox(2 * x - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
-                    incr = z - x
+                    z = h_prox(2 * xk - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
+                    incr = z - xk
                     fz = f(z)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
@@ -99,13 +101,14 @@ def fmin_three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e
             break
 
         if callback is not None:
-            callback(g_prox(yk, current_step_size * alpha, *g_prox_args))
-    else:
-        warnings.warn(
-            "fmin_cgprox did not reach the desired tolerance level",
-            RuntimeWarning)
+            callback(xk)
+            it += 1
+        if it >= max_iter:
+            warnings.warn(
+                "three_split did not reach the desired tolerance level",
+                RuntimeWarning)
 
     return optimize.OptimizeResult(
         x=yk, success=success,
-        jac=incr / backtracking,  # prox-grad mapping
+        jac=incr / step_size,  # prox-grad mapping
         nit=it)
