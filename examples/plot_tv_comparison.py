@@ -12,19 +12,25 @@ from copt.utils import Trace
 from copt.datasets import load_img1
 import pylab as plt
 
+# better default plotting style
 plt.style.use('fivethirtyeight')
 
 
-img = load_img1()
 
-##############################################################
-# generate measurements as
+###############################################################
+# Load an ground truth image and generate the dataset (A, b) as
+#
 #             b = A ground_truth + noise   ,
-# where X is a random matrix
+#
+# where A is a random matrix
+img = load_img1()
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)
 n_samples = n_features
+
+# set L2 regularization (arbitrarily) to 1/n_samples
+l2_reg = 1.0 / n_samples
 
 
 A = np.random.uniform(-1, 1, size=(n_samples, n_features))
@@ -38,8 +44,6 @@ def TV(w):
     tmp1 = np.abs(np.diff(img, axis=0))
     tmp2 = np.abs(np.diff(img, axis=1))
     return tmp1.sum() + tmp2.sum()
-
-l2_reg = 1.0 / n_samples
 
 def obj_fun(x):
     return 0.5 * np.linalg.norm(b - A.dot(x)) ** 2 / A.shape[0] + 0.5 * l2_reg * x.dot(x)

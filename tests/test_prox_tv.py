@@ -34,7 +34,7 @@ def test_tv2_prox():
     n_rows, n_cols = 6, 8
     n_features = n_rows * n_cols
     gamma = np.random.rand()
-    epsilon = 1e-3  # account for some numerical errors and
+    epsilon = 0.1  # account for some numerical errors and
                      # and finite
 
     def tv_norm(x, n_rows, n_cols):
