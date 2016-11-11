@@ -26,3 +26,17 @@ class Trace:
             self.times = [0]
         else:
             self.times.append((datetime.now() - self.start).total_seconds())
+
+
+def set_mpl_style():
+    # probably would be better using mpl-rc file
+    import pylab as plt
+
+    # plt.rcParams['figure.figsize'] = (12.0, 1 * 8.0)
+    #
+    # plt.rc('font', family='sans-serif')
+    # plt.rc('font', serif='Helvetica neue')
+    # plt.rc('text', usetex='false')
+    # # plt.rcParams.update({'font.size': 35})
+    #
+    # plt.rc('font', family='Helvetica Neue')
