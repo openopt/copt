@@ -5,8 +5,8 @@ from scipy import linalg
 
 
 def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-                verbose=0, callback=None, backtracking=True,
-                step_size=1., max_iter_ls=20, g_prox_args=(), h_prox_args=()):
+                verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
+                g_prox_args=(), h_prox_args=()):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
 
@@ -23,15 +23,16 @@ def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, m
     f_prime : callable
         f_prime(x) returns the gradient of f.
 
-    g_prox : callable of the form g_prox(x, alpha)
-        g_prox(x, alpha) returns the proximal operator of g at x
-        with parameter alpha.
+    g_prox : callable
+        g_prox(x, alpha, *args) returns the proximal operator of g at xa
+        with parameter alpha. Extra arguments can be passed by g_prox_args.
 
     y0 : array-like
         Initial guess
 
-    backtracking : 'line-search' or float
-        XXX Step size.
+    backtracking : boolean
+        Whether to perform backtracking (i.e. line-search) to estimate
+        the step size.
 
     max_iter : int
         Maximum number of iterations.
@@ -39,7 +40,7 @@ def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, m
     verbose : int
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    current_step_size : float
+    step_size : float
         Starting value for the line-search procedure.
 
     callback : callable
