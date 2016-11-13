@@ -12,7 +12,7 @@ colors = ['#7fc97f', '#beaed4', '#fdc086']
 
 from copt.prox_tv import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
 from copt import davis_yin, proximal_gradient
-from copt.utils import Trace, set_mpl_style
+from copt.utils import Trace
 from copt.datasets import load_img1
 
 

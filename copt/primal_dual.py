@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def condat_vu(f, f_prime, g_prox, h_prox, L, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+def condat_vu(f_prime, g_prox, h_prox, L, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
               verbose=0, callback=None,
               gamma=1., sigma=1.0, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
@@ -71,7 +71,7 @@ def condat_vu(f, f_prime, g_prox, h_prox, L, y0, alpha=1.0, beta=1.0, tol=1e-6, 
         grad_fk = f_prime(xk)
         x_next = g_prox(xk - gamma * grad_fk - gamma * L.T.dot(xk), gamma * alpha, *g_prox_args)
         z = yk + sigma * L.dot(2 * x_next - xk)
-        y_next = z - sigma * h_prox(z, beta / sigma)
+        y_next = z - sigma * h_prox(z, beta / sigma, *h_prox_args)
 
         yk = y_next
         xk = x_next
