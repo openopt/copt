@@ -31,6 +31,7 @@ def test_tv2_prox():
     """
     similar test, but for 2D total variation penalty.
     """
+    np.random.seed(0)
     n_rows, n_cols = 6, 8
     n_features = n_rows * n_cols
     gamma = np.random.rand()
