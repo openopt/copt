@@ -98,7 +98,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
         if norm_increment < tol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
-                success = True
+            success = True
             break
 
         if callback is not None:
