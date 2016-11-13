@@ -35,32 +35,32 @@ def prox_tv1d(w, step_size):
 
     if w.dtype not in (np.float32, np.float64):
         raise ValueError('argument w must be array of floats')
-    return _prox_tv1d(w, step_size)
+    output = np.empty_like(w)
+    _prox_tv1d(w, output, step_size)
+    return output
 
 
 @njit
-def _prox_tv1d(w, step_size):
+def _prox_tv1d(input, output, step_size):
     """low level function call, no checks are performed"""
-    output = w.copy()
-    j = 0
-    width = w.size + 1
+    width = input.size + 1
     index_low = np.zeros(width, dtype=np.int32)
-    slope_low = np.zeros(width, dtype=w.dtype)
+    slope_low = np.zeros(width, dtype=input.dtype)
     index_up  = np.zeros(width, dtype=np.int32)
-    slope_up  = np.zeros(width, dtype=w.dtype)
+    slope_up  = np.zeros(width, dtype=input.dtype)
     index     = np.zeros(width, dtype=np.int32)
-    z         = np.zeros(width, dtype=w.dtype)
-    y_low     = np.empty(width, dtype=w.dtype)
-    y_up      = np.empty(width, dtype=w.dtype)
+    z         = np.zeros(width, dtype=input.dtype)
+    y_low     = np.empty(width, dtype=input.dtype)
+    y_up      = np.empty(width, dtype=input.dtype)
     s_low, c_low, s_up, c_up, c = 0, 0, 0, 0, 0
     y_low[0] = y_up[0] = 0
-    y_low[1] = w[0] - step_size
-    y_up[1] = w[0] + step_size
+    y_low[1] = input[0] - step_size
+    y_up[1] = input[0] + step_size
     incr = 1
 
     for i in range(2, width):
-        y_low[i] = y_low[i-1] + w[(i - 1) * incr]
-        y_up[i] = y_up[i-1] + w[(i - 1) * incr]
+        y_low[i] = y_low[i-1] + input[(i - 1) * incr]
+        y_up[i] = y_up[i-1] + input[(i - 1) * incr]
 
     y_low[width-1] += step_size
     y_up[width-1] -= step_size
@@ -109,7 +109,7 @@ def _prox_tv1d(w, step_size):
         index[c+i] = index_low[s_low+i]
         z[c+i] = y_low[index[c+i]]
     c = c + c_low-s_low
-    i = 1
+    j, i = 0, 1
     while i <= c:
         a = (z[i]-z[i-1]) / (index[i]-index[i-1])
         while j < index[i]:
@@ -117,7 +117,7 @@ def _prox_tv1d(w, step_size):
             output[j * incr] = a
             j += 1
         i += 1
-    return output
+    return
 
 
 @njit
@@ -138,7 +138,7 @@ def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
     for i in range(n_cols):
-        out[:, i] = _prox_tv1d(A[:, i], stepsize)
+        _prox_tv1d(A[:, i], out[:, i], stepsize)
     return out.ravel()
 
 
@@ -149,7 +149,7 @@ def prox_tv1d_rows(a, stepsize, n_rows, n_cols):
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
     for i in range(n_rows):
-        out[i] = _prox_tv1d(A[i, :], stepsize)
+        _prox_tv1d(A[i, :], out[i, :], stepsize)
     return out.ravel()
 
 
