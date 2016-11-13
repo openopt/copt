@@ -16,20 +16,12 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
-    def g_prox(x, _):
+    def no_prox(x, _):
         return x
     opt = davis_yin(
-        logloss, fprime_logloss, g_prox, g_prox, np.zeros(n_features),
-        tol=1e-12, step_size=1, verbose=True)
-    1/0
+        logloss, fprime_logloss, no_prox, no_prox,
+        np.zeros(n_features), tol=1e-12, verbose=True)
 
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-2)
-
-    #
-    # # same thing but using the other prox
-    # opt = davies_yin(
-    #     logloss, fprime_logloss, lambda x, y: x, g_prox, np.zeros(n_features),
-    #     tol=1e-12)
-    # assert linalg.norm(sol_scipy - opt.x) < 1e-3

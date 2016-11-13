@@ -4,9 +4,11 @@ from scipy import optimize
 from scipy import linalg
 
 
-def davis_yin(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-              verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
-              g_prox_args=(), h_prox_args=()):
+def davis_yin(
+        f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+        g_prox_args=(), h_prox_args=(),
+        verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
+         line_search_factor=0.4):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
 
@@ -76,13 +78,12 @@ def davis_yin(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max
         incr = z - xk
         if backtracking:
             fx = f(xk)
-            # x_next = g_prox(yk + incr, current_step_size * alpha, *g_prox_args)
-            # fx_next = f(x_next)
             for _ in range(max_iter_ls):
-                if fx <= f(z) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                if f(z) <= fx + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # step size found
                     break
                 else:
+                    current_step_size *= line_search_factor
                     z = h_prox(2 * xk - yk - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - xk
             else:
