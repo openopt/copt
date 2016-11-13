@@ -3,6 +3,7 @@ from scipy import linalg, optimize
 from sklearn.linear_model import logistic
 from copt import proximal_gradient
 
+np.random.seed(0)
 n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
@@ -23,7 +24,7 @@ def test_optimize():
         tol=1e-12)
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
-    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-2)
+    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
 
 
 def test_sklearn():
