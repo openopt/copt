@@ -21,14 +21,13 @@ def test_optimize():
     opt = proximal_gradient(
         logloss, fprime_logloss, g_prox, np.zeros(n_features),
         tol=1e-12)
-    out = optimize.fmin_l_bfgs_b(
-        logloss, np.zeros(n_features), fprime=fprime_logloss)
-    assert linalg.norm(out[0] - opt.x) < 1e-3
-
+    sol_scipy = optimize.fmin_l_bfgs_b(
+        logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
+    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-2)
 
 
 def test_sklearn():
-    for alpha in np.logspace(-3, 3):
+    for alpha in np.logspace(-3, 3, 5):
 
         def logloss(x):
             return logistic._logistic_loss(x, X, y, 0.)

@@ -4,9 +4,9 @@ from scipy import optimize
 from scipy import linalg
 
 
-def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-                verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
-                g_prox_args=(), h_prox_args=()):
+def davis_yin(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+              verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
+              g_prox_args=(), h_prox_args=()):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
 
@@ -67,26 +67,24 @@ def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, m
 
     it = 1
     # .. a while loop instead of a for loop ..
-    # .. allows for infinite of floating point max_iter ..
+    # .. allows for infinite or floating point max_iter ..
     while it < max_iter:
         current_step_size = step_size
         xk = g_prox(yk, current_step_size * alpha, *g_prox_args)
         grad_fk = f_prime(xk)
-        z = h_prox(2 * xk - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
+        z = h_prox(2 * xk - yk - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
         incr = z - xk
         if backtracking:
             fx = f(xk)
-            fz = f(z)
+            # x_next = g_prox(yk + incr, current_step_size * alpha, *g_prox_args)
+            # fx_next = f(x_next)
             for _ in range(max_iter_ls):
-                if fz <= fx + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                if fx <= f(z) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # step size found
                     break
                 else:
-                    # backtrack, reduce step size
-                    current_step_size *= .4
-                    z = h_prox(2 * xk - yk - step_size * grad_fk, current_step_size * beta, *h_prox_args)
+                    z = h_prox(2 * xk - yk - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - xk
-                    fz = f(z)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         yk += incr
@@ -103,13 +101,13 @@ def three_split(f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, m
 
         if callback is not None:
             callback(xk)
-            it += 1
         if it >= max_iter:
             warnings.warn(
                 "three_split did not reach the desired tolerance level",
                 RuntimeWarning)
+        it += 1
 
     return optimize.OptimizeResult(
         x=yk, success=success,
-        jac=incr / step_size,  # prox-grad mapping
+        jac=incr / current_step_size,  # prox-grad mapping
         nit=it)
