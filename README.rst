@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.org/fabianp/gdprox.svg?branch=master
-    :target: https://travis-ci.org/fabianp/gdprox
+.. image:: https://travis-ci.org/fabianp/copt.svg?branch=master
+    :target: https://travis-ci.org/fabianp/copt
 
 copt
 ====
