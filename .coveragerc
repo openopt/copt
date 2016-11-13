@@ -7,3 +7,7 @@ omit =
     */site-packages/nose/*
     */unittest2/*
 
+[run]
+branch = True
+source = copt
+include = */copt/*
