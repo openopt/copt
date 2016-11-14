@@ -63,7 +63,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g_prox is None:
-        g_prox = lambda x: x
+        g_prox = lambda x, y: x
 
     it = 1
     # .. a while loop instead of a for loop ..
