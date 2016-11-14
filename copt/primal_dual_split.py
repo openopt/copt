@@ -39,9 +39,6 @@ def primal_dual(f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
     verbose : int
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    current_step_size : float
-        Starting value for the line-search procedure.
-
     callback : callable
         callback function (optional).
 
@@ -71,6 +68,7 @@ def primal_dual(f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
     if h_prox is None:
         def h_prox(x, step_size, *args): return x
 
+    # conjugate of h_prox
     def h_prox_conj(x, step_size, *args):
         return x - step_size * h_prox(x / step_size,  beta / step_size, *args)
     it = 1
