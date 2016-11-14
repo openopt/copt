@@ -89,3 +89,4 @@ def test_fused():
         assert opt_primal_dual.success
         np.testing.assert_allclose(
             opt_proximal.x, opt_primal_dual.x, atol=1e-1)
+

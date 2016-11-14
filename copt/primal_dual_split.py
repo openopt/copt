@@ -55,7 +55,7 @@ def primal_dual(f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
     References
     ----------
     Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
-    first-order primal–dual algorithm." Mathematical Programming (2015)
+    first-order primal-dual algorithm." Mathematical Programming (2015)
     """
     xk = np.array(x0, copy=True)
     yk = L.dot(xk)

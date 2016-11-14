@@ -7,8 +7,8 @@ from scipy import linalg
 def three_split(
         f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
-        verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
-         line_search_factor=0.4):
+        verbose=0, callback=None, backtracking=True, step_size=1., max_iter_backtracking=100,
+        backtracking_factor=0.4):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
 
@@ -64,7 +64,7 @@ def three_split(
     """
     yk = np.array(y0, copy=True)
     success = False
-    if not max_iter_ls > 0:
+    if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
@@ -82,12 +82,12 @@ def three_split(
         incr = z - xk
         if backtracking:
             fx = f(xk)
-            for _ in range(max_iter_ls):
+            for _ in range(max_iter_backtracking):
                 if f(z) <= fx + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # step size found
                     break
                 else:
-                    current_step_size *= line_search_factor
+                    current_step_size *= backtracking_factor
                     z = h_prox(2 * xk - yk - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - xk
             else:

@@ -5,8 +5,8 @@ from scipy import linalg
 
 
 def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
-                      verbose=0, callback=None, backtracking=True,
-                      step_size=1., max_iter_backtracking=20, g_prox_args=()):
+                      verbose=0, g_prox_args=(), callback=None, backtracking=True,
+                      step_size=1., max_iter_backtracking=100, backtracking_factor=0.4):
     """
     proximal gradient descent solver for optimization problems of the form
 
@@ -83,7 +83,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
                     break
                 else:
                     # .. backtracking, reduce step size ..
-                    current_step_size *= .4
+                    current_step_size *= backtracking_factor
                     x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
                     incr = x_next - xk
                     f_next = f(x_next)
