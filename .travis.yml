@@ -20,7 +20,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose scikit-learn numba coverage
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose scikit-learn numba coverage pillow
   - source activate test-environment
   - pip install python-coveralls
   - python setup.py install
