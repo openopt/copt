@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def davis_yin(
+def three_split(
         f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
         verbose=0, callback=None, backtracking=True, step_size=1., max_iter_ls=20,
@@ -67,10 +67,14 @@ def davis_yin(
     if not max_iter_ls > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
+    if g_prox is None:
+        def g_prox(x, step_size, *args): return x
+    if h_prox is None:
+        def h_prox(x, step_size, *args): return x
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    while it < max_iter:
+    while it <= max_iter:
         current_step_size = step_size
         xk = g_prox(yk, current_step_size * alpha, *g_prox_args)
         grad_fk = f_prime(xk)

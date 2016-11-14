@@ -45,7 +45,7 @@ def test_sklearn():
 
         def g_prox(x, step_size):
             """
-            L1 regularization
+            L1 proximal operator
             """
             return np.fmax(x - step_size * alpha, 0) - \
                 np.fmax(- x - step_size * alpha, 0)

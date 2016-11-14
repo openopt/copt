@@ -11,7 +11,7 @@ colors = ['#7fc97f', '#beaed4', '#fdc086']
 
 
 from copt.prox_tv import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
-from copt import davis_yin, proximal_gradient
+from copt import three_split, proximal_gradient
 from copt.utils import Trace
 from copt.datasets import load_img1
 
@@ -64,7 +64,7 @@ for i, alpha in enumerate(all_alphas):
 
     max_iter = 5000
     trace_three = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_tos = davis_yin(
+    out_tos = three_split(
         obj_fun, grad, prox_tv1d_rows, prox_tv1d_cols, np.zeros(n_features),
         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
         callback=trace_three, max_iter=max_iter)

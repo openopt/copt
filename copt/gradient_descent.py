@@ -68,7 +68,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    while it < max_iter:
+    while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_prime(xk)

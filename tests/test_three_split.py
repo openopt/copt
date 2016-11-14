@@ -1,5 +1,5 @@
 import numpy as np
-from copt.three_split import davis_yin
+from copt.three_operator_split import three_split
 from sklearn.linear_model import logistic
 from scipy import optimize, linalg
 
@@ -16,11 +16,11 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
-    def no_prox(x, _):
+    def no_prox(x, step_size):
         return x
-    opt = davis_yin(
+    opt = three_split(
         logloss, fprime_logloss, no_prox, no_prox,
-        np.zeros(n_features), tol=1e-12, verbose=True)
+        np.zeros(n_features), tol=1e-12)
 
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
