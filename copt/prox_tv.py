@@ -6,8 +6,13 @@ These are some helper functions to compute the proximal operator of some common 
 """
 
 import numpy as np
-from numba import njit
 import warnings
+import os
+
+if 'NO_NUMBA' in os.environ:
+    def njit(x): return x
+else:
+    from numba import njit
 
 
 def prox_tv1d(w, step_size):
