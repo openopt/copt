@@ -26,5 +26,6 @@ setup(
     url='http://pypi.python.org/pypi/copt',
     packages=['copt'],
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
+    package_data={'copt': ['data/img1.csv']},
     license='BSD'
 )

@@ -7,7 +7,7 @@ class Trace:
     """
     def __init__(self, loss_func, print_freq=100, verbose=False):
         self.loss_func = loss_func
-        self.vals = []
+        self.values = []
         self.times = []
         self.start = None
         self.counter = 0
@@ -20,7 +20,7 @@ class Trace:
             print('Iteration: %s, Trace obj: %s' %
                   (self.counter, fxk))
         self.counter += 1
-        self.vals.append(fxk)
+        self.values.append(fxk)
         if self.start is None:
             self.start = datetime.now()
             self.times = [0]

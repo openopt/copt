@@ -29,7 +29,7 @@ def prox_tv1d(w, step_size):
     ----------
     w: array
         vector of coefficients
-    stepsize: float
+    step_size: float
         step size (sometimes denoted gamma) in proximal objective function
 
     References

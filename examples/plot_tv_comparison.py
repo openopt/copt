@@ -81,14 +81,14 @@ for i, alpha in enumerate(all_alphas):
     ax[0, i].set_xticks(())
     ax[0, i].set_yticks(())
 
-    fmin = min(np.min(trace_three.vals), np.min(trace_gd.vals))
-    scale = (np.array(trace_three.vals) - fmin)[0]
+    fmin = min(np.min(trace_three.values), np.min(trace_gd.values))
+    scale = (np.array(trace_three.values) - fmin)[0]
     ax[1, i].plot(
-        np.array(trace_three.times), (np.array(trace_three.vals) - fmin) / scale,
+        np.array(trace_three.times), (np.array(trace_three.values) - fmin) / scale,
         label='Three operator splitting', lw=4, marker='o', markevery=200,
         markersize=10, color=colors[0])
     ax[1, i].plot(
-        np.array(trace_gd.times), (np.array(trace_gd.vals) - fmin) / scale,
+        np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
         label='ProxGD', lw=4, marker='^', markersize=10, markevery=200,
          color=colors[1])
     # plt.legend(loc='best', frameon=False)
