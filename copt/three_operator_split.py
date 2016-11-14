@@ -99,9 +99,9 @@ def three_split(
             print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
 
         if norm_increment < tol * current_step_size:
+            success = True
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
-                success = True
             break
 
         if callback is not None:
