@@ -2,7 +2,7 @@
 #
 
 """
-These are some helper functions to compute the proximal operator of some common penalties
+These are some helper functions related to total variation penalties
 """
 
 import numpy as np
@@ -221,3 +221,34 @@ def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
 
     x = w.copy().astype(np.float64)
     return c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol)
+
+
+def tv2d_linear_operator(n_rows, n_cols):
+    """
+    Return the linear operator L such ||L x||_1 is the 2D total variation norm.
+
+    Parameters
+    ----------
+    n_rows
+    n_cols
+
+    Returns
+    -------
+
+    """
+
+    L = []
+    for i in range(n_rows):
+        for j in range(n_cols):
+            if i < n_rows - 1:
+                tmp1 = np.zeros((n_rows, n_cols))
+                tmp1[i, j] = 1
+                tmp1[i+1, j] = -1
+                L.append(tmp1.ravel())
+
+            if j < n_cols - 1:
+                tmp2 = np.zeros((n_rows, n_cols))
+                tmp2[i, j] = 1
+                tmp2[i, j+1] = -1
+                L.append(tmp2.ravel())
+    return np.array(L)

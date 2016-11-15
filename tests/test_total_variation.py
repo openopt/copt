@@ -1,6 +1,5 @@
 import numpy as np
-from copt import prox_tv1d, prox_tv2d
-from copt.prox_tv import prox_tv1d
+from copt.total_variation import prox_tv1d, prox_tv2d, tv2d_linear_operator
 from numpy import testing
 
 
@@ -48,3 +47,17 @@ def test_tv2_prox():
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
         testing.assert_array_less(
             ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
+
+
+def test_tv2d_linear_operator():
+    n_rows, n_cols = 20, 10
+    def TV(w):
+        img = w.reshape((n_rows, n_cols))
+        tmp1 = np.abs(np.diff(img, axis=0))
+        tmp2 = np.abs(np.diff(img, axis=1))
+        return tmp1.sum() + tmp2.sum()
+
+    L = tv2d_linear_operator(n_rows, n_cols)
+    x = np.random.randn(n_rows * n_cols)
+    testing.assert_almost_equal(
+        np.abs(L.dot(x)).sum(), TV(x))

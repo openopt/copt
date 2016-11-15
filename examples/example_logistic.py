@@ -23,13 +23,10 @@ def fprime_logloss(x):
     return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
 
-def g_prox(x, step_size):
-    """
-    prox of alpha * l1
-    """
+def L1_prox(x, step_size):
     return np.fmax(x - step_size * alpha, 0) - \
         np.fmax(- x - step_size * alpha, 0)
 
 
-out = proximal_gradient(logloss, fprime_logloss, g_prox, np.zeros(n_features))
+out = proximal_gradient(logloss, fprime_logloss, L1_prox, np.zeros(n_features))
 print('Solution', out)
