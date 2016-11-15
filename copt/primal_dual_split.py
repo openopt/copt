@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def primal_dual(f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
+def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
                 max_iter=10000, verbose=0, callback=None, step_size_x=1e-3,
                 step_size_y=1e3, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """

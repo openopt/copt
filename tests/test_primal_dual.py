@@ -21,7 +21,7 @@ def test_optimize():
 
     L = np.eye(n_features)
     opt = primal_dual(
-        fprime_logloss, None, None, L, np.zeros(n_features))
+        logloss, fprime_logloss, None, None, L, np.zeros(n_features))
     assert opt.success
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features),
@@ -46,7 +46,7 @@ def test_lasso():
             logloss, fprime_logloss, l1_prox, np.zeros(n_features),
             tol=1e-24, alpha=alpha)
         opt_primal_dual = primal_dual(
-            fprime_logloss, l1_prox, None, L, np.zeros(n_features),
+            logloss, fprime_logloss, l1_prox, None, L, np.zeros(n_features),
             alpha=alpha)
         assert opt_primal_dual.success
         np.testing.assert_allclose(
@@ -54,7 +54,7 @@ def test_lasso():
 
         # same thing but using the other operator
         opt_primal_dual2 = primal_dual(
-            fprime_logloss, None, l1_prox, L, np.zeros(n_features),
+            logloss, fprime_logloss, None, l1_prox, L, np.zeros(n_features),
             beta=alpha)
         np.testing.assert_allclose(
             opt_proximal.x, opt_primal_dual2.x, atol=1e-3)
@@ -84,7 +84,7 @@ def test_fused():
             tol=1e-24, max_iter=10000, alpha=alpha)
 
         opt_primal_dual = primal_dual(
-            fprime_logloss, None, l1_prox, L, np.zeros(n_features),
+            logloss, fprime_logloss, None, l1_prox, L, np.zeros(n_features),
             beta=alpha, verbose=True, step_size_y=1)
         assert opt_primal_dual.success
         np.testing.assert_allclose(
