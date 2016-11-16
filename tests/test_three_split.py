@@ -1,5 +1,5 @@
 import numpy as np
-from copt.three_operator_split import three_split
+from copt.proximal_splitting import three_split
 from sklearn.linear_model import logistic
 from scipy import optimize
 
