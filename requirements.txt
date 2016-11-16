@@ -1,0 +1,5 @@
+numpy
+numba
+scipy
+nose
+scikit-learn

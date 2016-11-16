@@ -7,12 +7,7 @@ These are some helper functions related to total variation penalties
 
 import numpy as np
 import warnings
-import os
-
-if 'NO_NUMBA' in os.environ:
-    def njit(x): return x
-else:
-    from numba import njit
+from numba import njit
 
 
 def prox_tv1d(w, step_size):

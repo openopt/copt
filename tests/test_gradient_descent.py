@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import linalg, optimize
+from scipy import optimize
 from sklearn.linear_model import logistic
 from copt import proximal_gradient
 from nose import tools

@@ -19,14 +19,17 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
 
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy nose scikit-learn numba coverage pillow
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
   - source activate test-environment
+  # install requirements
+  - conda install --yes --file requirements.txt
+  # install also some non-essential packages
+  - conda install coverage pillow
   - pip install python-coveralls
   - python setup.py install
 
 script:
-  - NO_NUMBA=1 nosetests -v --with-coverage --cover-package=copt
+  - NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
 
 after_success:
   coveralls
