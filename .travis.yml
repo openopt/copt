@@ -22,7 +22,7 @@ install:
 - python setup.py install
 script:
 - NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
-- cd doc && make html
+- cd doc && make html && cd ..
 after_success: coveralls
 deploy:
   provider: s3
@@ -33,6 +33,7 @@ deploy:
   region: eu-west-1
   skip_cleanup: true
   acl: public_read
+  local_dir: _build/html
   on:
     branch: master
     condition: $TRAVIS_PYTHON_VERSION = "3.5"
