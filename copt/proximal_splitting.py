@@ -124,6 +124,8 @@ def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-1
                 max_iter=10000, verbose=0, callback=None, step_size_x=1e-3,
                 step_size_y=1e3, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
+    !WARNING!: this is a work in progress algorithm, not stable at all.
+
     proximal gradient-descent solver for optimization problems of the form
 
                        minimize_x f(x) + alpha * g(x) + beta * h(L x)
