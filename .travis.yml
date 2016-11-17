@@ -1,38 +1,35 @@
 language: python
 python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
+- '2.7'
+- '3.4'
+- '3.5'
 install:
-  - sudo apt-get update
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
-
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
-  - source activate test-environment
-  # install requirements
-  - conda install --yes --file requirements.txt
-  # install also some non-essential packages
-  - conda install coverage pillow sphinx numpydoc
-  - pip install python-coveralls
-
-  - python setup.py install
-
+- sudo apt-get update
+- if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+  -O miniconda.sh; else wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+  -O miniconda.sh; fi
+- bash miniconda.sh -b -p $HOME/miniconda
+- export PATH="$HOME/miniconda/bin:$PATH"
+- hash -r
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda info -a
+- conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
+- source activate test-environment
+- conda install --yes --file requirements.txt
+- conda install coverage pillow sphinx numpydoc
+- pip install python-coveralls sphinx-gallery
+- python setup.py install
 script:
-  - NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
-  - cd doc && make html
-
-after_success:
-  coveralls
+- NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
+- cd doc && make html
+after_success: coveralls
+deploy:
+  provider: s3
+  access_key_id: "AKIAIRIF5Q2ZCELOKNSQ"
+  secret_access_key:
+    secure: lRzToohoQEaKOchajvJuHXV62Wdjs1VL4Xu1SOZ5EGCTxHXwVNQN+wAlYRJEacDuLv0HtMOdOUqKnbpaqafk3zdK/X7qzh1QAPwoc6qKLZapmbGW0r3v5HoCXYNy5Ke5M5bIGtUHOFhX7kwMfMnU11UCm6WzjeYALCzeYzboVkOfeGgrJqRKJ38b5v2WKKl3BZGs10necVhhk626guGQyPUwHGii19pixFGPrtA+qKDWqukHpIZvQISNmT0K+/E2oo1dyZkisBbzMmNOerEIWSou002V0QYCRkJjkPQSB55lJJ0dimqmTN6vaqkipF0MtEBAncaZluulF6siiLk4Rzytu/RAf5kcNBwRaJmLFzVYC5bXosA4LjDYPpRLGcUhx08akiiaXn9aiWU5MhKyZETR/IYLxmFfQfUyiyCaoZlyFnaVDmzffUQcYAwMMXNyemQfz6obq6Os2RdMTGHE/hwWuiSTDI4JtNqzVO5K4ty0WFnKy5bWcBuR71bMBQ124cloqeLS55qw+6BZzkCxQ21qRWOMsnqQ3e08ysFJflyLpj11QGTucnPeLZpihEmJeKVX7nI0FiLGkqS+dX10vrrpaJLrK4SaB2HTvDbQ246n3yCnrL899PlLTdv1gxucLYVaAWcHV1Fe4ksc9vj/cmitHmN1+GDXBGSv82VbW20=
+  bucket: copt
+  region: eu-west-1
+  skip_cleanup: true
+  acl: public_read
