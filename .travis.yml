@@ -26,10 +26,7 @@ install:
   - conda install --yes --file requirements.txt
   # install also some non-essential packages
   - conda install coverage pillow sphinx
-  - pip install python-coveralls
-
-  # install sphinx theme
-  - pip install -e git+https://github.com/bitprophet/alabaster/#egg=alabaster
+  - pip install python-coveralls alabaster
 
   - python setup.py install
 
