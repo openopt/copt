@@ -29,8 +29,8 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
     x0 : array-like
         Initial guess
 
-    backtracking : 'line-search' or float
-        XXX Step size.
+    backtracking : boolean
+        Whether to perform backtracking (i.e. line-search) or not.
 
     max_iter : int
         Maximum number of iterations.
@@ -56,7 +56,8 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
 
     References
     ----------
-    TODO
+    Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
+    recovery." Convex optimization in signal processing and communications (2009)
     """
     xk = np.array(x0, copy=True)
     success = False

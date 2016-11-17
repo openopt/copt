@@ -21,18 +21,12 @@ from copt.datasets import load_img1
 #
 #             b = A ground_truth + noise   ,
 #
-# where A is a random matrix. We will now load the ground truth
-# and plot it
+# where A is a random matrix. We will now load the ground truth image
 img = load_img1()
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)
 n_samples = n_features
-
-plt.imshow(img, interpolation='nearest', cmap=plt.cm.Blues)
-plt.xticks(())
-plt.yticks(())
-plt.show()
 
 # set L2 regularization (arbitrarily) to 1/n_samples
 l2_reg = 1.0 / n_samples
@@ -57,7 +51,6 @@ def obj_fun(x):
 
 def grad(x):
     return - A.T.dot(b - A.dot(x)) / A.shape[0] + l2_reg * x
-
 
 f, ax = plt.subplots(2, 3, sharey=False)
 all_alphas = [1e-6, 1e-3, 1e-1]
@@ -92,7 +85,6 @@ for i, alpha in enumerate(all_alphas):
         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
         lw=4, marker='^', markersize=10, markevery=400,
         color=colors[1])
-    # plt.legend(loc='best', frameon=False)
     ax[1, i].set_xlabel('Time (in seconds)')
     ax[1, i].set_yscale('log')
     ax[1, i].grid(True)
