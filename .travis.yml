@@ -18,7 +18,7 @@ install:
 - source activate test-environment
 - conda install --yes --file requirements.txt
 - conda install coverage pillow sphinx numpydoc
-- pip install python-coveralls sphinx-gallery
+- pip install python-coveralls sphinx-gallery matplotlib
 - python setup.py install
 script:
 - NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
@@ -33,3 +33,6 @@ deploy:
   region: eu-west-1
   skip_cleanup: true
   acl: public_read
+  on:
+    branch: master
+    condition: "$TRAVIS_PYTHON_VERSION" = "3.5"
