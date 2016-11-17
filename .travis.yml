@@ -33,7 +33,7 @@ deploy:
   region: eu-west-1
   skip_cleanup: true
   acl: public_read
-  local_dir: _build/html
+  local_dir: doc/_build/html
   on:
     branch: master
     condition: $TRAVIS_PYTHON_VERSION = "3.5"
