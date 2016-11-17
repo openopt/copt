@@ -83,18 +83,26 @@ for i, alpha in enumerate(all_alphas):
 
     fmin = min(np.min(trace_three.values), np.min(trace_gd.values))
     scale = (np.array(trace_three.values) - fmin)[0]
-    ax[1, i].plot(
+    prox_split, = ax[1, i].plot(
         np.array(trace_three.times), (np.array(trace_three.values) - fmin) / scale,
-        label='Three operator splitting', lw=4, marker='o', markevery=200,
+        lw=4, marker='o', markevery=400,
         markersize=10, color=colors[0])
-    ax[1, i].plot(
+    prox_gd, = ax[1, i].plot(
         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
-        label='ProxGD', lw=4, marker='^', markersize=10, markevery=200,
-         color=colors[1])
+        lw=4, marker='^', markersize=10, markevery=400,
+        color=colors[1])
     # plt.legend(loc='best', frameon=False)
     ax[1, i].set_xlabel('Time (in seconds)')
     ax[1, i].set_yscale('log')
     ax[1, i].grid(True)
-plt.legend(ncol=1, frameon=False)
+
+plt.gcf().subplots_adjust(bottom=0.15)
+plt.figlegend(
+    (prox_split, prox_gd),
+    ('Three operator splitting', 'Proximal Gradient Descent'), ncol=5,
+    scatterpoints=1,
+    loc=(-0.00, -0.0), frameon=False,
+    bbox_to_anchor=[0.05, 0.01])
+
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()
