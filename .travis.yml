@@ -27,6 +27,10 @@ install:
   # install also some non-essential packages
   - conda install coverage pillow sphinx
   - pip install python-coveralls
+
+  # install sphinx theme
+  pip install -e git+https://github.com/bitprophet/alabaster/#egg=alabaster
+
   - python setup.py install
 
 script:
