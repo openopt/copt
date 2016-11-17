@@ -1,5 +1,5 @@
-copt package
-============
+API reference
+=============
 
 
 .. autosummary::
