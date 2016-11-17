@@ -35,4 +35,4 @@ deploy:
   acl: public_read
   on:
     branch: master
-    condition: "$TRAVIS_PYTHON_VERSION" = "3.5"
+    condition: $TRAVIS_PYTHON_VERSION = "3.5"
