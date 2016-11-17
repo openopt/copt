@@ -21,17 +21,18 @@ from copt.datasets import load_img1
 #
 #             b = A ground_truth + noise   ,
 #
-# where A is a random matrix
+# where A is a random matrix. We will now load the ground truth
+# and plot it
 img = load_img1()
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)
 n_samples = n_features
-#
-# plt.imshow(img, interpolation='nearest', cmap=plt.cm.Blues)
-# plt.xticks(())
-# plt.yticks(())
-# plt.show()
+
+plt.imshow(img, interpolation='nearest', cmap=plt.cm.Blues)
+plt.xticks(())
+plt.yticks(())
+plt.show()
 
 # set L2 regularization (arbitrarily) to 1/n_samples
 l2_reg = 1.0 / n_samples
