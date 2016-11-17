@@ -25,7 +25,7 @@ install:
   # install requirements
   - conda install --yes --file requirements.txt
   # install also some non-essential packages
-  - conda install coverage pillow
+  - conda install coverage pillow sphinx
   - pip install python-coveralls
   - python setup.py install
 
