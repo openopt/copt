@@ -1,5 +1,5 @@
-API reference
-=============
+Reference
+=========
 
 
 .. autosummary::
