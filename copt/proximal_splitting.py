@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def three_split(
+def xx_three_split(
         f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
         verbose=0, callback=None, backtracking=True, step_size=1., max_iter_backtracking=100,
@@ -119,10 +119,10 @@ def three_split(
         nit=it)
 
 
-def xx_three_split(
+def three_split(
         f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
-        verbose=0, callback=None, backtracking=True, step_size=1., max_iter_backtracking=100,
+        verbose=0, callback=None, step_size=1., max_iter_backtracking=100,
         backtracking_factor=0.4):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
@@ -134,7 +134,7 @@ def xx_three_split(
 
     Parameters
     ----------
-    f : callable
+    f : callable XXX unused
         f(x) returns the value of f at x.
 
     f_prime : callable or None
@@ -190,29 +190,35 @@ def xx_three_split(
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    init_step_size = step_size
-    x = g_prox(y, init_step_size * alpha, *g_prox_args)
+    current_step_size = 1e-3
+    x = g_prox(y, current_step_size * alpha, *g_prox_args)
     grad_fk = f_prime(x)
-    z = h_prox(2 * x - y - init_step_size * grad_fk, init_step_size * beta, *h_prox_args)
+    z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
     incr = z - x
     while it <= max_iter:
-        current_step_size = step_size
-        while True:
+        # current_step_size = step_size
+        iter_bt = 1
+        while iter_bt <= max_iter_backtracking:
             y_next = y - x + z
             x_next = g_prox(y_next, current_step_size * alpha, *g_prox_args)
             grad_next = f_prime(x_next)
             z_next = h_prox(2 * x_next - y_next - current_step_size * grad_next, current_step_size * beta, *h_prox_args)
             incr_next = z_next - x_next
-            if incr_next.dot(incr) - incr.dot(incr) <= current_step_size * (grad_fk - grad_next).dot(z - z_next):
+            lhand = - incr_next.dot(incr) - incr.dot(incr)
+            rhand = current_step_size * (grad_fk - grad_next).dot(z - z_next)
+            if lhand <= rhand:
+                # accept step size
                 y = y_next
                 x = x_next
                 grad_fk = grad_next
                 z = z_next
                 incr = incr_next
-                print(step_size, current_step_size)
+                current_step_size *= 1.1
                 break
             else:
-                current_step_size *= 0.4
+                current_step_size *= backtracking_factor
+                iter_bt += 1
+        print(step_size, current_step_size)
 
         norm_increment = linalg.norm(incr, np.inf)
         if verbose > 0:

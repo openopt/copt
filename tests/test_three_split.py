@@ -20,8 +20,10 @@ def test_optimize():
         logloss, fprime_logloss, None, None,
         np.zeros(n_features), tol=1e-12)
 
-    sol_scipy = optimize.fmin_l_bfgs_b(
-        logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
-    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-2)
+    # sol_scipy = optimize.fmin_l_bfgs_b(
+    #     logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
+    # np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-2)
+    np.testing.assert_almost_equal(
+        fprime_logloss(opt.x), np.zeros(n_features))
 
 
