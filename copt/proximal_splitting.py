@@ -4,10 +4,10 @@ from scipy import optimize
 from scipy import linalg
 
 
-def xx_three_split(
+def three_split(
         f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
-        verbose=0, callback=None, backtracking=True, step_size=1., max_iter_backtracking=100,
+        verbose=0, callback=None, backtracking=True, step_size=None, max_iter_backtracking=100,
         backtracking_factor=0.4):
     """
     Davis-Yin three operator splitting schem for optimization problems of the form
@@ -72,32 +72,68 @@ def xx_three_split(
         def g_prox(x, step_size, *args): return x
     if h_prox is None:
         def h_prox(x, step_size, *args): return x
+
+    if step_size is None:
+        # sample to estimate Lipschitz constant
+        x0 = np.zeros(y.size)
+        step_size_n_sample = 5
+        L = []
+        for _ in range(step_size_n_sample):
+            x_tmp = np.random.randn(x0.size)
+            x_tmp /= linalg.norm(x_tmp)
+            L.append(linalg.norm(f_prime(x0) - f_prime(x_tmp)))
+        # give it a generous upper bound
+        step_size = 10. / np.mean(L)
+
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
+    current_step_size = step_size
+    norm_incr = np.inf
     while it <= max_iter:
-        current_step_size = step_size
-        x = g_prox(y, current_step_size * alpha, *g_prox_args)
-        grad_fk = f_prime(x)
-        z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
-        incr = z - x
         if backtracking:
-            fx = f(x)
+            x = g_prox(y, current_step_size * alpha, *g_prox_args)
+            uk = (y - x) / (current_step_size * alpha)
+            grad_fk = f_prime(x)
+            z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
+            incr = z - x
+            norm_incr = linalg.norm(incr / current_step_size)
             for _ in range(max_iter_backtracking):
-                if f(z) <= fx + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                lhand = f(z)
+                rhand = f(x) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size)
+                if lhand <= rhand * (1 + x.size * np.finfo(np.float64).eps):
                     # step size found
+                    # current_step_size *= 1.01
                     break
                 else:
                     current_step_size *= backtracking_factor
+                    y = x + (current_step_size * alpha) * uk
+                    print(lhand, rhand, np.linalg.norm(x - g_prox(y, current_step_size * alpha, *g_prox_args)))
+                    x = g_prox(y, current_step_size * alpha, *g_prox_args)
+                    uk = (y - x) / (current_step_size * alpha)
+                    # print(np.linalg.norm(x - x_orig))
+                    # 1/0
+                    grad_fk = f_prime(x)
                     z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - x
+                    norm_incr = linalg.norm(incr / current_step_size)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
+        else:
+            if norm_incr > 1e-3:
+                print('SMALL')
+            x = g_prox(y, current_step_size * alpha, *g_prox_args)
+            grad_fk = f_prime(x)
+            z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
+            incr = z - x
+            norm_incr = linalg.norm(incr / current_step_size)
+
         y += incr
 
-        norm_increment = linalg.norm(incr, np.inf)
+        norm_increment = linalg.norm(incr)
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
+            print("Iteration %s, prox-grad norm: %s, step size: %s" % (
+                it, norm_increment / current_step_size, current_step_size))
 
         if norm_increment < tol * current_step_size:
             success = True
@@ -114,132 +150,7 @@ def xx_three_split(
         it += 1
 
     return optimize.OptimizeResult(
-        x=y, success=success,
-        jac=incr / current_step_size,  # prox-grad mapping
-        nit=it)
-
-
-def three_split(
-        f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-        g_prox_args=(), h_prox_args=(),
-        verbose=0, callback=None, step_size=1., max_iter_backtracking=100,
-        backtracking_factor=0.4):
-    """
-    Davis-Yin three operator splitting schem for optimization problems of the form
-
-               minimize_x f(x) + alpha * g(x) + beta * h(x)
-
-    where f is a smooth function and g is a (possibly non-smooth)
-    function for which the proximal operator is known.
-
-    Parameters
-    ----------
-    f : callable XXX unused
-        f(x) returns the value of f at x.
-
-    f_prime : callable or None
-        f_prime(x) returns the gradient of f.
-
-    g_prox : callable or None
-        g_prox(x, alpha, *args) returns the proximal operator of g at xa
-        with parameter alpha. Extra arguments can be passed by g_prox_args.
-
-    y0 : array-like
-        Initial guess
-
-    backtracking : boolean
-        Whether to perform backtracking (i.e. line-search) to estimate
-        the step size.
-
-    max_iter : int
-        Maximum number of iterations.
-
-    verbose : int
-        Verbosity level, from 0 (no output) to 2 (output on each iteration)
-
-    step_size : float
-        Starting value for the line-search procedure.
-
-    callback : callable
-        callback function (optional).
-
-    Returns
-    -------
-    res : OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
-
-    References
-    ----------
-    Davis, Damek, and Wotao Yin. "A three-operator splitting scheme and its optimization applications."
-    arXiv preprint arXiv:1504.01032 (2015).
-    """
-    y = np.array(y0, copy=True)
-    success = False
-    if not max_iter_backtracking > 0:
-        raise ValueError('Line search iterations need to be greater than 0')
-
-    if g_prox is None:
-        def g_prox(x, step_size, *args): return x
-    if h_prox is None:
-        def h_prox(x, step_size, *args): return x
-    it = 1
-    # .. a while loop instead of a for loop ..
-    # .. allows for infinite or floating point max_iter ..
-    current_step_size = 1e-3
-    x = g_prox(y, current_step_size * alpha, *g_prox_args)
-    grad_fk = f_prime(x)
-    z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
-    incr = z - x
-    while it <= max_iter:
-        # current_step_size = step_size
-        iter_bt = 1
-        while iter_bt <= max_iter_backtracking:
-            y_next = y - x + z
-            x_next = g_prox(y_next, current_step_size * alpha, *g_prox_args)
-            grad_next = f_prime(x_next)
-            z_next = h_prox(2 * x_next - y_next - current_step_size * grad_next, current_step_size * beta, *h_prox_args)
-            incr_next = z_next - x_next
-            lhand = - incr_next.dot(incr) - incr.dot(incr)
-            rhand = current_step_size * (grad_fk - grad_next).dot(z - z_next)
-            if lhand <= rhand:
-                # accept step size
-                y = y_next
-                x = x_next
-                grad_fk = grad_next
-                z = z_next
-                incr = incr_next
-                current_step_size *= 1.1
-                break
-            else:
-                current_step_size *= backtracking_factor
-                iter_bt += 1
-        print(step_size, current_step_size)
-
-        norm_increment = linalg.norm(incr, np.inf)
-        if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment / current_step_size))
-
-        if norm_increment < tol * current_step_size:
-            success = True
-            if verbose:
-                print("Achieved relative tolerance at iteration %s" % it)
-            break
-
-        if callback is not None:
-            callback(x)
-        if it >= max_iter:
-            warnings.warn(
-                "three_split did not reach the desired tolerance level",
-                RuntimeWarning)
-        it += 1
-
-    return optimize.OptimizeResult(
-        x=y, success=success,
+        x=x, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
         nit=it)
 
