@@ -3,20 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-C-OPT: composite optimization in Python
-=======================================
+C-OPT: composite optimization
+=============================
 
 
 
-Two operators
--------------
 
-:meth:`copt.proximal_gradient`
+.. autosummary::
+   :toctree: generated/
 
-
-Three operators
----------------
-:meth:`copt.three_split`
+    copt.proximal_gradient
+    copt.three_split
+    copt.primal_dual
 
 
 

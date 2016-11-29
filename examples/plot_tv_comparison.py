@@ -14,7 +14,7 @@ from copt.total_variation import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
 from copt import three_split, proximal_gradient
 from copt.utils import Trace
 from copt.datasets import load_img1
-
+from scipy import misc
 
 ###############################################################
 # Load an ground truth image and generate the dataset (A, b) as
@@ -54,6 +54,7 @@ def grad(x):
 
 f, ax = plt.subplots(2, 3, sharey=False)
 all_alphas = [1e-6, 1e-3, 1e-1]
+xlim = [0.02, 0.02, 0.1]
 for i, alpha in enumerate(all_alphas):
 
     max_iter = 5000
@@ -61,7 +62,7 @@ for i, alpha in enumerate(all_alphas):
     out_tos = three_split(
         obj_fun, grad, prox_tv1d_rows, prox_tv1d_cols, np.zeros(n_features),
         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
-        callback=trace_three, max_iter=max_iter)
+        callback=trace_three, max_iter=max_iter, tol=1e-16)
 
     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
     out_gd = proximal_gradient(
@@ -79,14 +80,15 @@ for i, alpha in enumerate(all_alphas):
     scale = (np.array(trace_three.values) - fmin)[0]
     prox_split, = ax[1, i].plot(
         np.array(trace_three.times), (np.array(trace_three.values) - fmin) / scale,
-        lw=4, marker='o', markevery=400,
+        lw=4, marker='o', markevery=10,
         markersize=10, color=colors[0])
     prox_gd, = ax[1, i].plot(
         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
-        lw=4, marker='^', markersize=10, markevery=400,
+        lw=4, marker='^', markersize=10, markevery=10,
         color=colors[1])
     ax[1, i].set_xlabel('Time (in seconds)')
     ax[1, i].set_yscale('log')
+    ax[1, i].set_xlim((0, xlim[i]))
     ax[1, i].grid(True)
 
 plt.gcf().subplots_adjust(bottom=0.15)

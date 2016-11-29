@@ -6,7 +6,7 @@ from scipy import linalg
 
 def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
                       verbose=0, g_prox_args=(), callback=None, backtracking=True,
-                      step_size=1., max_iter_backtracking=100, backtracking_factor=0.4):
+                      step_size=None, max_iter_backtracking=100, backtracking_factor=0.4):
     """
     proximal gradient descent solver for optimization problems of the form
 
@@ -65,6 +65,17 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
         raise ValueError('Line search iterations need to be greater than 0')
     if g_prox is None:
         g_prox = lambda x, y: x
+
+    if step_size is None:
+        # sample to estimate Lipschitz constant
+        step_size_n_sample = 5
+        L = []
+        for _ in range(step_size_n_sample):
+            x_tmp = np.random.randn(x0.size)
+            x_tmp /= linalg.norm(x_tmp)
+            L.append(linalg.norm(f_prime(x0) - f_prime(x_tmp)))
+        # give it a generous upper bound
+        step_size = 10. / np.mean(L)
 
     it = 1
     # .. a while loop instead of a for loop ..
