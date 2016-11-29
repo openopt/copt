@@ -8,15 +8,13 @@ C-OPT: composite optimization
 
 
 
-Two operators
--------------
 
-:meth:`copt.proximal_gradient`
+.. autosummary::
+   :toctree: generated/
 
-
-Three operators
----------------
-:meth:`copt.three_split`
+    copt.proximal_gradient
+    copt.three_split
+    copt.primal_dual
 
 
 
