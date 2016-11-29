@@ -89,30 +89,21 @@ def three_split(
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
     current_step_size = step_size
-    norm_incr = np.inf
     while it <= max_iter:
+        x = g_prox(y, current_step_size * alpha, *g_prox_args)
+        grad_fk = f_prime(x)
+        z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
+        incr = z - x
+        norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
-            x = g_prox(y, current_step_size * alpha, *g_prox_args)
-            uk = (y - x) / (current_step_size * alpha)
-            grad_fk = f_prime(x)
-            z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
-            incr = z - x
-            norm_incr = linalg.norm(incr / current_step_size)
             for _ in range(max_iter_backtracking):
-                lhand = f(z)
-                rhand = f(x) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size)
-                if lhand <= rhand * (1 + x.size * np.finfo(np.float64).eps):
+                expected_descent = f(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
+                if f(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
                     # step size found
-                    # current_step_size *= 1.01
                     break
                 else:
                     current_step_size *= backtracking_factor
-                    y = x + (current_step_size * alpha) * uk
-                    print(lhand, rhand, np.linalg.norm(x - g_prox(y, current_step_size * alpha, *g_prox_args)))
-                    x = g_prox(y, current_step_size * alpha, *g_prox_args)
-                    uk = (y - x) / (current_step_size * alpha)
-                    # print(np.linalg.norm(x - x_orig))
-                    # 1/0
+                    y = x + backtracking_factor * (y - x)
                     grad_fk = f_prime(x)
                     z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - x
@@ -122,20 +113,14 @@ def three_split(
         else:
             if norm_incr > 1e-3:
                 print('SMALL')
-            x = g_prox(y, current_step_size * alpha, *g_prox_args)
-            grad_fk = f_prime(x)
-            z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
-            incr = z - x
-            norm_incr = linalg.norm(incr / current_step_size)
 
         y += incr
 
-        norm_increment = linalg.norm(incr)
         if verbose > 0:
             print("Iteration %s, prox-grad norm: %s, step size: %s" % (
-                it, norm_increment / current_step_size, current_step_size))
+                it, norm_incr / current_step_size, current_step_size))
 
-        if norm_increment < tol * current_step_size:
+        if norm_incr < tol * current_step_size:
             success = True
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
