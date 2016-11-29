@@ -110,9 +110,6 @@ def three_split(
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
-        else:
-            if norm_incr > 1e-3:
-                print('SMALL')
 
         y += incr
 
