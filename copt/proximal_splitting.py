@@ -187,7 +187,7 @@ def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-1
 
     References
     ----------
-    Condat, Laurent. "A primal–dual splitting method for convex optimization
+    Condat, Laurent. "A primal-dual splitting method for convex optimization
     involving Lipschitzian, proximable and linear composite terms." Journal of
     Optimization Theory and Applications (2013).
 

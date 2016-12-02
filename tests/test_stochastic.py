@@ -2,7 +2,6 @@ import numpy as np
 from scipy import optimize
 from sklearn.linear_model import logistic
 from copt.stochastic import saga
-from nose import tools
 
 np.random.seed(0)
 n_samples, n_features = 100, 10
@@ -24,5 +23,3 @@ def test_optimize():
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
-
-test_optimize()

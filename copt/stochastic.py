@@ -68,14 +68,14 @@ def saga(A, b, x0, loss, stepsize, max_iter=1000):
     #     # compute stepsize
     #     stepsize = get_auto_step_size(A, alpha, loss, None) / 4
 
+    x = np.ascontiguousarray(x0).copy()
+
     if loss == 'log':
         f_prime = deriv_logistic
     elif loss == 'squared':
         f_prime = deriv_squared
     else:
         raise NotImplementedError
-
-    x = np.ascontiguousarray(x0).copy()
 
     n_samples, n_features = A.shape
 
