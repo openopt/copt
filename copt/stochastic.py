@@ -96,8 +96,6 @@ def saga(A, b, x0, loss, stepsize, max_iter=1000):
         np.random.shuffle(sample_indices)
         epoch_iteration(
             A, b, x, memory_gradient, gradient_average, sample_indices, stepsize)
-        # if callback is not None:
-        #     callback(z)
     success = True  # XXX
     return optimize.OptimizeResult(
         x=x, success=success, nit=it)
@@ -112,8 +110,9 @@ def _epoch_iteration_factory(f_prime):
         # inner iteration
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
-            x -= step_size * ((grad_i - memory_gradient[i]) * A[i] + gradient_average)
-            gradient_average += A[i] * (grad_i - memory_gradient[i]) / n_samples
+            incr = (grad_i - memory_gradient[i]) * A[i]
+            x -= step_size * (incr + gradient_average)
+            gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
     return epoch_iteration_template
 

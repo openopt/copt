@@ -23,3 +23,16 @@ def test_optimize():
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
+
+    def squaredloss(x):
+        return 0.5 * (y - np.dot(X, x)) ** 2 + 0.5 * alpha * x.dot(x)
+
+    def fprime_squaredloss(x):
+        return - X.T.dot(y - np.dot(X, x)) + alpha * x
+
+    opt = saga(X, y, np.zeros(n_features), 'squared', 1e-3,
+               max_iter=10000)
+    assert opt.success
+    sol_scipy = optimize.fmin_l_bfgs_b(
+        squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
+    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-6)
