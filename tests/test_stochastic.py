@@ -21,7 +21,7 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, alpha)[1]
 
-    opt = saga(X, y, np.zeros(n_features), 'log', 1e-3)
+    opt = saga('log', None, X, y, np.zeros(n_features))
     assert opt.success
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
@@ -33,8 +33,7 @@ def test_optimize():
     def fprime_squaredloss(w):
         return - X.T.dot(y - np.dot(X, w)) + alpha * w
 
-    opt = saga(
-        X, y, np.zeros(n_features), 'squared', step_size, max_iter=100)
+    opt = saga('squared', None, X, y, np.zeros(n_features))
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(

@@ -5,7 +5,7 @@ from scipy import linalg
 
 
 def three_split(
-        f, f_prime, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+        fun, fun_deriv, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
         verbose=0, callback=None, backtracking=True, step_size=None, max_iter_backtracking=100,
         backtracking_factor=0.4):
@@ -19,10 +19,10 @@ def three_split(
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         f(x) returns the value of f at x.
 
-    f_prime : callable or None
+    fun_deriv : callable or None
         f_prime(x) returns the gradient of f.
 
     g_prox : callable or None
@@ -81,7 +81,7 @@ def three_split(
         for _ in range(step_size_n_sample):
             x_tmp = np.random.randn(x0.size)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f_prime(x0) - f_prime(x_tmp)))
+            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 
@@ -91,20 +91,20 @@ def three_split(
     current_step_size = step_size
     while it <= max_iter:
         x = g_prox(y, current_step_size * alpha, *g_prox_args)
-        grad_fk = f_prime(x)
+        grad_fk = fun_deriv(x)
         z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
         incr = z - x
         norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
-                expected_descent = f(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
-                if f(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
+                expected_descent = fun(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
+                if fun(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
                     # step size found
                     break
                 else:
                     current_step_size *= backtracking_factor
                     y = x + backtracking_factor * (y - x)
-                    grad_fk = f_prime(x)
+                    grad_fk = fun_deriv(x)
                     z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)

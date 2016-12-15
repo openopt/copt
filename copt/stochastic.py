@@ -40,7 +40,7 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-def saga(A, b, x0, loss, stepsize, max_iter=1000):
+def saga(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
     """
     The SAGA algorithm, for solving an optimization problem of the form
 
@@ -63,26 +63,31 @@ def saga(A, b, x0, loss, stepsize, max_iter=1000):
         for a description of other attributes.
 
     """
-    #
-    # if stepsize is None:
-    #     # compute stepsize
-    #     stepsize = get_auto_step_size(A, alpha, loss, None) / 4
 
     x = np.ascontiguousarray(x0).copy()
 
-    if loss == 'log':
-        f_prime = deriv_logistic
-    elif loss == 'squared':
-        f_prime = deriv_squared
+    if fun == 'log':
+        fun_deriv = deriv_logistic
+        if stepsize is None:
+            max_rows = np.max((A * A).sum(1))
+            stepsize = 4.0 / max_rows
+    elif fun == 'squared':
+        fun_deriv = deriv_squared
+        if stepsize is None:
+            max_rows = np.max((A * A).sum(1))
+            stepsize = 1.0 / max_rows
+    elif hasattr(fun, '__call__'):
+        pass
     else:
         raise NotImplementedError
 
     n_samples, n_features = A.shape
+    success = False
 
-    epoch_iteration = _epoch_iteration_factory(f_prime)
+    epoch_iteration = _epoch_iteration_factory(fun_deriv)
 
     # initialize variables
-    memory_gradient = np.zeros(n_samples)  # TODO: set to f_i'(0)
+    memory_gradient = np.zeros(n_samples)
 
     sample_indices = np.arange(n_samples)
 
@@ -96,7 +101,9 @@ def saga(A, b, x0, loss, stepsize, max_iter=1000):
         np.random.shuffle(sample_indices)
         epoch_iteration(
             A, b, x, memory_gradient, gradient_average, sample_indices, stepsize)
-    success = True  # XXX
+        if np.linalg.norm(gradient_average) < tol:
+            success = True
+            break
     return optimize.OptimizeResult(
         x=x, success=success, nit=it)
 
