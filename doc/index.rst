@@ -15,6 +15,7 @@ C-OPT: composite optimization
     copt.proximal_gradient
     copt.three_split
     copt.primal_dual
+    copt.saga
 
 
 
