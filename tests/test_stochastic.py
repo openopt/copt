@@ -11,6 +11,9 @@ y = np.sign(np.random.randn(n_samples))
 
 def test_optimize():
 
+    L = np.max((X * X).sum(1))
+    step_size = 1.0 / L
+
     alpha = 0.
     def logloss(x):
         return logistic._logistic_loss(x, X, y, alpha)
@@ -24,15 +27,17 @@ def test_optimize():
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
 
-    def squaredloss(x):
-        return 0.5 * (y - np.dot(X, x)) ** 2 + 0.5 * alpha * x.dot(x)
+    def squaredloss(w):
+        return 0.5 * ((y - np.dot(X, w)) ** 2).sum() + 0.5 * alpha * w.dot(w)
 
-    def fprime_squaredloss(x):
-        return - X.T.dot(y - np.dot(X, x)) + alpha * x
+    def fprime_squaredloss(w):
+        return - X.T.dot(y - np.dot(X, w)) + alpha * w
 
-    opt = saga(X, y, np.zeros(n_features), 'squared', 1e-3,
-               max_iter=10000)
+    opt = saga(
+        X, y, np.zeros(n_features), 'squared', step_size, max_iter=100)
     assert opt.success
+    print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(
         squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
-    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-6)
+    print(fprime_squaredloss(sol_scipy))
+    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
