@@ -4,7 +4,7 @@ from scipy import optimize
 from scipy import linalg
 
 
-def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
+def proximal_gradient(fun, fun_deriv, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
                       verbose=0, g_prox_args=(), callback=None, backtracking=True,
                       step_size=None, max_iter_backtracking=100, backtracking_factor=0.4):
     """
@@ -16,10 +16,10 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         f(x) returns the value of f at x.
 
-    f_prime : callable
+    fun_deriv : callable
         f_prime(x) returns the gradient of f.
 
     g_prox : callable or None
@@ -73,7 +73,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
         for _ in range(step_size_n_sample):
             x_tmp = np.random.randn(x0.size)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f_prime(x0) - f_prime(x_tmp)))
+            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 
@@ -83,12 +83,12 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = f_prime(xk)
+        grad_fk = fun_deriv(xk)
         x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
         incr = x_next - xk
         if backtracking:
-            fk = f(xk)
-            f_next = f(x_next)
+            fk = fun(xk)
+            f_next = fun(x_next)
             for _ in range(max_iter_backtracking):
                 if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
@@ -98,7 +98,7 @@ def proximal_gradient(f, f_prime, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000
                     current_step_size *= backtracking_factor
                     x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
                     incr = x_next - xk
-                    f_next = f(x_next)
+                    f_next = fun(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         xk = x_next

@@ -137,7 +137,7 @@ def three_split(
         nit=it)
 
 
-def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
+def primal_dual(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
                 max_iter=10000, verbose=0, callback=None, step_size_x=1e-3,
                 step_size_y=1e3, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
@@ -150,10 +150,10 @@ def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-1
 
     Parameters
     ----------
-    f : callable
+    fun : callable
         f(x) returns the value of f at x.
 
-    f_prime : callable
+    fun_deriv : callable
         f_prime(x) returns the gradient of f.
 
     g_prox : callable of the form g_prox(x, alpha)
@@ -212,7 +212,7 @@ def primal_dual(f, f_prime, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-1
     # .. main iteration ..
     while it < max_iter:
 
-        grad_fk = f_prime(xk)
+        grad_fk = fun_deriv(xk)
         x_next = g_prox(xk - step_size_x * grad_fk - step_size_x * L.T.dot(yk),
                         step_size_x * alpha, *g_prox_args)
         y_next = h_prox_conj(yk + step_size_y * L.dot(2 * x_next - xk),
