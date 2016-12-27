@@ -41,9 +41,9 @@ def deriv_logistic(w, x, y):
 
 
 def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
-    """
-    The stochastic average gradient augumented (SAGA) algorithm, for solving
-    an optimization problem of the form
+    """Stochastic average gradient augumented (SAGA) algorithm.
+
+    The SAGA algorithm can solve optimization problems of the form
 
         argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i)
 
@@ -65,6 +65,9 @@ def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
 
     References
     ----------
+    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
+    incremental gradient method with support for non-strongly convex composite
+    objectives." Advances in Neural Information Processing Systems. 2014.
     """
 
     x = np.ascontiguousarray(x0).copy()
