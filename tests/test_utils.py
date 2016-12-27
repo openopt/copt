@@ -1,5 +1,5 @@
 
-from copt import three_DY, proximal_gradient
+from copt import three_DY, two_prox_grad
 from copt.utils import Trace
 import numpy as np
 

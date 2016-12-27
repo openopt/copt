@@ -4,11 +4,12 @@ from scipy import optimize
 from scipy import linalg
 
 
-def proximal_gradient(fun, fun_deriv, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
-                      verbose=0, g_prox_args=(), callback=None, backtracking=True,
-                      step_size=None, max_iter_backtracking=100, backtracking_factor=0.4):
-    """
-    proximal gradient descent solver for optimization problems of the form
+def two_prox_grad(fun, fun_deriv, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
+                  verbose=0, g_prox_args=(), callback=None, backtracking=True,
+                  step_size=None, max_iter_backtracking=100, backtracking_factor=0.4):
+    """Proximal gradient descent.
+
+    Solves problems of the form
 
                        minimize_x f(x) + alpha * g(x)
 
