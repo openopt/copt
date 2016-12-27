@@ -40,9 +40,10 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-def saga(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
+def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
     """
-    The SAGA algorithm, for solving an optimization problem of the form
+    The stochastic average gradient augumented (SAGA) algorithm, for solving
+    an optimization problem of the form
 
         argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i)
 
@@ -62,6 +63,8 @@ def saga(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
         the cause of the termination. See `scipy.optimize.OptimizeResult`
         for a description of other attributes.
 
+    References
+    ----------
     """
 
     x = np.ascontiguousarray(x0).copy()

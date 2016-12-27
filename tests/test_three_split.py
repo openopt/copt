@@ -1,5 +1,5 @@
 import numpy as np
-from copt.proximal_splitting import three_split
+from copt.proximal_splitting import three_DY
 from sklearn.linear_model import logistic
 
 n_samples, n_features = 100, 10
@@ -15,7 +15,7 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
-    opt = three_split(
+    opt = three_DY(
         logloss, fprime_logloss, None, None,
         np.zeros(n_features), tol=1e-12)
 

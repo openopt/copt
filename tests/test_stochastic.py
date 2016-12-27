@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 from sklearn.linear_model import logistic
-from copt.stochastic import saga
+from copt.stochastic import two_SAGA
 
 np.random.seed(0)
 n_samples, n_features = 100, 10
@@ -21,7 +21,7 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, alpha)[1]
 
-    opt = saga('log', None, X, y, np.zeros(n_features))
+    opt = two_SAGA('log', None, X, y, np.zeros(n_features))
     assert opt.success
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
@@ -33,7 +33,7 @@ def test_optimize():
     def fprime_squaredloss(w):
         return - X.T.dot(y - np.dot(X, w)) + alpha * w
 
-    opt = saga('squared', None, X, y, np.zeros(n_features))
+    opt = two_SAGA('squared', None, X, y, np.zeros(n_features))
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(

@@ -4,13 +4,13 @@ from scipy import optimize
 from scipy import linalg
 
 
-def three_split(
+def three_DY(
         fun, fun_deriv, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
         verbose=0, callback=None, backtracking=True, step_size=None, max_iter_backtracking=100,
         backtracking_factor=0.4):
     """
-    Davis-Yin three operator splitting schem for optimization problems of the form
+    Davis-Yin three operator splitting scheme for optimization problems of the form
 
                minimize_x f(x) + alpha * g(x) + beta * h(x)
 
@@ -61,7 +61,10 @@ def three_split(
     References
     ----------
     Davis, Damek, and Wotao Yin. "A three-operator splitting scheme and its optimization applications."
-    arXiv preprint arXiv:1504.01032 (2015).
+    arXiv preprint arXiv:1504.01032 (2015) https://arxiv.org/abs/1504.01032
+
+    Pedregosa, Fabian. "On the convergence rate of the three operator splitting scheme." arXiv preprint
+    arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
     y = np.array(y0, copy=True)
     success = False
@@ -137,9 +140,9 @@ def three_split(
         nit=it)
 
 
-def primal_dual(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
-                max_iter=10000, verbose=0, callback=None, step_size_x=1e-3,
-                step_size_y=1e3, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
+def three_CV(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, tol=1e-12,
+             max_iter=10000, verbose=0, callback=None, step_size_x=1e-3,
+             step_size_y=1e3, max_iter_ls=20, g_prox_args=(), h_prox_args=()):
     """
     The Condat-Vu primal-dual method for optimization problems of the form
 
