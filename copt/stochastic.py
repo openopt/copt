@@ -79,6 +79,8 @@ def fmin_SAGA(
     """
 
     x = np.ascontiguousarray(x0).copy()
+    assert x.size == A.shape[1]
+    assert A.shape[0] == b.size
 
     if fun == 'logistic':
         fun = f_logistic
@@ -120,12 +122,8 @@ def fmin_SAGA(
     for it in range(max_iter):
         threads = []
         if trace:
-            #
-            # def target(x_freeze):
-            #     l = full_loss(x_freeze)
-            #     # trace_fun.append(l)
-            #     # trace_time.append((now - start_time).total_seconds())
-            t = Thread(target=full_loss, args=(x,))
+            x2 = np.random.randn(n_features)
+            t = Thread(target=full_loss, args=(x2, A.indices, A.indptr))
             threads.append(t)
         for _ in range(n_jobs):
             t = Thread(
@@ -211,13 +209,13 @@ def _epoch_factory_sparse(fun, f_prime, A, b):
             gradient_average[idx] += incr / n_samples
             memory_gradient[i] = grad_i
 
-    # @njit(nogil=True, cache=True)
-    def full_loss(x):
+    @njit(nogil=True, cache=True)
+    def full_loss(x, A_indices, A_indptr):
         obj = 0.
         for i in range(n_samples):
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
-            obj += fun(x[idx], A_i, b[i]) / n_samples
-        return obj
+            # obj += fun(x[idx], A_i, b[i]) / n_samples
+
     return epoch_iteration_template, full_loss
 
