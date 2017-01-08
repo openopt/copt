@@ -1,4 +1,3 @@
-# from multiprocessing import Process as Thread
 from threading import Thread
 import numpy as np
 from scipy import sparse, optimize
