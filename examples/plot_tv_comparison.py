@@ -11,7 +11,7 @@ colors = ['#7fc97f', '#beaed4', '#fdc086']
 
 
 from copt.total_variation import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
-from copt import three_DY, two_prox_grad
+from copt import fmin_DavisYin, fmin_ProxGrad
 from copt.utils import Trace
 from copt.datasets import load_img1
 from scipy import misc
@@ -59,13 +59,13 @@ for i, alpha in enumerate(all_alphas):
 
     max_iter = 5000
     trace_three = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_tos = three_DY(
+    out_tos = fmin_DavisYin(
         obj_fun, grad, prox_tv1d_rows, prox_tv1d_cols, np.zeros(n_features),
         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
         callback=trace_three, max_iter=max_iter, tol=1e-16)
 
     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_gd = two_prox_grad(
+    out_gd = fmin_ProxGrad(
         obj_fun, grad, prox_tv2d, np.zeros(n_features),
         alpha=alpha, g_prox_args=(n_rows, n_cols, 1000, 1e-1),
         max_iter=max_iter, callback=trace_gd)

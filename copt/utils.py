@@ -1,4 +1,12 @@
 from datetime import datetime
+import numpy as np
+from scipy import sparse
+
+def norm_rows(A):
+    if sparse.issparse(A):
+        return np.max(A.multiply(A).sum(1))
+    else:
+        return np.max((A * A).sum(1))
 
 
 class Trace:

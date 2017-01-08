@@ -1,5 +1,5 @@
 
-from copt import three_DY, two_prox_grad
+from copt import fmin_DavisYin, fmin_ProxGrad
 from copt.utils import Trace
 import numpy as np
 
@@ -19,7 +19,7 @@ def test_trace():
 
     def no_prox(x, y): return x
     trace_three = Trace(lambda x: obj_fun(x))
-    three_DY(
+    fmin_DavisYin(
         obj_fun, grad, no_prox, no_prox, np.zeros(n_features),
         callback=trace_three)
     # make sure that values are decreasing

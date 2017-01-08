@@ -9,10 +9,10 @@ C-OPT: a library for composite optimization
 .. autosummary::
    :toctree: generated/
 
-    copt.two_prox_grad
-    copt.three_DY
-    copt.three_CV
-    copt.two_SAGA
+    copt.fmin_ProxGrad
+    copt.fmin_SAGA
+    copt.fmin_DavisYin
+    copt.fmin_CondatVu
 
 
 

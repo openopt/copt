@@ -7,3 +7,13 @@ C-OPT: composite optimization in Python
 =======================================
 
 Project implementing some optimization routines in Python.
+
+
+Advantages over Lightning
+=========================
+
+  * Way less code. No Cython!
+  * Automate as much as possible (line-search whenever possible)
+  * Optimization-centric API
+
+

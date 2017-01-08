@@ -1,7 +1,9 @@
+# from multiprocessing import Process as Thread
+from threading import Thread
 import numpy as np
-import warnings
 from scipy import sparse, optimize
 from numba import njit
+from copt.utils import norm_rows
 
 
 @njit
@@ -40,7 +42,8 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
+def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6,
+              verbose=True, n_jobs=1):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -49,7 +52,10 @@ def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
 
     Parameters
     ----------
-    f_prime: callable
+    fun: callable or string
+        XXX
+
+    fun_deriv: callable or None
         f_prime(a_i^T x, b_i) returns the (scalar) derivative of f with
         respect to its first argument.
 
@@ -75,12 +81,12 @@ def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
     if fun == 'log':
         fun_deriv = deriv_logistic
         if stepsize is None:
-            max_rows = np.max((A * A).sum(1))
+            max_rows = norm_rows(A)
             stepsize = 4.0 / max_rows
     elif fun == 'squared':
         fun_deriv = deriv_squared
         if stepsize is None:
-            max_rows = np.max((A * A).sum(1))
+            max_rows = norm_rows(A)
             stepsize = 1.0 / max_rows
     elif hasattr(fun, '__call__'):
         pass
@@ -90,34 +96,69 @@ def two_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6):
     n_samples, n_features = A.shape
     success = False
 
-    epoch_iteration = _epoch_iteration_factory(fun_deriv)
+    if sparse.issparse(A):
+        A = sparse.csr_matrix(A)
+        raise NotImplementedError
+    else:
+        epoch_iteration = _epoch_factory_dense(fun_deriv, A, b)
 
-    # initialize variables
+    # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
-
-    sample_indices = np.arange(n_samples)
-
-    # temporary storage, perhaps could be avoided
     gradient_average = np.zeros(n_features)
 
     # iterate on epochs
     for it in range(max_iter):
-        # permute samples (maybe a full shuffle of X and y
-        # would be more efficient)
-        np.random.shuffle(sample_indices)
-        epoch_iteration(
-            A, b, x, memory_gradient, gradient_average, sample_indices, stepsize)
-        if np.linalg.norm(gradient_average) < tol:
+        threads = []
+        for _ in range(n_jobs):
+            indices = np.arange(n_samples)
+            np.random.shuffle(indices)
+            t = Thread(
+                target=epoch_iteration,
+                args=(x, memory_gradient, gradient_average,
+                      indices, stepsize))
+            threads.append(t)
+
+        # .. launch threads and wait to finish ..
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        norm_grad = np.linalg.norm(gradient_average)
+        if verbose:
+            print(norm_grad)
+        if norm_grad < tol:
             success = True
             break
     return optimize.OptimizeResult(
         x=x, success=success, nit=it)
 
 
-def _epoch_iteration_factory(f_prime):
+def _epoch_factory_dense(f_prime, A, b):
+
+    @njit(nogil=True, cache=True)
+    def epoch_iteration_template(
+            x, memory_gradient, gradient_average, sample_indices,
+            step_size):
+        n_samples, n_features = A.shape
+        # inner iteration
+        for i in sample_indices:
+            grad_i = f_prime(x, A[i], b[i])
+            incr = (grad_i - memory_gradient[i]) * A[i]
+            x -= step_size * (incr + gradient_average)
+            gradient_average += incr / n_samples
+            memory_gradient[i] = grad_i
+
+    return epoch_iteration_template
+
+
+def _epoch_factory_sparse(f_prime, A, b):
+
+    A_data = A.data
+    A_ind = A.ind
+    A_indptr = A.indptr
 
     @njit
-    def epoch_iteration_template(A, b, x, memory_gradient, gradient_average, sample_indices,
+    def epoch_iteration_template(x, memory_gradient, gradient_average, sample_indices,
                                  step_size):
         n_samples, n_features = A.shape
         # inner iteration
