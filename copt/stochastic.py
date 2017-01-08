@@ -1,4 +1,5 @@
 from threading import Thread
+from datetime import datetime
 import numpy as np
 from scipy import sparse, optimize
 from numba import njit
@@ -41,8 +42,10 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, g_prox=None,
-              max_iter=1000, tol=1e-6, verbose=True, n_jobs=1):
+def fmin_SAGA(
+        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, n_jobs=1,
+        max_iter=1000, tol=1e-6, verbose=True, callback=None, epochs_per_iter=5,
+        trace=False):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -77,16 +80,18 @@ def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, g_prox=None,
 
     x = np.ascontiguousarray(x0).copy()
 
-    if fun == 'log':
+    if fun == 'logistic':
+        fun = f_logistic
         fun_deriv = deriv_logistic
-        if stepsize is None:
+        if step_size is None:
             max_rows = norm_rows(A)
-            stepsize = 4.0 / max_rows
+            step_size = 4.0 / max_rows
     elif fun == 'squared':
+        fun = f_squared
         fun_deriv = deriv_squared
-        if stepsize is None:
+        if step_size is None:
             max_rows = norm_rows(A)
-            stepsize = 1.0 / max_rows
+            step_size = 1.0 / max_rows
     elif hasattr(fun, '__call__'):
         pass
     else:
@@ -97,9 +102,15 @@ def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, g_prox=None,
 
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
-        epoch_iteration = _epoch_factory_sparse(fun_deriv, A, b)
+        epoch_iteration, full_loss = _epoch_factory_sparse(
+            fun, fun_deriv, A, b)
     else:
-        epoch_iteration = _epoch_factory_dense(fun_deriv, A, b)
+        epoch_iteration, full_loss = _epoch_factory_dense(
+            fun, fun_deriv, A, b)
+
+    start_time = datetime.now()
+    trace_fun = []
+    trace_time = []
 
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
@@ -108,31 +119,40 @@ def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, g_prox=None,
     # .. iterate on epochs ..
     for it in range(max_iter):
         threads = []
+        if trace:
+            #
+            # def target(x_freeze):
+            #     l = full_loss(x_freeze)
+            #     # trace_fun.append(l)
+            #     # trace_time.append((now - start_time).total_seconds())
+            t = Thread(target=full_loss, args=(x,))
+            threads.append(t)
         for _ in range(n_jobs):
-            indices = np.arange(n_samples)
-            np.random.shuffle(indices)
             t = Thread(
                 target=epoch_iteration,
                 args=(x, memory_gradient, gradient_average,
-                      indices, stepsize))
+                      np.random.permutation(n_samples), step_size))
             threads.append(t)
 
-        # .. launch threads and wait to finish ..
+        # .. launch threads ..
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
+        if callback is not None:
+            callback(x)
+
         norm_grad = np.linalg.norm(gradient_average)
         if verbose:
-            print(norm_grad)
+            print(it, norm_grad)
         if norm_grad < tol:
             success = True
             break
     return optimize.OptimizeResult(
-        x=x, success=success, nit=it)
+        x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
 
 
-def _epoch_factory_dense(f_prime, A, b):
+def _epoch_factory_dense(fun, f_prime, A, b):
 
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
@@ -147,10 +167,17 @@ def _epoch_factory_dense(f_prime, A, b):
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
-    return epoch_iteration_template
+    @njit(nogil=True, cache=True)
+    def full_loss(x):
+        obj = 0.
+        n_samples, n_features = A.shape
+        for i in range(n_samples):
+            obj += fun(x, A[i], b[i]) / n_samples
+
+    return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse(f_prime, A, b):
+def _epoch_factory_sparse(fun, f_prime, A, b):
 
     A_data = A.data
     A_indices = A.indices
@@ -183,5 +210,14 @@ def _epoch_factory_sparse(f_prime, A, b):
             # .. update memory terms ..
             gradient_average[idx] += incr / n_samples
             memory_gradient[i] = grad_i
-    return epoch_iteration_template
+
+    # @njit(nogil=True, cache=True)
+    def full_loss(x):
+        obj = 0.
+        for i in range(n_samples):
+            idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
+            A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
+            obj += fun(x[idx], A_i, b[i]) / n_samples
+        return obj
+    return epoch_iteration_template, full_loss
 

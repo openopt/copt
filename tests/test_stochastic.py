@@ -19,7 +19,7 @@ def test_optimize():
     def fprime_logloss(x):
         return logistic._logistic_loss_and_grad(x, X, y, alpha)[1]
 
-    opt = fmin_SAGA('log', None, X, y, np.zeros(n_features))
+    opt = fmin_SAGA('logistic', None, X, y, np.zeros(n_features))
     assert opt.success
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
@@ -43,6 +43,6 @@ def test_optimize():
 def test_sparse():
     # test with a sparse matrix
     Xs = sparse.random(n_samples, n_features, density=0.2, format='csr')
-    opt = fmin_SAGA('log', None, Xs, y, np.zeros(n_features))
-    opt2 = fmin_SAGA('log', None, Xs.toarray(), y, np.zeros(n_features))
+    opt = fmin_SAGA('logistic', None, Xs, y, np.zeros(n_features))
+    opt2 = fmin_SAGA('logistic', None, Xs.toarray(), y, np.zeros(n_features))
     np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
