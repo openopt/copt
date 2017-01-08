@@ -104,48 +104,51 @@ def fmin_SAGA(
 
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
-        epoch_iteration, full_loss = _epoch_factory_sparse(
+        epoch_iteration, trace_loss = _epoch_factory_sparse(
             fun, fun_deriv, A, b)
     else:
-        epoch_iteration, full_loss = _epoch_factory_dense(
+        epoch_iteration, trace_loss = _epoch_factory_dense(
             fun, fun_deriv, A, b)
 
     start_time = datetime.now()
     trace_fun = []
     trace_time = []
+    trace_x = []
 
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
 
+    import concurrent.futures
+
     # .. iterate on epochs ..
     for it in range(max_iter):
-        threads = []
-        if trace:
-            x2 = np.random.randn(n_features)
-            t = Thread(target=full_loss, args=(x2, A.indices, A.indptr))
-            threads.append(t)
-        for _ in range(n_jobs):
-            t = Thread(
-                target=epoch_iteration,
-                args=(x, memory_gradient, gradient_average,
-                      np.random.permutation(n_samples), step_size))
-            threads.append(t)
-
-        # .. launch threads ..
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = []
+            for _ in range(n_jobs):
+                futures.append(executor.submit(
+                    epoch_iteration, x, memory_gradient, gradient_average,
+                    np.random.permutation(n_samples), step_size))
+            concurrent.futures.wait(futures)
         if callback is not None:
             callback(x)
+        if trace:
+            trace_x.append(x.copy())
+            trace_time.append((datetime.now() - start_time).total_seconds())
 
         norm_grad = np.linalg.norm(gradient_average)
         if verbose:
             print(it, norm_grad)
         if norm_grad < tol:
             success = True
+            print('Breaking')
             break
+    if trace:
+        print('Computing trace')
+        # .. compute function values ..
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            trace_fun = [t for t in executor.map(trace_loss, trace_x)]
+
     return optimize.OptimizeResult(
         x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
 
@@ -188,7 +191,10 @@ def _epoch_factory_sparse(fun, f_prime, A, b):
         for i in range(n_samples):
             for j in A_indices[A_indptr[i]:A_indptr[i+1]]:
                 d[j] += 1
-        return n_samples / d
+        for j in range(n_features):
+            if d[j] != 0.0:
+                d[j] = n_samples / d[j]
+        return d
 
     d = _debiasing_vec(A_indices, A_indptr)
 
@@ -210,12 +216,13 @@ def _epoch_factory_sparse(fun, f_prime, A, b):
             memory_gradient[i] = grad_i
 
     @njit(nogil=True, cache=True)
-    def full_loss(x, A_indices, A_indptr):
+    def full_loss(x):
         obj = 0.
         for i in range(n_samples):
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
-            # obj += fun(x[idx], A_i, b[i]) / n_samples
+            obj += fun(x[idx], A_i, b[i]) / n_samples
+        return obj
 
     return epoch_iteration_template, full_loss
 
