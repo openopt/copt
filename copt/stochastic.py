@@ -41,13 +41,13 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6,
-              verbose=True, n_jobs=1):
+def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, g_prox=None,
+              max_iter=1000, tol=1e-6, verbose=True, n_jobs=1):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
-        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i)
+        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i) + g(x)
 
     Parameters
     ----------
@@ -105,7 +105,7 @@ def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6,
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
 
-    # iterate on epochs
+    # .. iterate on epochs ..
     for it in range(max_iter):
         threads = []
         for _ in range(n_jobs):
@@ -157,10 +157,19 @@ def _epoch_factory_sparse(f_prime, A, b):
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
-    # @njit(nogil=True, cache=True)
+    @njit
+    def _debiasing_vec(A_indices, A_indptr):
+        d = np.zeros(n_features)
+        for i in range(n_samples):
+            for j in A_indices[A_indptr[i]:A_indptr[i+1]]:
+                d[j] += 1
+        return n_samples / d
+
+    d = _debiasing_vec(A_indices, A_indptr)
+
+    @njit(nogil=True, cache=True)
     def epoch_iteration_template(
-            x, memory_gradient, gradient_average, sample_indices,
-            step_size):
+            x, memory_gradient, gradient_average, sample_indices, step_size):
         # .. inner iteration ..
         for i in sample_indices:
             idx = A_indices[A_indptr[i]:A_indptr[i+1]]
@@ -169,8 +178,7 @@ def _epoch_factory_sparse(f_prime, A, b):
 
             # .. update coefficients ..
             incr = (grad_i - memory_gradient[i]) * A_i
-            x[idx] -= step_size * incr
-            x -= step_size * gradient_average  # XXX could be better
+            x[idx] -= step_size * (incr + d[idx] * gradient_average[idx])
 
             # .. update memory terms ..
             gradient_average[idx] += incr / n_samples
