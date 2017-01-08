@@ -1,4 +1,4 @@
-from threading import Thread
+from concurrent import futures
 from datetime import datetime
 import numpy as np
 from scipy import sparse, optimize
@@ -119,17 +119,15 @@ def fmin_SAGA(
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
 
-    import concurrent.futures
-
     # .. iterate on epochs ..
     for it in range(max_iter):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with futures.ThreadPoolExecutor() as executor:
             futures = []
             for _ in range(n_jobs):
                 futures.append(executor.submit(
                     epoch_iteration, x, memory_gradient, gradient_average,
                     np.random.permutation(n_samples), step_size))
-            concurrent.futures.wait(futures)
+            futures.wait(futures)
         if callback is not None:
             callback(x)
         if trace:
@@ -146,7 +144,7 @@ def fmin_SAGA(
     if trace:
         print('Computing trace')
         # .. compute function values ..
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
             trace_fun = [t for t in executor.map(trace_loss, trace_x)]
 
     return optimize.OptimizeResult(
