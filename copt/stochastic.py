@@ -122,12 +122,12 @@ def fmin_SAGA(
     # .. iterate on epochs ..
     for it in range(max_iter):
         with futures.ThreadPoolExecutor() as executor:
-            futures = []
+            fut = []
             for _ in range(n_jobs):
-                futures.append(executor.submit(
+                fut.append(executor.submit(
                     epoch_iteration, x, memory_gradient, gradient_average,
                     np.random.permutation(n_samples), step_size))
-            futures.wait(futures)
+            futures.wait(fut)
         if callback is not None:
             callback(x)
         if trace:
