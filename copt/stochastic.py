@@ -98,7 +98,7 @@ def fmin_SAGA(fun, fun_deriv, A, b, x0, stepsize=None, max_iter=1000, tol=1e-6,
 
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
-        raise NotImplementedError
+        epoch_iteration = _epoch_factory_sparse(fun_deriv, A, b)
     else:
         epoch_iteration = _epoch_factory_dense(fun_deriv, A, b)
 
@@ -140,7 +140,7 @@ def _epoch_factory_dense(f_prime, A, b):
             x, memory_gradient, gradient_average, sample_indices,
             step_size):
         n_samples, n_features = A.shape
-        # inner iteration
+        # .. inner iteration ..
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
@@ -154,19 +154,27 @@ def _epoch_factory_dense(f_prime, A, b):
 def _epoch_factory_sparse(f_prime, A, b):
 
     A_data = A.data
-    A_ind = A.ind
+    A_indices = A.indices
     A_indptr = A.indptr
+    n_samples, n_features = A.shape
 
-    @njit
-    def epoch_iteration_template(x, memory_gradient, gradient_average, sample_indices,
-                                 step_size):
-        n_samples, n_features = A.shape
-        # inner iteration
+    # @njit(nogil=True, cache=True)
+    def epoch_iteration_template(
+            x, memory_gradient, gradient_average, sample_indices,
+            step_size):
+        # .. inner iteration ..
         for i in sample_indices:
-            grad_i = f_prime(x, A[i], b[i])
-            incr = (grad_i - memory_gradient[i]) * A[i]
-            x -= step_size * (incr + gradient_average)
-            gradient_average += incr / n_samples
+            idx = A_indices[A_indptr[i]:A_indptr[i+1]]
+            A_i = A_data[A_indptr[i]:A_indptr[i+1]]
+            grad_i = f_prime(x[idx], A_i, b[i])
+
+            # .. update coefficients ..
+            incr = (grad_i - memory_gradient[i]) * A_i
+            x[idx] -= step_size * incr
+            x -= step_size * gradient_average  # XXX could be better
+
+            # .. update memory terms ..
+            gradient_average[idx] += incr / n_samples
             memory_gradient[i] = grad_i
     return epoch_iteration_template
 

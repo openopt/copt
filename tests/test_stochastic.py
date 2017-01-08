@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import optimize
+from scipy import optimize, sparse
 from sklearn.linear_model import logistic
 from copt.stochastic import fmin_SAGA
 
@@ -11,7 +11,6 @@ y = np.sign(np.random.randn(n_samples))
 
 def test_optimize():
 
-    L = np.max((X * X).sum(1))
 
     alpha = 0.
     def logloss(x):
@@ -40,7 +39,10 @@ def test_optimize():
     print(fprime_squaredloss(sol_scipy))
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
 
-#
-# def test_sparse():
-#     # test with a sparse matrix
-#     raise NotImplementedError
+
+def test_sparse():
+    # test with a sparse matrix
+    Xs = sparse.random(n_samples, n_features, density=0.2, format='csr')
+    opt = fmin_SAGA('log', None, Xs, y, np.zeros(n_features))
+    opt2 = fmin_SAGA('log', None, Xs.toarray(), y, np.zeros(n_features))
+    np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
