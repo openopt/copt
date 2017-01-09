@@ -121,7 +121,7 @@ def fmin_SAGA(
 
     # .. iterate on epochs ..
     for it in range(max_iter):
-        with futures.ThreadPoolExecutor() as executor:
+        with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
             fut = []
             for _ in range(n_jobs):
                 fut.append(executor.submit(
