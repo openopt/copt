@@ -2,6 +2,8 @@
     :target: https://travis-ci.org/fabianp/copt
 .. image:: https://coveralls.io/repos/github/fabianp/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/fabianp/copt?branch=master
+.. image:: https://zenodo.org/badge/46262908.svg
+   :target: https://zenodo.org/badge/latestdoi/46262908
 
 C-OPT: composite optimization in Python
 =======================================
