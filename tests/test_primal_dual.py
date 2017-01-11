@@ -3,7 +3,7 @@ from scipy import optimize, sparse
 from sklearn.linear_model import logistic
 from copt import fmin_ProxGrad
 from copt import fmin_CondatVu
-from copt.total_variation import prox_tv1d
+from copt.prox import prox_tv1d
 
 np.random.seed(0)
 n_samples, n_features = 100, 10

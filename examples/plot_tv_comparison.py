@@ -10,7 +10,7 @@ import pylab as plt
 colors = ['#7fc97f', '#beaed4', '#fdc086']
 
 
-from copt.total_variation import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
+from copt.prox import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
 from copt import fmin_DavisYin, fmin_ProxGrad
 from copt.utils import Trace
 from copt.datasets import load_img1

@@ -1,13 +1,22 @@
-# Authors: Fabian Pedregosa based on the code of Laurent Condat
+# Authors: Fabian Pedregosa. Code for total variation is based on the
+# code of Laurent Condat
 #
 
 """
-These are some helper functions related to total variation penalties
+These are implementations of some proximal operators
 """
 
 import numpy as np
 import warnings
 from numba import njit
+
+
+def L1_prox(x, step_size):
+    """
+    L1 proximal operator
+    """
+    return np.fmax(x - step_size * step_size, 0) - \
+           np.fmax(- x - step_size * step_size, 0)
 
 
 def prox_tv1d(w, step_size):

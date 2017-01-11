@@ -50,7 +50,7 @@ def fmin_SAGA(
 
     The SAGA algorithm can solve optimization problems of the form
 
-        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i) + g(x)
+        argmin_x 1/n \sum_{i=1}^n f(a_i^T x, b_i) + alpha * L2 + beta * g(x)
 
     Parameters
     ----------
@@ -100,13 +100,14 @@ def fmin_SAGA(
     n_samples, n_features = A.shape
     success = False
 
+
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
         epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA(
-            fun, fun_deriv, A, b)
+            fun, fun_deriv, g_prox, A, b)
     else:
         epoch_iteration, trace_loss = _epoch_factory_SAGA(
-            fun, fun_deriv, A, b)
+            fun, fun_deriv, g_prox, A, b)
 
     start_time = datetime.now()
     trace_fun = []
@@ -147,7 +148,6 @@ def fmin_SAGA(
 
     return optimize.OptimizeResult(
         x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
-
 
 
 def fmin_PSSAGA(
@@ -208,8 +208,8 @@ def fmin_PSSAGA(
     n_samples, n_features = A.shape
     success = False
 
-    epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
-            fun, fun_deriv, A, b)
+    epoch_iteration, trace_loss = _epoch_factory_PSSAGA2(
+            fun, fun_deriv, g_prox, h_prox, A, b)
 
     start_time = datetime.now()
     trace_fun = []
@@ -240,16 +240,25 @@ def fmin_PSSAGA(
         if verbose:
             print('.. computing trace ..')
         # .. compute function values ..
-        with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with futures.ThreadPoolExecutor(max_workers=1) as executor:
             trace_fun = [t for t in executor.map(trace_loss, trace_x)]
 
     return optimize.OptimizeResult(
         x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
 
 
-def _epoch_factory_SAGA(fun, f_prime, A, b):
+def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
 
-    @njit(nogil=True, cache=True)
+    if g_prox is None:
+        @njit
+        def g_prox(step_size, x): return x
+    elif g_prox == 'l1':
+        from copt.prox import L1_prox
+        g_prox = njit(L1_prox)
+    else:
+        raise NotImplementedError
+
+    @njit
     def epoch_iteration_template(
             x, memory_gradient, gradient_average, sample_indices,
             step_size):
@@ -258,11 +267,11 @@ def _epoch_factory_SAGA(fun, f_prime, A, b):
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x -= step_size * (incr + gradient_average)
+            x[:] = g_prox(step_size, x - step_size * (incr + gradient_average))
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
-    @njit(nogil=True, cache=True)
+    @njit
     def full_loss(x):
         obj = 0.
         n_samples, n_features = A.shape
@@ -272,7 +281,10 @@ def _epoch_factory_SAGA(fun, f_prime, A, b):
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse_SAGA(fun, f_prime, A, b):
+def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b):
+
+    if g_prox is not None:
+        raise NotImplementedError
 
     A_data = A.data
     A_indices = A.indices
@@ -321,18 +333,20 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, A, b):
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_PSSAGA(fun, f_prime, A, b):
+def _epoch_factory_PSSAGA2(fun, f_prime, g_prox, h_prox, A, b):
 
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
-            x, memory_gradient, gradient_average, sample_indices,
+            y, memory_gradient, gradient_average, sample_indices,
             step_size):
         n_samples, n_features = A.shape
         # .. inner iteration ..
         for i in sample_indices:
+            x = g_prox(step_size, y)
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x -= step_size * (incr + gradient_average)
+            z = h_prox(2 * x - y - step_size * (incr + gradient_average))
+            y -= x - z
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 

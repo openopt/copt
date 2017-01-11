@@ -1,5 +1,5 @@
 import numpy as np
-from copt.total_variation import prox_tv1d, prox_tv2d, tv2d_linear_operator
+from copt.prox import prox_tv1d, prox_tv2d, tv2d_linear_operator
 from numpy import testing
 
 
