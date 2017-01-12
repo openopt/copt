@@ -108,10 +108,10 @@ def fmin_SAGA(
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
         epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA(
-            fun, fun_deriv, g_prox, A, b)
+            fun, fun_deriv, g_prox, A, b, beta)
     else:
         epoch_iteration, trace_loss = _epoch_factory_SAGA(
-            fun, fun_deriv, g_prox, A, b)
+            fun, fun_deriv, g_prox, A, b, beta)
 
     start_time = datetime.now()
     trace_fun = []
@@ -252,7 +252,7 @@ def fmin_PSSAGA(
         x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
 
 
-def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
+def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b, beta):
 
     if hasattr(g_prox, '__call__'):
         g_prox = njit(g_prox)
@@ -271,7 +271,7 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x[:] = g_prox(x - step_size * (incr + gradient_average), step_size)
+            x[:] = g_prox(x - step_size * (incr + gradient_average), beta * step_size)
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
@@ -286,7 +286,7 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b):
+def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b, beta):
 
     A_data = A.data
     A_indices = A.indices
