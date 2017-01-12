@@ -20,7 +20,7 @@ def fused_lasso(x):
     return np.abs(np.diff(x)).sum()
 
 
-def test_optimize():
+def test_smooth():
 
     opt = fmin_DavisYin(
         logloss, fprime_logloss, None, None,
@@ -62,11 +62,6 @@ def test_fused():
     2. Decomposing the fused lasso penalty in a sum of two
     proximable penalties and using the three operator splitting.
     """
-    def logloss(x):
-        return logistic._logistic_loss(x, X, y, 1.)
-
-    def fprime_logloss(x):
-        return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
     def g_prox(x, step_size):
         n_rows = x.size // 2
