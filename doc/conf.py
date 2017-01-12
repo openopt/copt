@@ -141,10 +141,12 @@ html_sidebars = {
     'auto_examples': ['index.html'],
 }
 html_theme_options = {
-    # 'description': "C-OPT",
-    # 'github_user': 'fabianp',
-    # 'github_repo': 'copt',
+    'description': 'A library for composite optimization in Python',
+    'github_user': 'fabianp',
+    'github_repo': 'copt',
+    'github_button': True,
     'fixed_sidebar': True,
+    'travis_button': True,
 }
 
 # Theme options are theme-specific and customize the look and feel of a theme

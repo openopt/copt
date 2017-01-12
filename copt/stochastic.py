@@ -151,14 +151,14 @@ def fmin_SAGA(
 
 
 def fmin_PSSAGA(
-        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, h_prox=None,
+        fun, fun_deriv, A, b, g_prox, h_prox, x0, step_size=None,
         max_iter=1000, tol=1e-6, verbose=True, callback=None, trace=False,
         step_size_factor=4):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
-        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i) + g(x)
+        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i) + g(x) + h(x)
 
     Parameters
     ----------
@@ -251,10 +251,10 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
 
     if g_prox is None:
         @njit
-        def g_prox(step_size, x): return x
+        def g_prox(x, step_size): return x
     elif g_prox == 'l1':
-        from copt.prox import L1_prox
-        g_prox = njit(L1_prox)
+        from copt.prox import prox_L1
+        g_prox = njit(prox_L1)
     else:
         raise NotImplementedError
 
@@ -267,7 +267,7 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x[:] = g_prox(step_size, x - step_size * (incr + gradient_average))
+            x[:] = g_prox(x - step_size * (incr + gradient_average), step_size)
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
@@ -335,17 +335,26 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b):
 
 def _epoch_factory_PSSAGA2(fun, f_prime, g_prox, h_prox, A, b):
 
+
+    @njit
+    def g_prox(x, *args): return x
+
+    @njit
+    def h_prox(x, *args): return x
+
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
             y, memory_gradient, gradient_average, sample_indices,
             step_size):
+        beta = 1.0
+        gamma = 1.0
         n_samples, n_features = A.shape
         # .. inner iteration ..
         for i in sample_indices:
-            x = g_prox(step_size, y)
+            x = g_prox(y, beta * step_size)
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            z = h_prox(2 * x - y - step_size * (incr + gradient_average))
+            z = h_prox(2 * x - y - step_size * (incr + gradient_average), gamma * step_size)
             y -= x - z
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i

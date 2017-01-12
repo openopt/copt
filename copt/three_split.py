@@ -73,9 +73,9 @@ def fmin_DavisYin(
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        def g_prox(x, step_size, *args): return x
+        def g_prox(x, *args): return x
     if h_prox is None:
-        def h_prox(x, step_size, *args): return x
+        def h_prox(x, *args): return x
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -113,7 +113,7 @@ def fmin_DavisYin(
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
-                warnings.warn("Maxium number of line-search iterations reached")
+                warnings.warn("Maximum number of line-search iterations reached")
 
         y += incr
 
@@ -135,8 +135,9 @@ def fmin_DavisYin(
                 RuntimeWarning)
         it += 1
 
+    x_sol = g_prox(y, current_step_size * alpha, *g_prox_args)
     return optimize.OptimizeResult(
-        x=x, success=success,
+        x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
         nit=it)
 
@@ -206,9 +207,9 @@ def fmin_CondatVu(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, to
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        def g_prox(x, step_size, *args): return x
+        def g_prox(x, *args): return x
     if h_prox is None:
-        def h_prox(x, step_size, *args): return x
+        def h_prox(x, *args): return x
 
     # conjugate of h_prox
     def h_prox_conj(x, step_size, *args):
