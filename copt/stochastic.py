@@ -251,10 +251,10 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
 
     if g_prox is None:
         @njit
-        def g_prox(step_size, x): return x
+        def g_prox(x, step_size): return x
     elif g_prox == 'l1':
-        from copt.prox import L1_prox
-        g_prox = njit(L1_prox)
+        from copt.prox import prox_L1
+        g_prox = njit(prox_L1)
     else:
         raise NotImplementedError
 
@@ -267,7 +267,7 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x[:] = g_prox(step_size, x - step_size * (incr + gradient_average))
+            x[:] = g_prox(x - step_size * (incr + gradient_average), step_size)
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 

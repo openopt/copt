@@ -113,7 +113,7 @@ def fmin_DavisYin(
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
-                warnings.warn("Maxium number of line-search iterations reached")
+                warnings.warn("Maximum number of line-search iterations reached")
 
         y += incr
 

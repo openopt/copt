@@ -31,7 +31,7 @@ def test_optimize():
     def fprime_squaredloss(w):
         return - X.T.dot(y - np.dot(X, w)) + alpha * w
 
-    opt = fmin_SAGA('squared', None, X, y, np.zeros(n_features))
+    opt = fmin_SAGA('squared', None, X, y, np.zeros(n_features), trace=True)
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(

@@ -11,12 +11,12 @@ import warnings
 from numba import njit
 
 
-def L1_prox(x, step_size):
+def prox_L1(x, step_size):
     """
     L1 proximal operator
     """
-    return np.fmax(x - step_size * step_size, 0) - \
-           np.fmax(- x - step_size * step_size, 0)
+    return np.fmax(x - step_size , 0) - \
+           np.fmax(- x - step_size, 0)
 
 
 def prox_tv1d(w, step_size):
@@ -44,6 +44,7 @@ def prox_tv1d(w, step_size):
 
     if w.dtype not in (np.float32, np.float64):
         raise ValueError('argument w must be array of floats')
+    w = w.copy()
     output = np.empty_like(w)
     _prox_tv1d(w, output, step_size)
     return output
@@ -128,6 +129,101 @@ def _prox_tv1d(input, output, step_size):
         i += 1
     return
 
+
+def prox_tv1d_dp(y, lam):
+    n = y.size
+    if n == 0: return y
+    if n == 1 or lam == 0:
+        return y
+    beta = np.empty(n)  # output
+    x = np.empty(2 * n)
+    a = np.empty(2 * n)
+    b = np.empty(2 * n)
+
+    tm = np.empty(n - 1)
+    tp = np.empty(n - 1)
+
+    tm[0] = -lam + y[0];
+    tp[0] = lam + y[0];
+    l = n - 1;
+    r = n;
+    x[l] = tm[0];
+    x[r] = tp[0];
+    a[l] = 1;
+    b[l] = -y[0] + lam;
+    a[r] = -1;
+    b[r] = y[0] + lam;
+    afirst = 1;
+    bfirst = -lam - y[1];
+    alast = -1;
+    blast = -lam + y[1];
+
+    # Now iterations 2 through n-1
+    for k in range(1, n-1):
+        # Compute lo: step up from l until the
+        # derivative is greater than -lam
+        alo = afirst;
+        blo = bfirst;
+        for lo in range(l, r+1):
+          if (alo*x[lo]+blo > -lam):
+              break;
+          alo += a[lo];
+          blo += b[lo];
+
+        # Compute the negative knot
+        tm[k] = (-lam-blo)/alo;
+        l = lo-1;
+        x[l] = tm[k];
+
+        # Compute hi: step down from r until the
+        # derivative is less than lam
+        ahi = alast;
+        bhi = blast;
+        for hi in range(r, l-1, -1):
+          if (-ahi*x[hi]-bhi < lam):
+              break;
+          ahi += a[hi];
+          bhi += b[hi];
+
+        # Compute the positive knot
+        tp[k] = (lam+bhi)/(-ahi);
+        r = hi+1;
+        x[r] = tp[k];
+
+        # Update a and b
+        a[l] = alo;
+        b[l] = blo+lam;
+        a[r] = ahi;
+        b[r] = bhi+lam;
+        afirst = 1;
+        bfirst = -lam-y[k+1];
+        alast = -1;
+        blast = -lam+y[k+1];
+
+
+  # Compute the last coefficient: this is where
+  # the function has zero derivative
+
+    alo = afirst;
+    blo = bfirst;
+    for lo in range(l, r+1):
+        if (alo*x[lo]+blo > 0):
+            break;
+        alo += a[lo];
+        blo += b[lo];
+    beta[n-1] = -blo/alo;
+
+    # Compute the rest of the coefficients, by the
+    # back-pointers
+    for k in range(n-2, -1, -1):
+        # for (int k=n-2; k>=0; k--) {
+        if (beta[k+1]>tp[k]):
+            beta[k] = tp[k];
+        elif (beta[k+1]<tm[k]):
+            beta[k] = tm[k];
+        else:
+            beta[k] = beta[k+1];
+    return beta
 
 @njit
 def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
