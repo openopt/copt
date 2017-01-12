@@ -43,8 +43,9 @@ def deriv_logistic(w, x, y):
 
 
 def fmin_SAGA(
-        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, n_jobs=1,
-        max_iter=1000, tol=1e-6, verbose=True, callback=None, trace=False,
+        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, beta=1.0,
+        n_jobs=1,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False,
         step_size_factor=4):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
@@ -97,6 +98,9 @@ def fmin_SAGA(
     else:
         raise NotImplementedError
 
+    if g_prox is None:
+        def g_prox(x, *args): return x
+
     n_samples, n_features = A.shape
     success = False
 
@@ -133,10 +137,11 @@ def fmin_SAGA(
             trace_x.append(x.copy())
             trace_time.append((datetime.now() - start_time).total_seconds())
 
-        norm_grad = np.linalg.norm(gradient_average)
+        grad_map = x - g_prox(x - step_size * gradient_average, beta * step_size)
+        norm_grad_map = np.linalg.norm(grad_map)
         if verbose:
-            print(it, norm_grad)
-        if norm_grad < tol:
+            print(it, norm_grad_map)
+        if norm_grad_map < tol:
             success = True
             break
     if trace:
@@ -152,7 +157,7 @@ def fmin_SAGA(
 
 def fmin_PSSAGA(
         fun, fun_deriv, A, b, g_prox, h_prox, x0, step_size=None,
-        max_iter=1000, tol=1e-6, verbose=True, callback=None, trace=False,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False,
         step_size_factor=4):
     """Stochastic average gradient augumented (SAGA) algorithm.
 
@@ -249,9 +254,8 @@ def fmin_PSSAGA(
 
 def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
 
-    if g_prox is None:
-        @njit
-        def g_prox(x, step_size): return x
+    if hasattr(g_prox, '__call__'):
+        g_prox = njit(g_prox)
     elif g_prox == 'l1':
         from copt.prox import prox_L1
         g_prox = njit(prox_L1)
@@ -277,14 +281,12 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         n_samples, n_features = A.shape
         for i in range(n_samples):
             obj += fun(x, A[i], b[i]) / n_samples
+        return obj
 
     return epoch_iteration_template, full_loss
 
 
 def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b):
-
-    if g_prox is not None:
-        raise NotImplementedError
 
     A_data = A.data
     A_indices = A.indices

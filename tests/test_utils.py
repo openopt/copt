@@ -1,5 +1,5 @@
 
-from copt import fmin_DavisYin, fmin_ProxGrad
+from copt import fmin_DavisYin, fmin_PGD
 from copt.utils import Trace
 import numpy as np
 

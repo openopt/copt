@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 from sklearn.linear_model import logistic
-from copt import fmin_ProxGrad
+from copt import fmin_PGD
 from copt import prox
 from nose import tools
 
@@ -22,10 +22,10 @@ def test_optimize():
     # check that it rases exception when max_iter_backtracking
     # is negative
     tools.assert_raises(ValueError,
-                        fmin_ProxGrad, logloss, fprime_logloss, None,
+                        fmin_PGD, logloss, fprime_logloss, None,
                         np.zeros(n_features), max_iter_backtracking=-1)
 
-    opt = fmin_ProxGrad(
+    opt = fmin_PGD(
         logloss, fprime_logloss, None, np.zeros(n_features),
         tol=1e-3)
     assert opt.success
@@ -46,7 +46,7 @@ def test_sklearn():
         clf = logistic.LogisticRegression(
             penalty='l1', fit_intercept=False, C=1 / alpha)
         clf.fit(X, y)
-        opt = fmin_ProxGrad(
+        opt = fmin_PGD(
             logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features),
             alpha=alpha, tol=1e-3)
         assert opt.success
