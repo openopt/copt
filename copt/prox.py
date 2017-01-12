@@ -131,19 +131,9 @@ def _prox_tv1d(input, output, step_size):
 
 
 @njit
-def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
-    """
-
-    Parameters
-    ----------
-    a
-    stepsize
-    n_rows
-    n_cols
-
-    Returns
-    -------
-
+def _prox_tv1d_cols(a, stepsize, n_rows, n_cols):
+    """apply prox_tv1d along columns of the matri a
+    This function is mostly a helper for prox_tv2d
     """
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
@@ -153,8 +143,9 @@ def prox_tv1d_cols(a, stepsize, n_rows, n_cols):
 
 
 @njit
-def prox_tv1d_rows(a, stepsize, n_rows, n_cols):
-    """
+def _prox_tv1d_rows(a, stepsize, n_rows, n_cols):
+    """apply prox_tv1d along rows of the matri a
+    This function is mostly a helper for prox_tv2d
     """
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
@@ -175,10 +166,10 @@ def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
 
     for it in range(max_iter):
         y = x + p
-        y = prox_tv1d_cols(y, stepsize, n_rows, n_cols)
+        y = _prox_tv1d_cols(y, stepsize, n_rows, n_cols)
         p += x - y
         x = y + q
-        x = prox_tv1d_rows(x, stepsize, n_rows, n_cols)
+        x = _prox_tv1d_rows(x, stepsize, n_rows, n_cols)
         q += y - x
 
         # check convergence
