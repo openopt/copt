@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize, sparse
 from sklearn.linear_model import logistic
-from copt.stochastic import fmin_SAGA
+from copt import fmin_SAGA, fmin_PSSAGA
 
 np.random.seed(0)
 n_samples, n_features = 100, 10
@@ -10,7 +10,6 @@ y = np.sign(np.random.randn(n_samples))
 
 
 def test_optimize():
-
 
     alpha = 0.
     def logloss(x):
@@ -32,12 +31,14 @@ def test_optimize():
         return - X.T.dot(y - np.dot(X, w)) + alpha * w
 
     opt = fmin_SAGA('squared', None, X, y, np.zeros(n_features), trace=True)
+    opt2 = fmin_PSSAGA('squared', None, X, y, None, None, np.zeros(n_features), trace=True)
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(
         squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
     print(fprime_squaredloss(sol_scipy))
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
+    np.testing.assert_allclose(sol_scipy, opt2.x, rtol=1e-1)
 
 
 def test_sparse():
@@ -46,3 +47,5 @@ def test_sparse():
     opt = fmin_SAGA('logistic', None, Xs, y, np.zeros(n_features))
     opt2 = fmin_SAGA('logistic', None, Xs.toarray(), y, np.zeros(n_features))
     np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
+
+
