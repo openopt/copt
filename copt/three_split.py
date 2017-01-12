@@ -135,8 +135,9 @@ def fmin_DavisYin(
                 RuntimeWarning)
         it += 1
 
+    x_sol = g_prox(y, current_step_size * alpha, *g_prox_args)
     return optimize.OptimizeResult(
-        x=x, success=success,
+        x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
         nit=it)
 

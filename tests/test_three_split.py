@@ -5,7 +5,7 @@ from copt import prox
 from sklearn.linear_model import logistic
 
 np.random.seed(0)
-n_samples, n_features = 20, 3
+n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
@@ -85,20 +85,14 @@ def test_fused():
         tmp[1:] = g_prox(x[1:], step_size)
         return tmp
 
-    for alpha in np.logspace(0, 6, 5):
+    for alpha in np.logspace(-3, 3, 5):
         x0 = np.zeros(n_features)
         opt1 = fmin_DavisYin(
-            logloss, fprime_logloss, g_prox, h_prox,
-            x0.copy(), tol=0, alpha=alpha, max_iter=1000, step_size=1e-2,
-        backtracking=False)
+            logloss, fprime_logloss, h_prox, g_prox, x0.copy(),
+            alpha=alpha, beta=alpha)
         opt2 = fmin_ProxGrad(
-            logloss, fprime_logloss, prox.prox_tv1d,
-            x0.copy(), tol=0, alpha=alpha, max_iter=1000)
+            logloss, fprime_logloss, prox.prox_tv1d, x0.copy(),
+            alpha=alpha)
 
-        obj1 = (logloss(opt1.x) + alpha * fused_lasso(opt1.x))
-        obj2 = (logloss(opt2.x) + alpha * fused_lasso(opt2.x))
-        print(obj1, obj2)
-        print()
-
-        np.testing.assert_almost_equal(opt1.x, opt2.x, decimal=2)
+        np.testing.assert_almost_equal(opt1.x, opt2.x)
 
