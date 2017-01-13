@@ -1,4 +1,5 @@
 from concurrent import futures
+from typing import Callable
 from datetime import datetime
 import numpy as np
 from scipy import sparse, optimize
@@ -42,11 +43,34 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
+def compute_step_size(loss: str, A, step_size_factor=4) -> float:
+    """
+    Helper function to compute the step size for common loss
+    functions.
+
+    Parameters
+    ----------
+    loss
+    A
+    step_size_factor
+
+    Returns
+    -------
+
+    """
+    if loss == 'logistic':
+        return 4.0 / (norm_rows(A) * step_size_factor)
+    elif loss == 'squared':
+        return 1.0 / (norm_rows(A) * step_size_factor)
+    else:
+        raise NotImplementedError('loss %s is not implemented' % loss)
+
+
 def fmin_SAGA(
-        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, beta=1.0,
-        n_jobs=1,
-        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False,
-        step_size_factor=4):
+        fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
+        step_size: float=-1, g_prox: Callable=None, beta: float=1.0,
+        n_jobs: int=1,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augumented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -61,6 +85,16 @@ def fmin_SAGA(
     fun_deriv: callable or None
         f_prime(a_i^T x, b_i) returns the (scalar) derivative of f with
         respect to its first argument.
+
+    x0 : np.ndarray
+
+    step_size: float
+
+    g_prox: callable (optional)
+
+    beta: float
+
+    n_jobs: int
 
     Returns
     -------
@@ -83,27 +117,22 @@ def fmin_SAGA(
     assert x.size == A.shape[1]
     assert A.shape[0] == b.size
 
-    if fun == 'logistic':
-        fun = f_logistic
-        fun_deriv = deriv_logistic
-        if step_size is None:
-            step_size = 4.0 / (norm_rows(A) * step_size_factor)
-    elif fun == 'squared':
-        fun = f_squared
-        fun_deriv = deriv_squared
-        if step_size is None:
-            step_size = 1.0 / (norm_rows(A) * step_size_factor)
-    elif hasattr(fun, '__call__'):
-        pass
+    if step_size < 0:
+        raise ValueError
+
+    if hasattr(g_prox, '__call__'):
+        g_prox = njit(g_prox)
+    elif g_prox == 'L1':
+        from copt.prox import prox_L1
+        g_prox = njit(prox_L1)
+    elif g_prox is None:
+        @njit
+        def g_prox(x, *args): return x
     else:
         raise NotImplementedError
 
-    if g_prox is None:
-        def g_prox(x, *args): return x
-
     n_samples, n_features = A.shape
     success = False
-
 
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
@@ -253,14 +282,6 @@ def fmin_PSSAGA(
 
 
 def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b, beta):
-
-    if hasattr(g_prox, '__call__'):
-        g_prox = njit(g_prox)
-    elif g_prox == 'l1':
-        from copt.prox import prox_L1
-        g_prox = njit(prox_L1)
-    else:
-        raise NotImplementedError
 
     @njit
     def epoch_iteration_template(
