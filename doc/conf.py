@@ -29,15 +29,14 @@ sys.path.insert(0, os.path.abspath('..'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'numpydoc',
+    'sphinx.ext.napoleon',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx_gallery.gen_gallery',
+    'sphinx_autodoc_typehints'
 ]
 
 autosummary_generate = True

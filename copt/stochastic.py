@@ -71,46 +71,29 @@ def fmin_SAGA(
         step_size: float=-1, g_prox: Callable=None, beta: float=1.0,
         n_jobs: int=1,
         max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
-    """Stochastic average gradient augumented (SAGA) algorithm.
+    """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
         argmin_x 1/n \sum_{i=1}^n f(a_i^T x, b_i) + alpha * L2 + beta * g(x)
 
-    Parameters
-    ----------
-    fun: callable or string
-        XXX
+    Arguments:
+        fun: loss function
+        fun_deriv: derivative function
+        x0: starting point
 
-    fun_deriv: callable or None
-        f_prime(a_i^T x, b_i) returns the (scalar) derivative of f with
-        respect to its first argument.
-
-    x0 : np.ndarray
-
-    step_size: float
-
-    g_prox: callable (optional)
-
-    beta: float
-
-    n_jobs: int
-
-    Returns
-    -------
-    res : OptimizeResult
-        The optimization result represented as a
+    Returns:
+        opt: The optimization result represented as a
         ``scipy.optimize.OptimizeResult`` object. Important attributes are:
         ``x`` the solution array, ``success`` a Boolean flag indicating if
         the optimizer exited successfully and ``message`` which describes
         the cause of the termination. See `scipy.optimize.OptimizeResult`
         for a description of other attributes.
 
-    References
-    ----------
-    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
-    incremental gradient method with support for non-strongly convex composite
-    objectives." Advances in Neural Information Processing Systems. 2014.
+    References:
+        Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
+        incremental gradient method with support for non-strongly convex composite
+        objectives." Advances in Neural Information Processing Systems. 2014.
     """
 
     x = np.ascontiguousarray(x0).copy()
