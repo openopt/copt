@@ -7,7 +7,7 @@ using copt.
 """
 import numpy as np
 from sklearn.linear_model import logistic
-from copt import fmin_ProxGrad
+from copt import fmin_PGD
 
 n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
@@ -28,5 +28,5 @@ def L1_prox(x, step_size):
         np.fmax(- x - step_size * alpha, 0)
 
 
-out = fmin_ProxGrad(logloss, fprime_logloss, L1_prox, np.zeros(n_features))
+out = fmin_PGD(logloss, fprime_logloss, L1_prox, np.zeros(n_features))
 print('Solution', out)

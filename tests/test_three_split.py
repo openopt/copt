@@ -1,5 +1,5 @@
 import numpy as np
-from copt import fmin_DavisYin, fmin_ProxGrad
+from copt import fmin_DavisYin, fmin_PGD
 from copt import prox
 
 from sklearn.linear_model import logistic
@@ -47,7 +47,7 @@ def test_L1():
             logloss, fprime_logloss, None, prox.prox_L1,
             x0.copy(), alpha=alpha, beta=alpha)
 
-        opt3 = fmin_ProxGrad(
+        opt3 = fmin_PGD(
             logloss, fprime_logloss, prox.prox_L1, x0.copy(), alpha=alpha)
 
         np.testing.assert_almost_equal(opt.x, opt2.x, decimal=2)
@@ -85,7 +85,7 @@ def test_fused():
         opt1 = fmin_DavisYin(
             logloss, fprime_logloss, h_prox, g_prox, x0.copy(),
             alpha=alpha, beta=alpha)
-        opt2 = fmin_ProxGrad(
+        opt2 = fmin_PGD(
             logloss, fprime_logloss, prox.prox_tv1d, x0.copy(),
             alpha=alpha)
 

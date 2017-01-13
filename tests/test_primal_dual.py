@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize, sparse
 from sklearn.linear_model import logistic
-from copt import fmin_ProxGrad
+from copt import fmin_PGD
 from copt import fmin_CondatVu
 from copt.prox import prox_tv1d
 
@@ -42,7 +42,7 @@ def test_lasso():
             return np.fmax(x - step_size, 0) - np.fmax(-x - step_size, 0)
 
         L = np.eye(n_features)
-        opt_proximal = fmin_ProxGrad(
+        opt_proximal = fmin_PGD(
             logloss, fprime_logloss, l1_prox, np.zeros(n_features),
             tol=1e-24, alpha=alpha)
         opt_primal_dual = fmin_CondatVu(
@@ -79,7 +79,7 @@ def test_fused():
         L = sparse.diags([1, -1], [0, 1], shape=(n_features - 1, n_features))
         # solve the problem using the fused lasso proximal operator
         # (only for reference)
-        opt_proximal = fmin_ProxGrad(
+        opt_proximal = fmin_PGD(
             logloss, fprime_logloss, prox_tv1d, np.zeros(n_features),
             tol=1e-24, max_iter=10000, alpha=alpha)
 

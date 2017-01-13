@@ -1,4 +1,5 @@
 from concurrent import futures
+from typing import Callable
 from datetime import datetime
 import numpy as np
 from scipy import sparse, optimize
@@ -42,28 +43,74 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
+@njit
+def _debiasing_vec(A_indices, A_indptr, n_samples, n_features):
+    d = np.zeros(n_features)
+    for i in range(n_samples):
+        for j in A_indices[A_indptr[i]:A_indptr[i + 1]]:
+            d[j] += 1
+    for j in range(n_features):
+        if d[j] != 0.0:
+            d[j] = n_samples / d[j]
+    return d
+
+
+def compute_step_size(loss: str, A, step_size_factor=4) -> float:
+    """
+    Helper function to compute the step size for common loss
+    functions.
+
+    Parameters
+    ----------
+    loss
+    A
+    step_size_factor
+
+    Returns
+    -------
+
+    """
+    if loss == 'logistic':
+        return 4.0 / (norm_rows(A) * step_size_factor)
+    elif loss == 'squared':
+        return 1.0 / (norm_rows(A) * step_size_factor)
+    else:
+        raise NotImplementedError('loss %s is not implemented' % loss)
+
+
 def fmin_SAGA(
-        fun, fun_deriv, A, b, x0, step_size=None, g_prox=None, n_jobs=1,
-        max_iter=1000, tol=1e-6, verbose=True, callback=None, trace=False,
-        step_size_factor=4):
-    """Stochastic average gradient augumented (SAGA) algorithm.
+        fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
+        step_size: float=-1, g_prox: Callable=None, g_blocks: np.ndarray=None,
+        beta: float=1.0,
+        n_jobs: int=1,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
+    """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
         argmin_x 1/n \sum_{i=1}^n f(a_i^T x, b_i) + alpha * L2 + beta * g(x)
 
+
     Parameters
     ----------
-    fun: callable or string
-        XXX
+    fun
+        loss function
 
-    fun_deriv: callable or None
-        f_prime(a_i^T x, b_i) returns the (scalar) derivative of f with
-        respect to its first argument.
+    fun_deriv
+        derivative function
+
+    x0
+        Starting point
+
+    g_blocks
+        If g is a block-separable function, this allows to specify which are the
+        blocks in this penalty. It is an array of integers with the same size as
+        x0 where each coordinate represents the group to which that coordinate
+        belongs to.
 
     Returns
     -------
-    res : OptimizeResult
+    opt
         The optimization result represented as a
         ``scipy.optimize.OptimizeResult`` object. Important attributes are:
         ``x`` the solution array, ``success`` a Boolean flag indicating if
@@ -82,32 +129,29 @@ def fmin_SAGA(
     assert x.size == A.shape[1]
     assert A.shape[0] == b.size
 
-    if fun == 'logistic':
-        fun = f_logistic
-        fun_deriv = deriv_logistic
-        if step_size is None:
-            step_size = 4.0 / (norm_rows(A) * step_size_factor)
-    elif fun == 'squared':
-        fun = f_squared
-        fun_deriv = deriv_squared
-        if step_size is None:
-            step_size = 1.0 / (norm_rows(A) * step_size_factor)
-    elif hasattr(fun, '__call__'):
-        pass
+    if step_size < 0:
+        raise ValueError
+
+    if hasattr(g_prox, '__call__'):
+        g_prox = njit(g_prox)
+    elif g_prox is None:
+        @njit
+        def g_prox(x, step_size, blocks=None, block_weights=None): return x
     else:
         raise NotImplementedError
 
     n_samples, n_features = A.shape
     success = False
 
-
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
+        if g_blocks is None:
+            g_blocks = np.arange(n_features)
         epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA(
-            fun, fun_deriv, g_prox, A, b)
+                fun, fun_deriv, g_prox, g_blocks, A, b, beta)
     else:
         epoch_iteration, trace_loss = _epoch_factory_SAGA(
-            fun, fun_deriv, g_prox, A, b)
+            fun, fun_deriv, g_prox, A, b, beta)
 
     start_time = datetime.now()
     trace_fun = []
@@ -133,10 +177,11 @@ def fmin_SAGA(
             trace_x.append(x.copy())
             trace_time.append((datetime.now() - start_time).total_seconds())
 
-        norm_grad = np.linalg.norm(gradient_average)
+        grad_map = x - g_prox(x - step_size * gradient_average, beta * step_size)
+        norm_grad_map = np.linalg.norm(grad_map)
         if verbose:
-            print(it, norm_grad)
-        if norm_grad < tol:
+            print(it, norm_grad_map)
+        if norm_grad_map < tol:
             success = True
             break
     if trace:
@@ -151,59 +196,16 @@ def fmin_SAGA(
 
 
 def fmin_PSSAGA(
-        fun, fun_deriv, A, b, g_prox, h_prox, x0, step_size=None,
-        max_iter=1000, tol=1e-6, verbose=True, callback=None, trace=False,
+        fun, fun_deriv, A, b, g_prox, h_prox, x0, step_size=-1,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False,
         step_size_factor=4):
-    """Stochastic average gradient augumented (SAGA) algorithm.
-
-    The SAGA algorithm can solve optimization problems of the form
-
-        argmin_x \frac{1}{n} \sum_{i=1}^n f(a_i^T x, b_i) + g(x) + h(x)
-
-    Parameters
-    ----------
-    fun: callable or string
-        XXX
-
-    fun_deriv: callable or None
-        f_prime(a_i^T x, b_i) returns the (scalar) derivative of f with
-        respect to its first argument.
-
-    Returns
-    -------
-    res : OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
-
-    References
-    ----------
-    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
-    incremental gradient method with support for non-strongly convex composite
-    objectives." Advances in Neural Information Processing Systems. 2014.
-    """
 
     x = np.ascontiguousarray(x0).copy()
     assert x.size == A.shape[1]
     assert A.shape[0] == b.size
 
-    if fun == 'logistic':
-        fun = f_logistic
-        fun_deriv = deriv_logistic
-        if step_size is None:
-            step_size = 4.0 / (norm_rows(A) * step_size_factor)
-    elif fun == 'squared':
-        fun = f_squared
-        fun_deriv = deriv_squared
-        if step_size is None:
-            step_size = 1.0 / (norm_rows(A) * step_size_factor)
-    elif hasattr(fun, '__call__'):
-        pass
-    else:
-        raise NotImplementedError
+    if step_size < 0:
+        raise ValueError
 
     n_samples, n_features = A.shape
     success = False
@@ -247,16 +249,7 @@ def fmin_PSSAGA(
         x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time)
 
 
-def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
-
-    if g_prox is None:
-        @njit
-        def g_prox(x, step_size): return x
-    elif g_prox == 'l1':
-        from copt.prox import prox_L1
-        g_prox = njit(prox_L1)
-    else:
-        raise NotImplementedError
+def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b, beta):
 
     @njit
     def epoch_iteration_template(
@@ -267,7 +260,7 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         for i in sample_indices:
             grad_i = f_prime(x, A[i], b[i])
             incr = (grad_i - memory_gradient[i]) * A[i]
-            x[:] = g_prox(x - step_size * (incr + gradient_average), step_size)
+            x[:] = g_prox(x - step_size * (incr + gradient_average), beta * step_size)
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
@@ -277,48 +270,70 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b):
         n_samples, n_features = A.shape
         for i in range(n_samples):
             obj += fun(x, A[i], b[i]) / n_samples
+        return obj
 
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, A, b):
-
-    if g_prox is not None:
-        raise NotImplementedError
+def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
 
     A_data = A.data
     A_indices = A.indices
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
-    @njit
-    def _debiasing_vec(A_indices, A_indptr):
-        d = np.zeros(n_features)
-        for i in range(n_samples):
-            for j in A_indices[A_indptr[i]:A_indptr[i+1]]:
-                d[j] += 1
-        for j in range(n_features):
-            if d[j] != 0.0:
-                d[j] = n_samples / d[j]
-        return d
+    # g_blocks is a map from n_features -> n_features
+    unique_blocks = np.unique(g_blocks)
+    n_blocks = np.unique(g_blocks).size
+    assert np.all(unique_blocks == np.arange(n_blocks))
 
-    d = _debiasing_vec(A_indices, A_indptr)
+    # .. compute the block support ..
+    BS = sparse.dok_matrix((n_samples, n_blocks), dtype=np.bool)
+    for i in range(n_samples):
+        for j in A_indices[A_indptr[i]:A_indptr[i + 1]]:
+            BS[g_blocks[j]] = True
+    BS = BS.tocsr()
+    BS_indices = BS.indices
+    BS_indptr = BS.indptr
+
+    # .. estimate a mapping from blocks to features ..
+    reverse_blocks = sparse.dok_matrix((n_blocks, n_features), dtype=np.bool)
+    for j in range(n_features):
+        i = g_blocks[j]
+        reverse_blocks[i, j] = True
+    reverse_blocks = reverse_blocks.tocsr()
+    reverse_blocks_indices = reverse_blocks.indices
+    reverse_blocks_indptr = reverse_blocks.indptr
+
+    d = _debiasing_vec(BS.indices, BS.indptr, n_samples, n_blocks)
 
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
             x, memory_gradient, gradient_average, sample_indices, step_size):
+
+        # .. SAGA estimate of the gradient ..
+        grad_est = np.zeros(n_features)
+
         # .. inner iteration ..
         for i in sample_indices:
             idx = A_indices[A_indptr[i]:A_indptr[i+1]]
+            block_idx = BS_indices[BS_indptr[i]:BS_indptr[i+1]]
             A_i = A_data[A_indptr[i]:A_indptr[i+1]]
             grad_i = f_prime(x[idx], A_i, b[i])
 
             # .. update coefficients ..
-            incr = (grad_i - memory_gradient[i]) * A_i
-            x[idx] -= step_size * (incr + d[idx] * gradient_average[idx])
+            grad_est[idx] = (grad_i - memory_gradient[i]) * A_i
+            for g in block_idx:
+                idx_g = reverse_blocks_indices[
+                    reverse_blocks_indptr[g]:reverse_blocks_indptr[g+1]]
+                grad_est[idx_g] += gradient_average[idx_g] / d[g]
+                x[idx_g] = g_prox(x[idx_g] - grad_est[idx_g], step_size * beta * d[g])
+
+                # .. clean up ..
+                grad_est[idx_g] = 0
 
             # .. update memory terms ..
-            gradient_average[idx] += incr / n_samples
+            gradient_average[idx] += (grad_i - memory_gradient[i]) * A_i / n_samples
             memory_gradient[i] = grad_i
 
     @njit(nogil=True, cache=True)

@@ -16,7 +16,7 @@ copt is a library for composite optimization written in pure Python
 .. autosummary::
    :toctree: generated/
 
-    copt.fmin_ProxGrad
+    copt.fmin_PGD
     copt.fmin_DavisYin
     copt.fmin_CondatVu
     copt.fmin_SAGA
