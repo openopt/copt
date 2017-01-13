@@ -44,8 +44,9 @@ def test_optimize():
         stochastic.f_squared, stochastic.deriv_squared,
         X_dense, y, np.zeros(n_features), trace=True, step_size=step_size)
     assert opt.success
-    opt2 = fmin_PSSAGA('squared', None, X_dense, y, None, None, np.zeros(n_features),
-                       trace=True)
+    opt2 = fmin_PSSAGA(stochastic.f_squared, stochastic.deriv_squared,
+                       X_dense, y, None, None, np.zeros(n_features),
+                       step_size=step_size, trace=True)
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(
@@ -79,17 +80,16 @@ def test_L1():
 
 def test_sparse():
     # test with a sparse matrix
-    step_size = stochastic.compute_step_size('logistic', X_sparse)
-    opt = fmin_SAGA(
-        stochastic.f_logistic,
-        stochastic.deriv_logistic, X_sparse, y, np.zeros(n_features),
-        step_size=step_size)
-    opt2 = fmin_SAGA(
-        stochastic.f_logistic, stochastic.deriv_logistic,
-        X_sparse.toarray(), y, np.zeros(n_features),
-        step_size=step_size)
-    np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
-
-    # XXX test with L1
+    for g_prox in (None, prox.prox_L1):
+        step_size = stochastic.compute_step_size('logistic', X_sparse)
+        opt = fmin_SAGA(
+            stochastic.f_logistic,
+            stochastic.deriv_logistic, X_sparse, y, np.zeros(n_features),
+            step_size=step_size, g_prox=g_prox)
+        opt2 = fmin_SAGA(
+            stochastic.f_logistic, stochastic.deriv_logistic,
+            X_sparse.toarray(), y, np.zeros(n_features),
+            step_size=step_size, g_prox=g_prox)
+        np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
 
 

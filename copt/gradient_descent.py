@@ -1,12 +1,14 @@
 import warnings
+from typing import Callable
 import numpy as np
 from scipy import optimize
 from scipy import linalg
 
 
-def fmin_PGD(fun, fun_deriv, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
-             verbose=0, g_prox_args=(), callback=None, backtracking=True,
-             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4):
+def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
+             verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
+             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4
+             ) -> optimize.OptimizeResult:
     """Proximal gradient descent.
 
     Solves problems of the form
@@ -17,50 +19,43 @@ def fmin_PGD(fun, fun_deriv, g_prox, x0, alpha=1.0, tol=1e-6, max_iter=1000,
 
     where we have access to the gradient of f and to the proximal operator of g.
 
-    Parameters
-    ----------
-    fun : callable
-        f(x) returns the value of f at x.
+    Arguments:
+        fun : f(x) returns the value of f at x.
 
-    fun_deriv : callable
-        f_prime(x) returns the gradient of f.
+        fun_deriv : f_prime(x) returns the gradient of f.
 
-    g_prox : callable or None
-        g_prox(x, alpha) returns the proximal operator of g at x
-        with parameter alpha.
+        g_prox : g_prox(x, alpha) returns the proximal operator of g at x
+            with parameter alpha.
 
-    x0 : array-like
-        Initial guess
+        x0 : array-like
+            Initial guess
 
-    backtracking : boolean
-        Whether to perform backtracking (i.e. line-search) or not.
+        backtracking : boolean
+            Whether to perform backtracking (i.e. line-search) or not.
 
-    max_iter : int
-        Maximum number of iterations.
+        max_iter : int
+            Maximum number of iterations.
 
-    verbose : int
-        Verbosity level, from 0 (no output) to 2 (output on each iteration)
+        verbose : int
+            Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    step_size : float
-        Starting value for the line-search procedure. XXX
+        step_size : float
+            Starting value for the line-search procedure. XXX
 
-    callback : callable
-        callback function (optional).
+        callback : callable
+            callback function (optional).
 
-    Returns
-    -------
-    res : OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+    Returns:
+        res : The optimization result represented as a
+            ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+            ``x`` the solution array, ``success`` a Boolean flag indicating if
+            the optimizer exited successfully and ``message`` which describes
+            the cause of the termination. See `scipy.optimize.OptimizeResult`
+            for a description of other attributes.
 
-    References
-    ----------
-    Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
-    recovery." Convex optimization in signal processing and communications (2009)
+    References:
+        Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
+        recovery." Convex optimization in signal processing and communications (2009)
     """
     xk = np.array(x0, copy=True)
     success = False
