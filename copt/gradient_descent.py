@@ -62,7 +62,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g_prox is None:
-        g_prox = lambda x, y: x
+        g_prox = lambda x, y: y
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -82,7 +82,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = fun_deriv(xk)
-        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
+        x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
         incr = x_next - xk
         if backtracking:
             fk = fun(xk)
@@ -94,7 +94,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size * alpha, *g_prox_args)
+                    x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
                     incr = x_next - xk
                     f_next = fun(x_next)
             else:
@@ -194,9 +194,9 @@ def fmin_DavisYin(
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        def g_prox(x, *args): return x
+        def g_prox(step_size, x, *args): return x
     if h_prox is None:
-        def h_prox(x, *args): return x
+        def h_prox(step_size, x, *args): return x
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -215,9 +215,9 @@ def fmin_DavisYin(
     # .. allows for infinite or floating point max_iter ..
     current_step_size = step_size
     while it <= max_iter:
-        x = g_prox(y, current_step_size * alpha, *g_prox_args)
+        x = g_prox(current_step_size * alpha, y, *g_prox_args)
         grad_fk = fun_deriv(x)
-        z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
+        z = h_prox(current_step_size * beta, 2 * x - y - current_step_size * grad_fk, *h_prox_args)
         incr = z - x
         norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
@@ -230,7 +230,7 @@ def fmin_DavisYin(
                     current_step_size *= backtracking_factor
                     y = x + backtracking_factor * (y - x)
                     grad_fk = fun_deriv(x)
-                    z = h_prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta, *h_prox_args)
+                    z = h_prox(current_step_size * beta, 2 * x - y - current_step_size * grad_fk, *h_prox_args)
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
@@ -256,7 +256,7 @@ def fmin_DavisYin(
                 RuntimeWarning)
         it += 1
 
-    x_sol = g_prox(y, current_step_size * alpha, *g_prox_args)
+    x_sol = g_prox(current_step_size * alpha, y, *g_prox_args)
     return optimize.OptimizeResult(
         x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping

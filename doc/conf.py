@@ -140,18 +140,15 @@ html_sidebars = {
     'auto_examples': ['index.html'],
 }
 html_theme_options = {
-    'description': 'A library for composite optimization in Python',
+    'description': 'Optimization in Python',
     'github_user': 'fabianp',
     'github_repo': 'copt',
     'github_button': True,
     'fixed_sidebar': True,
     'travis_button': True,
+    'logo_text_align': 'center',
 }
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = [alabaster.get_path()]

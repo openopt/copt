@@ -11,13 +11,14 @@ import warnings
 from numba import njit
 
 
-def prox_L1(x, step_size):
+def prox_L1(step_size, x):
     """
     L1 proximal operator
     """
-    return np.fmax(x - step_size , 0) - \
-           np.fmax(- x - step_size, 0)
+    return np.fmax(x - step_size, 0) - np.fmax(- x - step_size, 0)
 
+def prox_group_L1(step_size, x):
+    pass
 
 def prox_tv1d(w, step_size):
     """
