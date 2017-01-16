@@ -58,7 +58,8 @@ def test_optimize():
 
 
 def test_prox_sparse():
-    for X in (X_dense, X_sparse):
+    # for X in (X_dense, X_sparse):
+    for X in (X_sparse,):
         def loss(x):
             return logistic._logistic_loss(x, X, y, 0.0) / n_samples
 
@@ -67,6 +68,7 @@ def test_prox_sparse():
 
         step_size = stochastic.compute_step_size('logistic', X)
         for beta in np.logspace(-3, 3, 5):
+            print(beta)
             opt = fmin_SAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
@@ -76,6 +78,17 @@ def test_prox_sparse():
                 alpha=beta)
             # assert opt.success
             np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
+
+            opt3 = fmin_PSSAGA(
+                stochastic.f_logistic, stochastic.deriv_logistic,
+                X, y, np.zeros(n_features), step_size=step_size,
+                gamma=beta, h_prox=prox.prox_L1)
+            opt4 = fmin_PSSAGA(
+                stochastic.f_logistic, stochastic.deriv_logistic,
+                X, y, np.zeros(n_features), step_size=step_size,
+                beta=beta, g_prox=prox.prox_L1)
+            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-3)
+            np.testing.assert_allclose(opt.x, opt4.x, atol=1e-3)
 
 
 def test_prox_groups():
@@ -111,8 +124,14 @@ def test_prox_groups():
             beta=beta, g_prox=g_prox)
         np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
 
-        opt3 = fmin_PSSAGA(
-            stochastic.f_logistic, stochastic.deriv_logistic,
-            X_sparse.toarray(), y, np.zeros(n_features), step_size=step_size,
-            beta=beta, gamma=beta, g_prox=g_prox)
-        np.testing.assert_allclose(opt.x, opt3.x, rtol=1e-2)
+        # # PSSAGA now
+        # opt3 = fmin_PSSAGA(
+        #     stochastic.f_logistic, stochastic.deriv_logistic,
+        #     X_sparse, y, np.zeros(n_features), step_size=step_size,
+        #     beta=beta, gamma=beta, g_prox=g_prox)
+        # opt4 = fmin_PSSAGA(
+        #     stochastic.f_logistic, stochastic.deriv_logistic,
+        #     X_sparse.toarray(), y, np.zeros(n_features), step_size=step_size,
+        #     beta=beta, gamma=beta, g_prox=g_prox)
+        # np.testing.assert_allclose(opt.x, opt3.x, rtol=1e-2)
+        # np.testing.assert_allclose(opt.x, opt4.x, rtol=1e-2)

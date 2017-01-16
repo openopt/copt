@@ -214,8 +214,8 @@ def fmin_PSSAGA(
     else:
         raise NotImplementedError
 
-    x = np.ascontiguousarray(x0).copy()
-    assert x.size == A.shape[1]
+    y = np.ascontiguousarray(x0).copy()
+    assert y.size == A.shape[1]
     assert A.shape[0] == b.size
 
     if step_size < 0:
@@ -229,7 +229,7 @@ def fmin_PSSAGA(
         if h_blocks is None:
             h_blocks = np.arange(n_features)
         epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA(
-            fun, fun_deriv, g_prox, h_prox, h_blocks, A, b, beta)
+            fun, fun_deriv, g_prox, h_prox, h_blocks, A, b, beta, gamma)
     else:
         epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
             fun, fun_deriv, g_prox, h_prox, A, b, beta, gamma)
@@ -245,12 +245,15 @@ def fmin_PSSAGA(
 
     # .. iterate on epochs ..
     for it in range(max_iter):
-        epoch_iteration(x, memory_gradient, gradient_average,
+        epoch_iteration(y, memory_gradient, gradient_average,
                     np.random.permutation(n_samples), step_size)
+
+        # TODO: pass from function
+        x = g_prox(step_size * beta, y)
         if callback is not None:
             callback(x)
         if trace:
-            trace_x.append(x.copy())
+            trace_x.append(x)
             trace_time.append((datetime.now() - start_time).total_seconds())
 
         grad_map = np.linalg.norm(gradient_average)
@@ -371,7 +374,7 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, beta):
+def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, beta, gamma):
 
     A_data = A.data
     A_indices = A.indices
@@ -426,9 +429,9 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, b
                     reverse_blocks_indptr[g]:reverse_blocks_indptr[g+1]]
                 grad_est[idx_g] += gradient_average[idx_g] * d[g]
                 z = h_prox(
-                    step_size * beta * d[g],
+                    step_size * gamma * d[g],
                     2 * x[idx_g] - y[idx_g] - step_size * grad_est[idx_g])
-                y[idx_g] = d[g] * y[idx_g] - (2 - d[g]) * x[idx_g] + z
+                y[idx_g] = (2 - d[g]) * y[idx_g] - (2 - d[g]) * x[idx_g] + z
 
                 # .. clean up ..
                 grad_est[idx_g] = 0
@@ -450,7 +453,6 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, b
 
 
 def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, beta, gamma):
-
 
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
