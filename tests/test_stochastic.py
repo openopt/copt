@@ -56,24 +56,32 @@ def test_optimize():
     np.testing.assert_allclose(sol_scipy, opt2.x, rtol=1e-1)
 
 
-def test_L1():
+def test_prox_sparse():
     for X in (X_dense, X_sparse):
+        def loss(x):
+            return logistic._logistic_loss(x, X, y, 0.0) / n_samples
+
+        def grad(x):
+            return logistic._logistic_loss_and_grad(x, X, y, 0.0)[1] / n_samples
+
         step_size = stochastic.compute_step_size('logistic', X)
         for beta in np.logspace(-3, 3, 5):
             opt = fmin_SAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 beta=beta, g_prox=prox.prox_L1)
-
-            def loss(x):
-                return logistic._logistic_loss(x, X, y, 0.0) / n_samples
-
-            def grad(x):
-                return logistic._logistic_loss_and_grad(x, X, y, 0.0)[1] / n_samples
-
             opt2 = fmin_PGD(
                 loss, grad, prox.prox_L1, np.zeros(n_features),
                 alpha=beta)
             # assert opt.success
             np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
 
+            # same but for group L1
+            groups = np.arange(n_features) // 3
+            opt = fmin_SAGA(
+                stochastic.f_logistic, stochastic.deriv_logistic,
+                X, y, np.zeros(n_features), step_size=step_size,
+                beta=beta, g_prox=prox.prox_L1)
+            opt2 = fmin_PGD(
+                loss, grad, prox.prox_L1, np.zeros(n_features),
+                alpha=beta)

@@ -20,11 +20,10 @@ def test_tv1_prox():
     tv_norm = lambda x: np.sum(np.abs(np.diff(x)))
     for _ in range(1000):
         x = np.random.randn(n_features)
-        for ptv in (prox.prox_tv1d,):
-            x_next = ptv(x, gamma)
-            diff_obj = tv_norm(x) - tv_norm(x_next)
-            testing.assert_array_less(
-            ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
+        x_next = prox.prox_tv1d(gamma, x)
+        diff_obj = tv_norm(x) - tv_norm(x_next)
+        testing.assert_array_less(
+        ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
 
 
 def test_tv2_prox():
@@ -43,7 +42,7 @@ def test_tv2_prox():
 
     for nrun in range(20):
         x = np.random.randn(n_features)
-        x_next = prox.prox_tv2d(x, gamma, n_rows, n_cols, tol=1e-10, max_iter=10000)
+        x_next = prox.prox_tv2d(gamma, x, n_rows, n_cols, tol=1e-10, max_iter=10000)
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
         testing.assert_array_less(
             ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)

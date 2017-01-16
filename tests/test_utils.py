@@ -17,7 +17,7 @@ def test_trace():
     def grad(x):
         return - A.T.dot(b - A.dot(x)) / A.shape[0]
 
-    def no_prox(x, y): return x
+    def no_prox(x, y): return y
     trace_three = Trace(lambda x: obj_fun(x))
     fmin_DavisYin(
         obj_fun, grad, no_prox, no_prox, np.zeros(n_features),

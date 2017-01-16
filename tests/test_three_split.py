@@ -63,21 +63,21 @@ def test_fused():
     proximable penalties and using the three operator splitting.
     """
 
-    def g_prox(x, step_size):
+    def g_prox(step_size, x):
         n_rows = x.size // 2
         Lx = np.empty(n_rows)
         for i in range(n_rows):
             Lx[i] = x[2 * i] - x[2 * i + 1]
-        z = prox.prox_L1(Lx, 2 * step_size) - Lx
+        z = prox.prox_L1(2 * step_size, Lx) - Lx
         tmp = np.zeros(x.size)
         for i in range(n_rows):
             tmp[2 * i] = z[i]
             tmp[2 * i + 1] = - z[i]
         return x + tmp / 2
 
-    def h_prox(x, step_size):
+    def h_prox(step_size, x):
         tmp = x.copy()
-        tmp[1:] = g_prox(x[1:], step_size)
+        tmp[1:] = g_prox(step_size, x[1:])
         return tmp
 
     for alpha in np.logspace(-3, 3, 5):

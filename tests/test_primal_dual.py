@@ -1,9 +1,7 @@
 import numpy as np
 from scipy import optimize, sparse
 from sklearn.linear_model import logistic
-from copt import fmin_PGD
-from copt import fmin_CondatVu
-from copt.prox import prox_tv1d
+from copt import fmin_PGD, fmin_CondatVu, prox
 
 np.random.seed(0)
 n_samples, n_features = 100, 10
@@ -38,15 +36,12 @@ def test_lasso():
         def fprime_logloss(x):
             return logistic._logistic_loss_and_grad(x, X, y, 0.)[1]
 
-        def l1_prox(x, step_size):
-            return np.fmax(x - step_size, 0) - np.fmax(-x - step_size, 0)
-
         L = np.eye(n_features)
         opt_proximal = fmin_PGD(
-            logloss, fprime_logloss, l1_prox, np.zeros(n_features),
+            logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features),
             tol=1e-24, alpha=alpha)
         opt_primal_dual = fmin_CondatVu(
-            logloss, fprime_logloss, l1_prox, None, L, np.zeros(n_features),
+            logloss, fprime_logloss, prox.prox_L1, None, L, np.zeros(n_features),
             alpha=alpha)
         assert opt_primal_dual.success
         np.testing.assert_allclose(
@@ -54,7 +49,7 @@ def test_lasso():
 
         # same thing but using the other operator
         opt_primal_dual2 = fmin_CondatVu(
-            logloss, fprime_logloss, None, l1_prox, L, np.zeros(n_features),
+            logloss, fprime_logloss, None, prox.prox_L1, L, np.zeros(n_features),
             beta=alpha)
         np.testing.assert_allclose(
             opt_proximal.x, opt_primal_dual2.x, atol=1e-3)
@@ -73,18 +68,16 @@ def test_fused():
         def fprime_logloss(x):
             return logistic._logistic_loss_and_grad(x, X, y, 0.)[1]
 
-        def l1_prox(x, step_size):
-            return np.fmax(x - step_size, 0) - np.fmax(-x - step_size, 0)
 
         L = sparse.diags([1, -1], [0, 1], shape=(n_features - 1, n_features))
         # solve the problem using the fused lasso proximal operator
         # (only for reference)
         opt_proximal = fmin_PGD(
-            logloss, fprime_logloss, prox_tv1d, np.zeros(n_features),
+            logloss, fprime_logloss, prox.prox_tv1d, np.zeros(n_features),
             tol=1e-24, max_iter=10000, alpha=alpha)
 
         opt_primal_dual = fmin_CondatVu(
-            logloss, fprime_logloss, None, l1_prox, L, np.zeros(n_features),
+            logloss, fprime_logloss, None, prox.prox_L1, L, np.zeros(n_features),
             beta=alpha, verbose=True, step_size_y=1)
         assert opt_primal_dual.success
         np.testing.assert_allclose(
