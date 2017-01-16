@@ -78,6 +78,7 @@ def test_prox_sparse():
 
             # same but for group L1
             groups = np.arange(n_features) // 3
+
             opt = fmin_SAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
