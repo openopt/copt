@@ -80,10 +80,9 @@ def compute_step_size(loss: str, A, step_size_factor=4) -> float:
 
 def fmin_SAGA(
         fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
-        step_size: float=-1, g_prox: Callable=None, g_blocks: np.ndarray=None,
-        beta: float=1.0,
-        n_jobs: int=1,
-        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
+        beta: float=1.0, g_prox: Callable=None, step_size: float=-1,
+        g_blocks: np.ndarray=None, n_jobs: int=1, max_iter=1000, tol=1e-6,
+        verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -196,9 +195,11 @@ def fmin_SAGA(
 
 
 def fmin_PSSAGA(
-        fun, fun_deriv, A, b, g_prox, h_prox, x0, step_size=-1,
-        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False,
-        step_size_factor=4):
+        fun, fun_deriv, A, b, g_prox, h_prox, x0,
+        beta: float=1.0,
+        step_size=-1,
+        h_blocks=None,
+        max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False):
 
     if hasattr(g_prox, '__call__'):
         g_prox = njit(g_prox)
@@ -226,8 +227,15 @@ def fmin_PSSAGA(
     n_samples, n_features = A.shape
     success = False
 
-    epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
-            fun, fun_deriv, g_prox, h_prox, A, b)
+    if sparse.issparse(A):
+        A = sparse.csr_matrix(A)
+        if h_blocks is None:
+            h_blocks = np.arange(n_features)
+        epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA(
+            fun, fun_deriv, g_prox, h_prox, h_blocks, A, b, beta)
+    else:
+        epoch_iteration, trace_loss = _epoch_factory_SAGA(
+            fun, fun_deriv, g_prox, A, b, beta)
 
     start_time = datetime.now()
     trace_fun = []
@@ -366,30 +374,79 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b):
+def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, beta):
+
+    A_data = A.data
+    A_indices = A.indices
+    A_indptr = A.indptr
+    n_samples, n_features = A.shape
+
+    # g_blocks is a map from n_features -> n_features
+    unique_blocks = np.unique(h_blocks)
+    n_blocks = np.unique(h_blocks).size
+    assert np.all(unique_blocks == np.arange(n_blocks))
+
+    # .. compute the block support ..
+    BS = sparse.dok_matrix((n_samples, n_blocks), dtype=np.bool)
+    for i in range(n_samples):
+        for j in A_indices[A_indptr[i]:A_indptr[i + 1]]:
+            BS[i, h_blocks[j]] = True
+    BS = BS.tocsr()
+    BS_indices = BS.indices
+    BS_indptr = BS.indptr
+
+    # .. estimate a mapping from blocks to features ..
+    reverse_blocks = sparse.dok_matrix((n_blocks, n_features), dtype=np.bool)
+    for j in range(n_features):
+        i = h_blocks[j]
+        reverse_blocks[i, j] = True
+    reverse_blocks = reverse_blocks.tocsr()
+    reverse_blocks_indices = reverse_blocks.indices
+    reverse_blocks_indptr = reverse_blocks.indptr
+
+    d = np.array(BS.sum(0), dtype=np.float).ravel()
+    d[d != 0] = n_samples / d
 
     @njit(nogil=True, cache=True)
     def epoch_iteration_template(
-            y, memory_gradient, gradient_average, sample_indices,
-            step_size):
-        beta = 1.0
-        gamma = 1.0
-        n_samples, n_features = A.shape
+            y, memory_gradient, gradient_average, sample_indices, step_size):
+
+        # .. SAGA estimate of the gradient ..
+        grad_est = np.zeros(n_features)
+
         # .. inner iteration ..
         for i in sample_indices:
-            x = g_prox(beta * step_size, y)
-            grad_i = f_prime(x, A[i], b[i])
-            incr = (grad_i - memory_gradient[i]) * A[i]
-            z = h_prox(gamma * step_size, 2 * x - y - step_size * (incr + gradient_average))
-            y -= x - z
-            gradient_average += incr / n_samples
+            x = g_prox(step_size * beta, y)
+            idx = A_indices[A_indptr[i]:A_indptr[i+1]]
+            block_idx = BS_indices[BS_indptr[i]:BS_indptr[i+1]]
+            A_i = A_data[A_indptr[i]:A_indptr[i+1]]
+            grad_i = f_prime(x[idx], A_i, b[i])
+
+            # .. update coefficients ..
+            grad_est[idx] = (grad_i - memory_gradient[i]) * A_i
+            for g in block_idx:
+                idx_g = reverse_blocks_indices[
+                    reverse_blocks_indptr[g]:reverse_blocks_indptr[g+1]]
+                grad_est[idx_g] += gradient_average[idx_g] * d[g]
+                z = h_prox(
+                    step_size * beta * d[g],
+                    2 * x[idx_g] - y[idx_g] - step_size * grad_est[idx_g])
+                y[idx_g] = d[g] * y[idx_g] - (2 - d[g]) * x[idx_g] + z
+
+                # .. clean up ..
+                grad_est[idx_g] = 0
+
+            # .. update memory terms ..
+            gradient_average[idx] += (grad_i - memory_gradient[i]) * A_i / n_samples
             memory_gradient[i] = grad_i
 
     @njit(nogil=True, cache=True)
     def full_loss(x):
         obj = 0.
-        n_samples, n_features = A.shape
         for i in range(n_samples):
-            obj += fun(x, A[i], b[i]) / n_samples
+            idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
+            A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
+            obj += fun(x[idx], A_i, b[i]) / n_samples
+        return obj
 
     return epoch_iteration_template, full_loss

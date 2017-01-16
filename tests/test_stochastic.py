@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit
 from scipy import optimize, sparse
 from sklearn.linear_model import logistic
 from copt import fmin_SAGA, fmin_PSSAGA, fmin_PGD
@@ -76,13 +77,37 @@ def test_prox_sparse():
             # assert opt.success
             np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
 
-            # same but for group L1
-            groups = np.arange(n_features) // 3
 
-            opt = fmin_SAGA(
-                stochastic.f_logistic, stochastic.deriv_logistic,
-                X, y, np.zeros(n_features), step_size=step_size,
-                beta=beta, g_prox=prox.prox_L1)
-            opt2 = fmin_PGD(
-                loss, grad, prox.prox_L1, np.zeros(n_features),
-                alpha=beta)
+def test_prox_groups():
+    """
+    The nonsmooth term that we use is
+        |x_1 - x_2| + |x_3 - x_4| + |x_5 - x_6|
+    """
+
+    prox_L1 = njit(prox.prox_L1)
+
+    def g_prox(step_size, x):
+        n_rows = x.size // 2
+        Lx = np.empty(n_rows)
+        for i in range(n_rows):
+            Lx[i] = x[2 * i] - x[2 * i + 1]
+        z = prox_L1(2 * step_size, Lx) - Lx
+        tmp = np.zeros(x.size)
+        for i in range(n_rows):
+            tmp[2 * i] = z[i]
+            tmp[2 * i + 1] = - z[i]
+        return x + tmp / 2
+
+    groups = np.arange(n_features) // 2
+    step_size = stochastic.compute_step_size('logistic', X_sparse)
+    for beta in np.logspace(-3, 3, 5):
+        opt = fmin_SAGA(
+            stochastic.f_logistic, stochastic.deriv_logistic,
+            X_sparse, y, np.zeros(n_features), step_size=step_size,
+            beta=beta, g_prox=g_prox, g_blocks=groups)
+        opt2 = fmin_SAGA(
+            stochastic.f_logistic, stochastic.deriv_logistic,
+            X_sparse.toarray(), y, np.zeros(n_features), step_size=step_size,
+            beta=beta, g_prox=g_prox)
+        np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
+

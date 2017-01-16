@@ -18,10 +18,6 @@ def prox_L1(step_size, x):
     return np.fmax(x - step_size, 0) - np.fmax(- x - step_size, 0)
 
 
-def prox_group_L1(step_size, x, groups):
-    x * x
-
-
 def prox_tv1d(step_size, w):
     """
     Computes the proximal operator of the 1-dimensional total variation operator.
