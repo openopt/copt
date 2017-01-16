@@ -43,18 +43,6 @@ def deriv_logistic(w, x, y):
     return (phi - 1) * y
 
 
-@njit
-def _debiasing_vec(A_indices, A_indptr, n_samples, n_features):
-    d = np.zeros(n_features)
-    for i in range(n_samples):
-        for j in A_indices[A_indptr[i]:A_indptr[i + 1]]:
-            d[j] += 1
-    for j in range(n_features):
-        if d[j] != 0.0:
-            d[j] = n_samples / d[j]
-    return d
-
-
 def compute_step_size(loss: str, A, step_size_factor=4) -> float:
     """
     Helper function to compute the step size for common loss
@@ -131,8 +119,16 @@ def fmin_SAGA(
     if step_size < 0:
         raise ValueError
 
+    # TODO: encapsulate this in _get_factory
     if hasattr(g_prox, '__call__'):
         g_prox = njit(g_prox)
+    # elif hasattr(g_prox, '__len__') and hasattr(g_prox, '__getitem__'):
+    #     # its a list of proximal operators
+    #     if not len(g_prox):
+    #         raise NotImplementedError
+    #     # TODO: make sure these are callable
+    #     g_prox[0] = njit(g_prox[0])
+    #     g_prox[1] = njit(g_prox[1])
     elif g_prox is None:
         @njit
         def g_prox(step_size, x, *args): return x
@@ -195,8 +191,9 @@ def fmin_SAGA(
 
 
 def fmin_PSSAGA(
-        fun, fun_deriv, A, b, g_prox, h_prox, x0,
+        fun, fun_deriv, A, b, x0, g_prox=None, h_prox=None,
         beta: float=1.0,
+        gamma: float=1.0,
         step_size=-1,
         h_blocks=None,
         max_iter=1000, tol=1e-6, verbose=False, callback=None, trace=False):
@@ -234,8 +231,8 @@ def fmin_PSSAGA(
         epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA(
             fun, fun_deriv, g_prox, h_prox, h_blocks, A, b, beta)
     else:
-        epoch_iteration, trace_loss = _epoch_factory_SAGA(
-            fun, fun_deriv, g_prox, A, b, beta)
+        epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
+            fun, fun_deriv, g_prox, h_prox, A, b, beta, gamma)
 
     start_time = datetime.now()
     trace_fun = []
@@ -448,5 +445,33 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, h_blocks, A, b, b
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(x[idx], A_i, b[i]) / n_samples
         return obj
+
+    return epoch_iteration_template, full_loss
+
+
+def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, beta, gamma):
+
+
+    @njit(nogil=True, cache=True)
+    def epoch_iteration_template(
+            y, memory_gradient, gradient_average, sample_indices,
+            step_size):
+        n_samples, n_features = A.shape
+        # .. inner iteration ..
+        for i in sample_indices:
+            x = g_prox(beta * step_size, y)
+            grad_i = f_prime(x, A[i], b[i])
+            incr = (grad_i - memory_gradient[i]) * A[i]
+            z = h_prox(gamma * step_size, 2 * x - y - step_size * (incr + gradient_average))
+            y -= x - z
+            gradient_average += incr / n_samples
+            memory_gradient[i] = grad_i
+
+    @njit(nogil=True, cache=True)
+    def full_loss(x):
+        obj = 0.
+        n_samples, n_features = A.shape
+        for i in range(n_samples):
+            obj += fun(x, A[i], b[i]) / n_samples
 
     return epoch_iteration_template, full_loss

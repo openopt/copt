@@ -46,8 +46,8 @@ def test_optimize():
         X_dense, y, np.zeros(n_features), trace=True, step_size=step_size)
     assert opt.success
     opt2 = fmin_PSSAGA(stochastic.f_squared, stochastic.deriv_squared,
-                       X_dense, y, None, None, np.zeros(n_features),
-                       step_size=step_size, trace=True)
+                       X_dense, y, np.zeros(n_features), step_size=step_size,
+                       trace=True)
     assert opt.success
     print(fprime_squaredloss(opt.x))
     sol_scipy = optimize.fmin_l_bfgs_b(
@@ -111,3 +111,8 @@ def test_prox_groups():
             beta=beta, g_prox=g_prox)
         np.testing.assert_allclose(opt.x, opt2.x, rtol=1e-2)
 
+        opt3 = fmin_PSSAGA(
+            stochastic.f_logistic, stochastic.deriv_logistic,
+            X_sparse.toarray(), y, np.zeros(n_features), step_size=step_size,
+            beta=beta, gamma=beta, g_prox=g_prox)
+        np.testing.assert_allclose(opt.x, opt3.x, rtol=1e-2)
