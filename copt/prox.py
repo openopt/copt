@@ -11,15 +11,14 @@ import warnings
 from numba import njit
 
 
-def prox_L1(x, step_size):
+def prox_L1(step_size: float, x: np.ndarray) -> np.ndarray:
     """
     L1 proximal operator
     """
-    return np.fmax(x - step_size , 0) - \
-           np.fmax(- x - step_size, 0)
+    return np.fmax(x - step_size, 0) - np.fmax(- x - step_size, 0)
 
 
-def prox_tv1d(w, step_size):
+def prox_tv1d(step_size: float, w: np.ndarray) -> np.ndarray:
     """
     Computes the proximal operator of the 1-dimensional total variation operator.
 
@@ -131,9 +130,8 @@ def _prox_tv1d(input, output, step_size):
 
 
 @njit
-def _prox_tv1d_cols(a, stepsize, n_rows, n_cols):
+def prox_tv1d_cols(stepsize, a, n_rows, n_cols):
     """apply prox_tv1d along columns of the matri a
-    This function is mostly a helper for prox_tv2d
     """
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
@@ -143,9 +141,8 @@ def _prox_tv1d_cols(a, stepsize, n_rows, n_cols):
 
 
 @njit
-def _prox_tv1d_rows(a, stepsize, n_rows, n_cols):
+def prox_tv1d_rows(stepsize, a, n_rows, n_cols):
     """apply prox_tv1d along rows of the matri a
-    This function is mostly a helper for prox_tv2d
     """
     A = a.reshape((n_rows, n_cols))
     out = np.empty_like(A)
@@ -154,7 +151,7 @@ def _prox_tv1d_rows(a, stepsize, n_rows, n_cols):
     return out.ravel()
 
 
-def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
+def c_prox_tv2d(step_size, x, n_rows, n_cols, max_iter, tol):
     """
     Douflas-Rachford to minimize a 2-dimensional total variation.
 
@@ -166,10 +163,10 @@ def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
 
     for it in range(max_iter):
         y = x + p
-        y = _prox_tv1d_cols(y, stepsize, n_rows, n_cols)
+        y = prox_tv1d_cols(step_size, y, n_rows, n_cols)
         p += x - y
         x = y + q
-        x = _prox_tv1d_rows(x, stepsize, n_rows, n_cols)
+        x = prox_tv1d_rows(step_size, x, n_rows, n_cols)
         q += y - x
 
         # check convergence
@@ -182,7 +179,7 @@ def c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol):
     return x
 
 
-def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
+def prox_tv2d(step_size, w, n_rows, n_cols, max_iter=500, tol=1e-3):
     """
     Computes the proximal operator of the 2-dimensional total variation operator.
 
@@ -198,7 +195,7 @@ def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
     w: array
         vector of coefficients
 
-    stepsize: float
+    step_size: float
         step size (often denoted gamma) in proximal objective function
 
     max_iter: int
@@ -216,7 +213,7 @@ def prox_tv2d(w, stepsize, n_rows, n_cols, max_iter=500, tol=1e-3):
     """
 
     x = w.copy().astype(np.float64)
-    return c_prox_tv2d(x, stepsize, n_rows, n_cols, max_iter, tol)
+    return c_prox_tv2d(step_size, x, n_rows, n_cols, max_iter, tol)
 
 
 def tv2d_linear_operator(n_rows, n_cols):

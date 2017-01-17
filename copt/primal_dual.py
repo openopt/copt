@@ -70,22 +70,23 @@ def fmin_CondatVu(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, to
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        def g_prox(x, *args): return x
+        def g_prox(step_size, x, *args): return x
     if h_prox is None:
-        def h_prox(x, *args): return x
+        def h_prox(step_size, x, *args): return x
 
     # conjugate of h_prox
-    def h_prox_conj(x, step_size, *args):
-        return x - step_size * h_prox(x / step_size,  beta / step_size, *args)
+    def h_prox_conj(step_size, x, *args):
+        return x - step_size * h_prox(beta / step_size, x / step_size, *args)
     it = 1
     # .. main iteration ..
     while it < max_iter:
 
         grad_fk = fun_deriv(xk)
-        x_next = g_prox(xk - step_size_x * grad_fk - step_size_x * L.T.dot(yk),
-                        step_size_x * alpha, *g_prox_args)
-        y_next = h_prox_conj(yk + step_size_y * L.dot(2 * x_next - xk),
-                             step_size_y, *h_prox_args)
+        x_next = g_prox(step_size_x * alpha,
+                        xk - step_size_x * grad_fk - step_size_x * L.T.dot(yk),
+                        *g_prox_args)
+        y_next = h_prox_conj(step_size_y, yk + step_size_y * L.dot(2 * x_next - xk),
+                             *h_prox_args)
 
         incr = linalg.norm(x_next - xk) ** 2 + linalg.norm(y_next - yk) ** 2
         yk = y_next
@@ -110,5 +111,4 @@ def fmin_CondatVu(fun, fun_deriv, g_prox, h_prox, L, x0, alpha=1.0, beta=1.0, to
             "proximal_gradient did not reach the desired tolerance level", RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success,
-        nit=it)
+        x=xk, success=success, nit=it)
