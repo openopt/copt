@@ -68,7 +68,6 @@ def test_prox_sparse():
 
         step_size = stochastic.compute_step_size('logistic', X)
         for beta in np.logspace(-3, 3, 5):
-            print(beta)
             opt = fmin_SAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
@@ -87,8 +86,8 @@ def test_prox_sparse():
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 beta=beta, g_prox=prox.prox_L1)
-            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-3)
-            np.testing.assert_allclose(opt.x, opt4.x, atol=1e-3)
+            np.testing.assert_allclose(opt.x, opt3.x, rtol=1e-1)
+            np.testing.assert_allclose(opt.x, opt4.x, rtol=1e-1)
 
 
 def test_prox_groups():
