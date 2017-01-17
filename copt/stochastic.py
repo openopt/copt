@@ -225,7 +225,6 @@ def fmin_PSSAGA(
     n_samples, n_features = A.shape
     success = False
 
-    A = sparse.csr_matrix(A)
     if sparse.issparse(A):
         A = sparse.csr_matrix(A)
         if h_blocks is None:

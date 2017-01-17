@@ -58,8 +58,7 @@ def test_optimize():
 
 
 def test_prox_sparse():
-    # for X in (X_dense, X_sparse):
-    for X in (X_sparse,):
+    for X in (X_dense, X_sparse):
         def loss(x):
             return logistic._logistic_loss(x, X, y, 0.0) / n_samples
 
