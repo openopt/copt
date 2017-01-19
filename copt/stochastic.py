@@ -207,7 +207,8 @@ def fmin_PSSAGA(
         max_iter=100, tol=1e-6, verbose=False, callback=None, trace=False):
 
     if hasattr(g_prox, '__call__'):
-        g_prox = njit(g_prox)
+        if not hasattr(g_prox, 'inspect_llvm'):
+            g_prox = njit(g_prox)
     elif g_prox is None:
         @njit
         def g_prox(step_size, x, *args): return x
@@ -215,7 +216,9 @@ def fmin_PSSAGA(
         raise NotImplementedError
 
     if hasattr(h_prox, '__call__'):
-        h_prox = njit(h_prox)
+        if not hasattr(h_prox, 'inspect_llvm'):
+            # if it has not yet been jitted
+            h_prox = njit(h_prox)
     elif h_prox is None:
         @njit
         def h_prox(step_size, x, *args): return x
@@ -472,7 +475,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
     idx = sparse_weights_h != 0
     sparse_weights_h[idx] = n_samples / sparse_weights_h[idx]
 
-    @njit(cache=True)
+    #@njit(cache=True)
     def epoch_iteration_template(
             y0, y1, x, memory_gradient, gradient_average, sample_indices, step_size):
 
@@ -534,7 +537,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
 
 def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, alpha, beta, gamma):
 
-    @njit
+    #@njit
     def epoch_iteration_template(
             y, x, z, memory_gradient, gradient_average, sample_indices,
             step_size):
@@ -551,7 +554,7 @@ def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, alpha, beta, gamma
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
-    @njit
+    #@njit
     def full_loss(x):
         obj = 0.
         n_samples, n_features = A.shape

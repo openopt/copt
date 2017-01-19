@@ -101,6 +101,7 @@ def test_prox_sparse():
             np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)
             np.testing.assert_allclose(opt.x, opt4.x, atol=1e-1)
 
+
 def test_prox_groups():
     """Test sparse problems with group structure
 
@@ -153,3 +154,67 @@ def test_prox_groups():
             X_sparse, y, np.zeros(n_features), step_size=step_size,
             gamma=beta, h_prox=g_prox, h_blocks=groups, alpha=alpha)
         np.testing.assert_allclose(opt.x, opt4.x, atol=1e-1)
+
+
+def test_fused_lasso():
+    """Test sparse problems with group structure
+    """
+
+    prox_L1 = njit(prox.prox_L1)
+
+    def g_prox(step_size, x):
+        if x.size == 1:
+            return x
+        else:
+            n_rows = x.size // 2
+            Lx = np.empty(n_rows)
+            for i in range(n_rows):
+                Lx[i] = x[2 * i] - x[2 * i + 1]
+            z = prox_L1(2 * step_size, Lx) - Lx
+            tmp = np.zeros(x.size)
+            for i in range(n_rows):
+                tmp[2 * i] = z[i]
+                tmp[2 * i + 1] = - z[i]
+            return x + tmp / 2
+
+    # def h_prox(step_size, x):
+    #     x2 = x[1:].copy()
+    #     x_final = x.copy()
+    #     n_rows = x2.size // 2
+    #     Lx = np.empty(n_rows)
+    #     for i in range(n_rows):
+    #         Lx[i] = x2[2 * i] - x2[2 * i + 1]
+    #     z = prox_L1(2 * step_size, Lx) - Lx
+    #     tmp = np.zeros(x2.size)
+    #     for i in range(n_rows):
+    #         tmp[2 * i] = z[i]
+    #         tmp[2 * i + 1] = - z[i]
+    #     x2 += tmp / 2
+    #     x_final[1:] = x2
+    #     return x_final
+
+    g_groups = np.arange(n_features) // 2
+    h_groups = np.arange(1, n_features + 1) // 2
+    print(h_groups)
+
+    for X in (X_sparse,):
+        step_size = stochastic.compute_step_size('logistic', X)
+        def loss(x):
+            return logistic._logistic_loss(x, X, y, 1.0) / n_samples
+
+        def grad(x):
+            return logistic._logistic_loss_and_grad(x, X, y, 1.0)[1] / n_samples
+
+        for beta in np.logspace(-3, 3, 3):
+
+            opt = fmin_PGD(
+                loss, grad, prox.prox_tv1d, np.zeros(n_features),
+                step_size=step_size, alpha=beta)
+
+            # PSSAGA now!
+            opt3 = fmin_PSSAGA(
+                stochastic.f_logistic, stochastic.deriv_logistic,
+                X, y, np.zeros(n_features), step_size=step_size,
+                alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox,
+                g_blocks=g_groups, h_prox=g_prox, h_blocks=h_groups)
+            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)
