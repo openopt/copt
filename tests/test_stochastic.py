@@ -98,8 +98,8 @@ def test_prox_sparse():
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 alpha=alpha, beta=beta, g_prox=prox.prox_L1)
-            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)
-            np.testing.assert_allclose(opt.x, opt4.x, atol=1e-1)
+            assert np.abs(loss(opt.x) - loss(opt3.x)) < 0.1
+            assert np.abs(loss(opt.x) - loss(opt4.x)) < 0.1
 
 
 def test_prox_groups():
