@@ -364,7 +364,7 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, alpha, beta
     # .. compute the block support ..
     BS_data, BS_indices, BS_indptr = _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks)
-    BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr))
+    BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr), (n_samples, n_blocks))
 
     # .. estimate a mapping from blocks to features ..
     reverse_blocks = sparse.dok_matrix((n_blocks, n_features), dtype=np.bool)
@@ -398,7 +398,7 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, alpha, beta
             for g in block_idx:
                 idx_g = reverse_blocks_indices[
                     reverse_blocks_indptr[g]:reverse_blocks_indptr[g+1]]
-                grad_est[idx_g] += gradient_average[idx_g] * d[g] + alpha * x[idx_g]
+                grad_est[idx_g] += d[g] * (gradient_average[idx_g] + alpha * x[idx_g])
                 x[idx_g] = g_prox(
                     step_size * beta * d[g], x[idx_g] - step_size * grad_est[idx_g])
 
@@ -472,7 +472,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
     idx = sparse_weights_h != 0
     sparse_weights_h[idx] = n_samples / sparse_weights_h[idx]
 
-    @njit(nogil=True, cache=True)
+    @njit(cache=True)
     def epoch_iteration_template(
             y0, y1, x, memory_gradient, gradient_average, sample_indices, step_size):
 
@@ -520,7 +520,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
             gradient_average[idx] += (grad_i - memory_gradient[i]) * A_i / n_samples
             memory_gradient[i] = grad_i
 
-    @njit(nogil=True, cache=True)
+    @njit
     def full_loss(x):
         obj = 0.
         for i in range(n_samples):
@@ -534,7 +534,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
 
 def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, alpha, beta, gamma):
 
-    @njit(nogil=True, cache=True)
+    @njit
     def epoch_iteration_template(
             y, x, z, memory_gradient, gradient_average, sample_indices,
             step_size):
@@ -551,7 +551,7 @@ def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, alpha, beta, gamma
             gradient_average += incr / n_samples
             memory_gradient[i] = grad_i
 
-    @njit(nogil=True, cache=True)
+    @njit
     def full_loss(x):
         obj = 0.
         n_samples, n_features = A.shape
