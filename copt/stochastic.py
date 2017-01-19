@@ -308,6 +308,35 @@ def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b, beta):
     return epoch_iteration_template, full_loss
 
 
+@njit(nogil=True, cache=True)
+def _support_matrix(
+        A_indices, A_indptr, g_blocks, n_blocks):
+    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
+    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
+    BS_indptr[0] = 0
+    seen_blocks = np.zeros(n_blocks, dtype=np.bool_)
+    counter_indptr = 0
+    BS_indptr[0] = counter_indptr
+    for i in range(A_indptr.size - 1):
+        low = A_indptr[i]
+        high = A_indptr[i + 1]
+        for j in range(low, high):
+            idx = A_indices[j]
+            g_idx = g_blocks[idx]
+            if seen_blocks[g_idx] == 0:
+                # if first time we encouter this block,
+                # add to the index and mark as seen
+                BS_indices[counter_indptr] = g_idx
+                seen_blocks[g_idx] += 1
+                counter_indptr += 1
+        BS_indptr[i+1] = counter_indptr
+        # cleanup
+        for j in range(BS_indptr[i], counter_indptr):
+            seen_blocks[BS_indices[j]] = 0
+    BS_data = np.ones(counter_indptr)
+    return BS_data, BS_indices[:counter_indptr], BS_indptr
+
+
 def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
 
     A_data = A.data
@@ -321,13 +350,9 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
     assert np.all(unique_blocks == np.arange(n_blocks))
 
     # .. compute the block support ..
-    BS = sparse.dok_matrix((n_samples, n_blocks), dtype=np.bool)
-    for i in range(n_samples):
-        for j in A_indices[A_indptr[i]:A_indptr[i + 1]]:
-            BS[i, g_blocks[j]] = True
-    BS = BS.tocsr()
-    BS_indices = BS.indices
-    BS_indptr = BS.indptr
+    BS_data, BS_indices, BS_indptr = _support_matrix(
+        A_indices, A_indptr, g_blocks, n_blocks)
+    BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr))
 
     # .. estimate a mapping from blocks to features ..
     reverse_blocks = sparse.dok_matrix((n_blocks, n_features), dtype=np.bool)
@@ -383,7 +408,6 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, beta):
     return epoch_iteration_template, full_loss
 
 
-@profile
 def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_blocks,
                                  A, b, beta, gamma):
 
@@ -399,19 +423,12 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
     assert np.all(unique_blocks == np.arange(n_blocks_g))
 
     # .. compute the block support ..
-    BS = sparse.lil_matrix((n_samples, n_blocks_g), dtype=np.int)
-    BS2 = sparse.lil_matrix((n_samples, n_blocks_h), dtype=np.int)
-    for i in range(n_samples):
-        idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
-        BS[i, g_blocks[idx]] = True
-        BS2[i, h_blocks[idx]] = True
-    BS = BS.tocsr()
-    BS_indices = BS.indices
-    BS_indptr = BS.indptr
-
-    BS2 = BS2.tocsr()
-    BS2_indices = BS2.indices
-    BS2_indptr = BS2.indptr
+    BS_data, BS_indices, BS_indptr = _support_matrix(
+        A_indices, A_indptr, g_blocks, n_blocks_g)
+    BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr))
+    BS2_data, BS2_indices, BS2_indptr = _support_matrix(
+        A_indices, A_indptr, h_blocks, n_blocks_h)
+    BS2 = sparse.csr_matrix((BS2_data, BS2_indices, BS2_indptr))
 
     # .. estimate a mapping from blocks to features ..
     reverse_blocks = sparse.dok_matrix((n_blocks_g, n_features), dtype=np.bool)
@@ -437,7 +454,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
     sparse_weights_h = np.array(BS2.sum(0), dtype=np.float).ravel()
     sparse_weights_h[sparse_weights_h != 0] = n_samples / sparse_weights_h
 
-    #@njit(nogil=True, cache=True)
+    @njit(nogil=True, cache=True)
     def epoch_iteration_template(
             y0, y1, x, memory_gradient, gradient_average, sample_indices, step_size):
 
@@ -493,6 +510,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
         return obj
 
     return epoch_iteration_template, full_loss
+
 
 def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, beta, gamma):
 
