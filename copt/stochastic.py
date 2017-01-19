@@ -202,6 +202,8 @@ def fmin_PSSAGA(
         beta: float=0.0,
         gamma: float=0.0,
         step_size=-1,
+        g_func=None,
+        h_func=None,
         g_blocks=None,
         h_blocks=None,
         max_iter=100, tol=1e-6, verbose=False, callback=None, trace=False):
@@ -243,14 +245,14 @@ def fmin_PSSAGA(
         if g_blocks is None:
             g_blocks = np.arange(n_features)
         epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA(
-            fun, fun_deriv, g_prox, h_prox, g_blocks, h_blocks, A, b,
+            fun, g_func, h_func, fun_deriv, g_prox, h_prox, g_blocks, h_blocks, A, b,
             alpha, beta, gamma)
     else:
         epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
             fun, fun_deriv, g_prox, h_prox, A, b, alpha, beta, gamma)
 
     start_time = datetime.now()
-    trace_fun = []
+    trace_func = []
     trace_certificate = []
     trace_time = []
     trace_x = []
@@ -268,16 +270,14 @@ def fmin_PSSAGA(
             y0, y1, x, z0, z1, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
 
-        # TODO: pass from function
+        xmz = np.concatenate((x - z0, x - z1)) / step_size
+        certificate = np.linalg.norm(xmz)
         if callback is not None:
             callback(x)
         if trace:
-            trace_x.append(x)
-            # trace_gradmap.append(np.linalg.norm(x - z))
+            trace_x.append(x.copy())
+            trace_certificate.append(certificate)
             trace_time.append((datetime.now() - start_time).total_seconds())
-
-        xmz = np.concatenate((x - z0, x - z1)) / step_size
-        certificate = np.linalg.norm(xmz)
         if verbose:
             print('Iteration %s, certificate: %s' % (it, certificate))
         if certificate < tol:
@@ -288,11 +288,12 @@ def fmin_PSSAGA(
             print('.. computing trace ..')
         # .. compute function values ..
         with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            trace_fun = [t for t in executor.map(trace_loss, trace_x)]
+            trace_func = [t for t in executor.map(trace_loss, trace_x)]
 
     return optimize.OptimizeResult(
         x=x, y=[y0, y1], success=success, nit=it, trace_x=trace_x,
-        trace_fun=trace_fun, trace_certificate=trace_certificate, trace_time=trace_time)
+        trace_func=trace_func, trace_certificate=np.array(trace_certificate),
+        trace_time=trace_time)
 
 
 def _epoch_factory_SAGA(fun, f_prime, g_prox, A, b, alpha, beta):
@@ -350,7 +351,8 @@ def _support_matrix(
     return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, alpha, beta):
+def _epoch_factory_sparse_SAGA(
+        f_func, f_prime, g_prox, g_blocks, A, b, alpha, beta):
 
     A_data = A.data
     A_indices = A.indices
@@ -416,14 +418,15 @@ def _epoch_factory_sparse_SAGA(fun, f_prime, g_prox, g_blocks, A, b, alpha, beta
         for i in range(n_samples):
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
-            obj += fun(x[idx], A_i, b[i]) / n_samples
+            obj += f_func(x[idx], A_i, b[i]) / n_samples
         return obj + 0.5 * alpha * np.dot(x, x)
 
     return epoch_iteration_template, full_loss
 
 
-def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_blocks,
-                                 A, b, alpha, beta, gamma):
+def _epoch_factory_sparse_PSSAGA(
+        fun, g_func, h_func, f_prime, g_prox, h_prox, g_blocks, h_blocks, A, b, alpha,
+        beta, gamma):
 
     A_data = A.data
     A_indices = A.indices
@@ -539,6 +542,7 @@ def _epoch_factory_sparse_PSSAGA(fun, f_prime, g_prox, h_prox, g_blocks, h_block
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(x[idx], A_i, b[i]) / n_samples
+        obj += alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
         return obj
 
     return epoch_iteration_template, full_loss
