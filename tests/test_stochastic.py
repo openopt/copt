@@ -177,25 +177,8 @@ def test_fused_lasso():
                 tmp[2 * i + 1] = - z[i]
             return x + tmp / 2
 
-    # def h_prox(step_size, x):
-    #     x2 = x[1:].copy()
-    #     x_final = x.copy()
-    #     n_rows = x2.size // 2
-    #     Lx = np.empty(n_rows)
-    #     for i in range(n_rows):
-    #         Lx[i] = x2[2 * i] - x2[2 * i + 1]
-    #     z = prox_L1(2 * step_size, Lx) - Lx
-    #     tmp = np.zeros(x2.size)
-    #     for i in range(n_rows):
-    #         tmp[2 * i] = z[i]
-    #         tmp[2 * i + 1] = - z[i]
-    #     x2 += tmp / 2
-    #     x_final[1:] = x2
-    #     return x_final
-
     g_groups = np.arange(n_features) // 2
     h_groups = np.arange(1, n_features + 1) // 2
-    print(h_groups)
 
     for X in (X_sparse,):
         step_size = stochastic.compute_step_size('logistic', X)
