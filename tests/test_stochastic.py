@@ -136,6 +136,8 @@ def test_prox_groups():
         return y.copy()
 
     def g_prox_stochastic(step_size, x, low, high):
+        if high - low < 2:
+            return
         a = x[low] - x[low + 1]
         z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
         x[low] += z / 2.
@@ -144,7 +146,6 @@ def test_prox_groups():
     groups = np.arange(n_features) // 2
     step_size = stochastic.compute_step_size('logistic', X_sparse, alpha)
     for beta in np.logspace(-3, 3, 3):
-        print(beta)
 
         opt = stochastic.fmin_SAGA_fast(
             stochastic.f_logistic, stochastic.deriv_logistic,
@@ -178,6 +179,8 @@ def test_fused_lasso():
     alpha = 1.0
 
     def g_prox_stochastic(step_size, x, low, high):
+        if high - low < 2:
+            return
         a = x[low] - x[low + 1]
         z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
         x[low] += z / 2.
