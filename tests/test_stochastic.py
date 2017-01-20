@@ -186,8 +186,8 @@ def test_fused_lasso():
     g_groups = np.arange(n_features) // 2
     h_groups = np.arange(1, n_features + 1) // 2
 
-    for X in (X_sparse,):
-        step_size = stochastic.compute_step_size('logistic', X, alpha)
+    for X in (X_sparse, X_dense):
+        step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
         def loss(x):
             return logistic._logistic_loss(x, X, y, alpha * n_samples) / n_samples
 

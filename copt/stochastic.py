@@ -5,7 +5,6 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt.utils import norm_rows
-from tqdm import trange as tnrange
 
 
 @njit
@@ -293,8 +292,7 @@ def fmin_SAGA_fast(
     gradient_average = np.zeros(n_features)
 
     # .. iterate on epochs ..
-    bar = tnrange(max_iter)
-    for it in bar:
+    for it in range(max_iter):
         epoch_iteration(
             x, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
@@ -397,8 +395,7 @@ def fmin_PSSAGA_fast(
     z1 = x.copy()
 
     # .. iterate on epochs ..
-    bar = tnrange(max_iter, desc='PS-SAGA progress')
-    for it in bar:
+    for it in range(max_iter):
         epoch_iteration(
             y0, y1, x, z0, z1, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
@@ -413,21 +410,17 @@ def fmin_PSSAGA_fast(
             trace_certificate.append(certificate)
             trace_time.append((datetime.now() - start_time).total_seconds())
         if verbose:
-            bar.write('certificate: %s' % certificate)
+            print('certificate: %s' % certificate)
         if certificate < tol:
             success = True
             break
     if trace:
         if verbose:
-            bar.write('.. computing trace ..')
+            print.write('.. computing trace ..')
         # .. compute function values ..
-        trace_fun = []
-        bar = tnrange(len(trace_x), desc='Computing trace function')
-        for i in bar:
-            trace_fun.append(trace_loss(trace_x[i]))
-        #
-        # with futures.ThreadPoolExecutor(max_workers=1) as executor:
-        #     trace_func = [t for t in executor.map(trace_loss, trace_x)]
+        trace_func = []
+        for i in range(len(trace_x)):
+            trace_func.append(trace_loss(trace_x[i]))
 
     return optimize.OptimizeResult(
         x=x, y=[y0, y1], success=success, nit=it, trace_x=trace_x,
@@ -541,7 +534,7 @@ def _epoch_factory_sparse_SAGA_fast(
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
             memory_gradient[i] = grad_i
 
-    @njit(nogil=True, cache=True)
+    @njit
     def full_loss(x):
         obj = 0.
         for i in range(n_samples):
@@ -629,7 +622,7 @@ def _epoch_factory_sparse_PSSAGA_fast(
                 j_idx = A_indices[j]
                 p += x[j_idx] * A_data[j]
 
-            grad_i = 0.5 * f_prime(p, b[i])
+            grad_i = f_prime(p, b[i])
 
             # .. gradient estimate (XXX difference) ..
             for j in range(A_indptr[i], A_indptr[i+1]):
@@ -676,7 +669,6 @@ def _epoch_factory_sparse_PSSAGA_fast(
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
             memory_gradient[i] = grad_i
 
-
     @njit
     def full_loss(x):
         obj = 0.
@@ -684,7 +676,7 @@ def _epoch_factory_sparse_PSSAGA_fast(
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(np.dot(x[idx], A_i), b[i]) / n_samples
-        obj += alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
+        obj += 0.5 * alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
         return obj
 
     return epoch_iteration_template, full_loss
