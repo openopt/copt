@@ -41,7 +41,7 @@ def test_optimize():
 
         step_size = stochastic.compute_step_size('logistic', X_dense, alpha) / 4
         opt = stochastic.fmin_SAGA_fast(
-            stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+            stochastic.f_logistic, stochastic.deriv_logistic,
             X_dense, y, np.zeros(n_features), step_size=step_size,
             alpha=alpha)
         # assert opt.success
@@ -53,11 +53,11 @@ def test_optimize():
 
         step_size = stochastic.compute_step_size('squared', X_dense, alpha)
         opt = stochastic.fmin_SAGA_fast(
-            stochastic.f_squared_fast, stochastic.deriv_squared_fast,
+            stochastic.f_squared, stochastic.deriv_squared,
             X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size)
         # assert opt.certificate < 1e-2
         opt2 = stochastic.fmin_PSSAGA_fast(
-            stochastic.f_squared_fast, stochastic.deriv_squared_fast, X_dense, y,
+            stochastic.f_squared, stochastic.deriv_squared, X_dense, y,
             np.zeros(n_features), alpha=alpha, step_size=step_size / 2., tol=0)
         assert opt.certificate < 1e-2
         sol_scipy = optimize.fmin_l_bfgs_b(
@@ -65,8 +65,6 @@ def test_optimize():
         # Compare to SciPy's LFBGS
         np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-1)
         np.testing.assert_allclose(sol_scipy, opt2.x, atol=1e-1)
-
-
 
 
 def test_prox_sparse():
@@ -82,7 +80,7 @@ def test_prox_sparse():
         step_size = stochastic.compute_step_size('logistic', X, alpha)
         for beta in np.logspace(-3, 3, 3):
             opt = stochastic.fmin_SAGA_fast(
-                stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+                stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
             opt2 = fmin_PGD(
@@ -92,13 +90,13 @@ def test_prox_sparse():
             np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
 
             opt3 = stochastic.fmin_PSSAGA_fast(
-                stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+                stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, gamma=beta, h_prox=stochastic.prox_L1, tol=1e-12)
+                alpha=alpha, gamma=beta, h_prox=stochastic.prox_L1, tol=0)
             opt4 = stochastic.fmin_PSSAGA_fast(
-                stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+                stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, beta=beta, g_prox=stochastic.prox_L1, tol=1e-12)
+                alpha=alpha, beta=beta, g_prox=stochastic.prox_L1, tol=0)
             # np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)
             assert np.abs(loss(opt.x) - loss(opt3.x)) < 0.1
             assert np.abs(loss(opt.x) - loss(opt4.x)) < 0.1
@@ -137,13 +135,19 @@ def test_prox_groups():
         y[low:high] = x + tmp / 2
         return y.copy()
 
+    def g_prox_stochastic(step_size, x, low, high):
+        a = x[low] - x[low + 1]
+        z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
+        x[low] += z / 2.
+        x[low + 1] -= z / 2.
+
     groups = np.arange(n_features) // 2
     step_size = stochastic.compute_step_size('logistic', X_sparse, alpha)
     for beta in np.logspace(-3, 3, 3):
         print(beta)
 
         opt = stochastic.fmin_SAGA_fast(
-            stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+            stochastic.f_logistic, stochastic.deriv_logistic,
             X_sparse, y, np.zeros(n_features), step_size=step_size,
             beta=beta, g_prox=g_prox, g_blocks=groups, alpha=alpha, max_iter=10)
         opt2 = fmin_PGD(
@@ -153,16 +157,16 @@ def test_prox_groups():
 
         # PSSAGA now!
         opt3 = stochastic.fmin_PSSAGA_fast(
-            stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+            stochastic.f_logistic, stochastic.deriv_logistic,
             X_sparse, y, np.zeros(n_features), step_size=step_size,
-            beta=beta, g_prox=g_prox, g_blocks=groups, alpha=alpha)
+            beta=beta, g_prox=g_prox_stochastic, g_blocks=groups, alpha=alpha)
         assert opt3.certificate < 1e-2
         np.testing.assert_allclose(opt2.x, opt3.x, atol=1e-1)
 
         opt4 = stochastic.fmin_PSSAGA_fast(
-            stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+            stochastic.f_logistic, stochastic.deriv_logistic,
             X_sparse, y, np.zeros(n_features), step_size=step_size,
-            gamma=beta, h_prox=g_prox, h_blocks=groups, alpha=alpha)
+            gamma=beta, h_prox=g_prox_stochastic, h_blocks=groups, alpha=alpha)
         assert opt4.certificate < 1e-2
         np.testing.assert_allclose(opt3.x, opt4.x, atol=1e-1)
 
@@ -173,24 +177,11 @@ def test_fused_lasso():
 
     alpha = 1.0
 
-    prox_L1 = njit(prox.prox_L1)
-
-    def g_prox(step_size, y, low, high):
-        x = y[low:high].copy()
-        if x.size == 1:
-            return x
-        else:
-            n_rows = x.size // 2
-            Lx = np.empty(n_rows)
-            for i in range(n_rows):
-                Lx[i] = x[2 * i] - x[2 * i + 1]
-            z = prox_L1(2 * step_size, Lx) - Lx
-            tmp = np.zeros(x.size)
-            for i in range(n_rows):
-                tmp[2 * i] = z[i]
-                tmp[2 * i + 1] = - z[i]
-            y[low:high] = x + tmp / 2
-            return y
+    def g_prox_stochastic(step_size, x, low, high):
+        a = x[low] - x[low + 1]
+        z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
+        x[low] += z / 2.
+        x[low + 1] -= z / 2.
 
     g_groups = np.arange(n_features) // 2
     h_groups = np.arange(1, n_features + 1) // 2
@@ -211,8 +202,8 @@ def test_fused_lasso():
 
             # PSSAGA now!
             opt3 = stochastic.fmin_PSSAGA_fast(
-                stochastic.f_logistic_fast, stochastic.deriv_logistic_fast,
+                stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox,
-                g_blocks=g_groups, h_prox=g_prox, h_blocks=h_groups)
+                alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox_stochastic,
+                g_blocks=g_groups, h_prox=g_prox_stochastic, h_blocks=h_groups)
             np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)

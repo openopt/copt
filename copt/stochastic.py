@@ -5,58 +5,23 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt.utils import norm_rows
+from tqdm import trange as tnrange
 
 
 @njit
-def f_squared(w, x, y):
-    # squared loss
-    return 0.5 * ((y - np.dot(x, w)) ** 2)
-
-
-@njit
-def deriv_squared(w, x, y):
-    # derivative of squared loss
-    return - (y - np.dot(x, w))
-
-
-@njit
-def f_logistic(w, x, y):
-    # logistic loss
-    # same as in lightning
-    p = y * np.dot(x, w)
-    if p > 0:
-        return np.log(1 + np.exp(-p))
-    else:
-        return -p + np.log(1 + np.exp(p))
-
-
-@njit
-def deriv_logistic(w, x, y):
-    # derivative of logistic loss
-    # same as in lightning (with minus sign)
-    p = y * np.dot(x, w)
-    if p > 0:
-        phi = 1. / (1 + np.exp(-p))
-    else:
-        exp_t = np.exp(p)
-        phi = exp_t / (1. + exp_t)
-    return (phi - 1) * y
-
-
-@njit
-def f_squared_fast(p, y):
+def f_squared(p, y):
     # squared loss
     return 0.5 * ((y - p) ** 2)
 
 
 @njit
-def deriv_squared_fast(p, y):
+def deriv_squared(p, y):
     # derivative of squared loss
     return - (y - p)
 
 
 @njit
-def f_logistic_fast(p, y):
+def f_logistic(p, y):
     # logistic loss
     # same as in lightning
     p *= y
@@ -67,7 +32,7 @@ def f_logistic_fast(p, y):
 
 
 @njit
-def deriv_logistic_fast(p, y):
+def deriv_logistic(p, y):
     # derivative of logistic loss
     # same as in lightning (with minus sign)
     p *= y
@@ -104,9 +69,11 @@ def compute_step_size(loss: str, A, alpha: float, step_size_factor=4) -> float:
 
     """
     if loss == 'logistic':
-        return 4.0 / ((norm_rows(A) + alpha) * step_size_factor)
+        L = 0.25 * norm_rows(A) + alpha
+        return (1.0 / L) / step_size_factor
     elif loss == 'squared':
-        return 1.0 / ((norm_rows(A) + alpha) * step_size_factor)
+        L = norm_rows(A) + alpha
+        return (1.0 / L) / step_size_factor
     else:
         raise NotImplementedError('loss %s is not implemented' % loss)
 
@@ -326,7 +293,8 @@ def fmin_SAGA_fast(
     gradient_average = np.zeros(n_features)
 
     # .. iterate on epochs ..
-    for it in range(max_iter):
+    bar = tnrange(max_iter)
+    for it in bar:
         epoch_iteration(
             x, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
@@ -429,7 +397,8 @@ def fmin_PSSAGA_fast(
     z1 = x.copy()
 
     # .. iterate on epochs ..
-    for it in range(max_iter):
+    bar = tnrange(max_iter, desc='PS-SAGA progress')
+    for it in bar:
         epoch_iteration(
             y0, y1, x, z0, z1, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
@@ -444,23 +413,27 @@ def fmin_PSSAGA_fast(
             trace_certificate.append(certificate)
             trace_time.append((datetime.now() - start_time).total_seconds())
         if verbose:
-            print('Iteration %s, certificate: %s' % (it, certificate))
+            bar.write('certificate: %s' % certificate)
         if certificate < tol:
             success = True
             break
     if trace:
         if verbose:
-            print('.. computing trace ..')
+            bar.write('.. computing trace ..')
         # .. compute function values ..
-        with futures.ThreadPoolExecutor(max_workers=1) as executor:
-            trace_func = [t for t in executor.map(trace_loss, trace_x)]
+        trace_fun = []
+        bar = tnrange(len(trace_x), desc='Computing trace function')
+        for i in bar:
+            trace_fun.append(trace_loss(trace_x[i]))
+        #
+        # with futures.ThreadPoolExecutor(max_workers=1) as executor:
+        #     trace_func = [t for t in executor.map(trace_loss, trace_x)]
 
     return optimize.OptimizeResult(
         x=x, y=[y0, y1], success=success, nit=it, trace_x=trace_x,
         certificate=certificate,
         trace_func=trace_func, trace_certificate=np.array(trace_certificate),
         trace_time=trace_time)
-
 
 
 @njit(nogil=True, cache=True)
@@ -525,7 +498,7 @@ def _epoch_factory_sparse_SAGA_fast(
     idx = (d != 0)
     d[idx] = n_samples / d[idx]
 
-    # @njit
+    @njit
     def epoch_iteration_template(
             x, memory_gradient, gradient_average, sample_indices, step_size):
 
@@ -630,7 +603,7 @@ def _epoch_factory_sparse_PSSAGA_fast(
     idx = d_h != 0
     d_h[idx] = n_samples / d_h[idx]
 
-    #@njit
+    @njit
     def epoch_iteration_template(
             y0, y1, x, z0, z1, memory_gradient, gradient_average, sample_indices, step_size):
 
@@ -711,36 +684,7 @@ def _epoch_factory_sparse_PSSAGA_fast(
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(np.dot(x[idx], A_i), b[i]) / n_samples
-        # obj += alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
+        obj += alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
         return obj
-
-    return epoch_iteration_template, full_loss
-
-
-def _epoch_factory_PSSAGA(fun, f_prime, g_prox, h_prox, A, b, alpha, beta, gamma):
-
-    @njit
-    def epoch_iteration_template(
-            y, y1, x, z0, z1, memory_gradient, gradient_average, sample_indices,
-            step_size):
-        n_samples, n_features = A.shape
-        # .. inner iteration ..
-        for i in sample_indices:
-            x[:] = y
-            g_prox(beta * step_size, x, 0, n_features)
-            grad_i = f_prime(x, A[i], b[i])
-            incr = (grad_i - memory_gradient[i]) * A[i]
-            z = 2 * x - y - step_size * (incr + gradient_average + alpha * x)
-            h_prox(gamma * step_size, z, 0, n_features)
-            y -= x - z
-            gradient_average += incr / n_samples
-            memory_gradient[i] = grad_i
-
-    @njit
-    def full_loss(x):
-        obj = 0.
-        n_samples, n_features = A.shape
-        for i in range(n_samples):
-            obj += fun(np.dot(x, A[i]), b[i]) / n_samples
 
     return epoch_iteration_template, full_loss
