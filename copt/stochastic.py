@@ -145,6 +145,11 @@ def fmin_SAGA(
     else:
         raise NotImplementedError
 
+    if g_func is None:
+        @njit
+        def g_func(x, *args):
+            return 0
+
     n_samples, n_features = A.shape
     success = False
 
@@ -155,7 +160,8 @@ def fmin_SAGA(
             fun, g_func, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
 
     start_time = datetime.now()
-    trace_fun = []
+    trace_func = []
+    trace_certificate = []
     trace_time = []
     trace_x = []
 
@@ -168,17 +174,18 @@ def fmin_SAGA(
         epoch_iteration(
             x, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
-        if callback is not None:
-            callback(x)
-        if trace:
-            trace_x.append(x.copy())
-            trace_time.append((datetime.now() - start_time).total_seconds())
-
         # TODO: needs to be adapted in the sparse case
         grad = gradient_average + alpha * x
         z = x - step_size * grad
         g_prox(beta * step_size, z, 0, n_features)
         certificate = np.linalg.norm((x - z) / step_size)
+
+        if callback is not None:
+            callback(x)
+        if trace:
+            trace_x.append(x.copy())
+            trace_certificate.append(certificate)
+            trace_time.append((datetime.now() - start_time).total_seconds())
         if verbose:
             print(it, certificate)
         if certificate < tol:
@@ -189,14 +196,14 @@ def fmin_SAGA(
             print('.. computing trace ..')
         # .. compute function values ..
         with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-            trace_fun = [t for t in executor.map(trace_loss, trace_x)]
+            trace_func = [t for t in executor.map(trace_loss, trace_x)]
 
     return optimize.OptimizeResult(
-        x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time,
-        certificate=certificate)
+        x=x, success=success, nit=it, trace_func=trace_func, trace_time=trace_time,
+        certificate=certificate, trace_certificate=trace_certificate)
 
 
-def fmin_PSSAGA_fast(
+def fmin_PSSAGA(
         fun, fun_deriv, A, b, x0, g_prox=None, h_prox=None,
         alpha: float=0.0,
         beta: float=0.0,
@@ -239,19 +246,13 @@ def fmin_PSSAGA_fast(
     success = False
 
     A = sparse.csr_matrix(A)
-    if sparse.issparse(A):
-        A = sparse.csr_matrix(A)
-        if h_blocks is None:
-            h_blocks = np.zeros(n_features, dtype=np.int64)
-        if g_blocks is None:
-            g_blocks = np.zeros(n_features, dtype=np.int64)
-        epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA_fast(
-            fun, g_func, h_func, fun_deriv, g_prox, h_prox, g_blocks, h_blocks, A, b,
-            alpha, beta, gamma)
-    else:
-        1/0
-        epoch_iteration, trace_loss = _epoch_factory_PSSAGA(
-            fun, fun_deriv, g_prox, h_prox, A, b, alpha, beta, gamma)
+    if h_blocks is None:
+        h_blocks = np.zeros(n_features, dtype=np.int64)
+    if g_blocks is None:
+        g_blocks = np.zeros(n_features, dtype=np.int64)
+    epoch_iteration, trace_loss = _epoch_factory_sparse_PSSAGA_fast(
+        fun, g_func, h_func, fun_deriv, g_prox, h_prox, g_blocks, h_blocks, A, b,
+        alpha, beta, gamma)
 
     start_time = datetime.now()
     trace_func = []
