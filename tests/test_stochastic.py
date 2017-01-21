@@ -40,7 +40,7 @@ def test_optimize():
             return - X_dense.T.dot(y - np.dot(X_dense, w)) + alpha * n_samples * w
 
         step_size = stochastic.compute_step_size('logistic', X_dense, alpha) / 4
-        opt = stochastic.fmin_SAGA_fast(
+        opt = stochastic.fmin_SAGA(
             stochastic.f_logistic, stochastic.deriv_logistic,
             X_dense, y, np.zeros(n_features), step_size=step_size,
             alpha=alpha)
@@ -52,7 +52,7 @@ def test_optimize():
         # np.testing.assert_allclose([logloss(opt.x)], [opt.trace_fun[-1]])
 
         step_size = stochastic.compute_step_size('squared', X_dense, alpha)
-        opt = stochastic.fmin_SAGA_fast(
+        opt = stochastic.fmin_SAGA(
             stochastic.f_squared, stochastic.deriv_squared,
             X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size)
         # assert opt.certificate < 1e-2
@@ -79,7 +79,7 @@ def test_prox_sparse():
 
         step_size = stochastic.compute_step_size('logistic', X, alpha)
         for beta in np.logspace(-3, 3, 3):
-            opt = stochastic.fmin_SAGA_fast(
+            opt = stochastic.fmin_SAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
@@ -147,7 +147,7 @@ def test_prox_groups():
     step_size = stochastic.compute_step_size('logistic', X_sparse, alpha)
     for beta in np.logspace(-3, 3, 3):
 
-        opt = stochastic.fmin_SAGA_fast(
+        opt = stochastic.fmin_SAGA(
             stochastic.f_logistic, stochastic.deriv_logistic,
             X_sparse, y, np.zeros(n_features), step_size=step_size,
             beta=beta, g_prox=g_prox, g_blocks=groups, alpha=alpha, max_iter=10)

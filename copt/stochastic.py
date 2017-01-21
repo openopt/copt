@@ -77,139 +77,11 @@ def compute_step_size(loss: str, A, alpha: float, step_size_factor=4) -> float:
         raise NotImplementedError('loss %s is not implemented' % loss)
 
 
+
 def fmin_SAGA(
         fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
         alpha: float=0., beta: float=0., g_prox: Callable=None, step_size: float=-1,
-        g_blocks: np.ndarray=None, n_jobs: int=1, max_iter=100, tol=1e-6,
-        verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
-    """Stochastic average gradient augmented (SAGA) algorithm.
-
-    The SAGA algorithm can solve optimization problems of the form
-
-        argmin_x 1/n \sum_{i=1}^n f(a_i^T x, b_i) + alpha * L2 + beta * g(x)
-
-
-    Parameters
-    ----------
-    fun
-        loss function
-
-    fun_deriv
-        derivative function
-
-    alpha
-        Amount of squared L2 regularization
-
-    x0
-        Starting point
-
-    g_blocks
-        If g is a block-separable function, this allows to specify which are the
-        blocks in this penalty. It is an array of integers with the same size as
-        x0 where each coordinate represents the group to which that coordinate
-        belongs to.
-
-    Returns
-    -------
-    opt
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
-
-    References
-    ----------
-    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
-    incremental gradient method with support for non-strongly convex composite
-    objectives." Advances in Neural Information Processing Systems. 2014.
-    """
-
-    x = np.ascontiguousarray(x0).copy()
-    assert x.size == A.shape[1]
-    assert A.shape[0] == b.size
-
-    if step_size < 0:
-        raise ValueError
-
-    # TODO: encapsulate this in _get_factory
-    if hasattr(g_prox, '__call__'):
-        g_prox = njit(g_prox)
-    # elif hasattr(g_prox, '__len__') and hasattr(g_prox, '__getitem__'):
-    #     # its a list of proximal operators
-    #     if not len(g_prox):
-    #         raise NotImplementedError
-    #     # TODO: make sure these are callable
-    #     g_prox[0] = njit(g_prox[0])
-    #     g_prox[1] = njit(g_prox[1])
-    elif g_prox is None:
-        @njit
-        def g_prox(step_size, x, *args): return x
-    else:
-        raise NotImplementedError
-
-    n_samples, n_features = A.shape
-    success = False
-
-    if sparse.issparse(A):
-        A = sparse.csr_matrix(A)
-        if g_blocks is None:
-            g_blocks = np.arange(n_features)
-        epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA(
-                fun, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
-    else:
-        epoch_iteration, trace_loss = _epoch_factory_SAGA(
-            fun, fun_deriv, g_prox, A, b, alpha, beta)
-
-    start_time = datetime.now()
-    trace_fun = []
-    trace_time = []
-    trace_x = []
-
-    # .. memory terms ..
-    memory_gradient = np.zeros(n_samples)
-    gradient_average = np.zeros(n_features)
-
-    # .. iterate on epochs ..
-    for it in range(max_iter):
-        with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-            fut = []
-            for _ in range(n_jobs):
-                fut.append(executor.submit(
-                    epoch_iteration, x, memory_gradient, gradient_average,
-                    np.random.permutation(n_samples), step_size))
-            futures.wait(fut)
-        if callback is not None:
-            callback(x)
-        if trace:
-            trace_x.append(x.copy())
-            trace_time.append((datetime.now() - start_time).total_seconds())
-
-        # TODO: needs to be adapted in the sparse case
-        grad = gradient_average + alpha * x
-        certificate = np.linalg.norm(
-            (x - g_prox(beta * step_size, x - step_size * grad)) / step_size)
-        if verbose:
-            print(it, certificate)
-        if certificate < tol:
-            success = True
-            break
-    if trace:
-        if verbose:
-            print('.. computing trace ..')
-        # .. compute function values ..
-        with futures.ThreadPoolExecutor(max_workers=n_jobs) as executor:
-            trace_fun = [t for t in executor.map(trace_loss, trace_x)]
-
-    return optimize.OptimizeResult(
-        x=x, success=success, nit=it, trace_fun=trace_fun, trace_time=trace_time,
-        certificate=certificate)
-
-
-def fmin_SAGA_fast(
-        fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
-        alpha: float=0., beta: float=0., g_prox: Callable=None, step_size: float=-1,
+        g_func: Callable=None,
         g_blocks: np.ndarray=None, n_jobs: int=1, max_iter=100, tol=1e-6,
         verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
@@ -280,7 +152,7 @@ def fmin_SAGA_fast(
     if g_blocks is None:
         g_blocks = np.zeros(n_features, dtype=np.int64)
     epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA_fast(
-            fun, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
+            fun, g_func, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
 
     start_time = datetime.now()
     trace_fun = []
@@ -462,7 +334,7 @@ def _support_matrix(
 
 
 def _epoch_factory_sparse_SAGA_fast(
-        f_func, f_prime, g_prox, g_blocks, A, b, alpha, beta):
+        f_func, g_func, f_prime, g_prox, g_blocks, A, b, alpha, beta):
 
     A_data = A.data
     A_indices = A.indices
@@ -541,7 +413,7 @@ def _epoch_factory_sparse_SAGA_fast(
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += f_func(np.dot(x[idx], A_i), b[i]) / n_samples
-        return obj + 0.5 * alpha * np.dot(x, x)
+        return obj + 0.5 * alpha * np.dot(x, x) + beta * g_func(x)
 
     return epoch_iteration_template, full_loss
 
