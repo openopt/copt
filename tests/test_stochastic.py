@@ -42,20 +42,23 @@ def test_optimize():
             logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
 
         # .. check both solutions are close ..
-        np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
+        np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-3)
 
         # .. check trace_func ..
-        assert np.abs(opt.trace_func[-1] - logloss(opt.x)) < 1e-1
+        assert np.abs(opt.trace_func[-1] - logloss(opt.x)) < 1e-3
 
         step_size = stochastic.compute_step_size('squared', X_dense, alpha)
         opt = stochastic.fmin_SAGA(
             stochastic.f_squared, stochastic.deriv_squared,
-            X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size)
+            X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size,
+            trace=True)
         # assert opt.certificate < 1e-2
         opt2 = stochastic.fmin_PSSAGA(
             stochastic.f_squared, stochastic.deriv_squared, X_dense, y,
-            np.zeros(n_features), alpha=alpha, step_size=step_size / 2., tol=0)
+            np.zeros(n_features), alpha=alpha, step_size=step_size, tol=0,
+            trace=True)
         assert opt.certificate < 1e-2
+        assert np.abs(opt2.trace_func[-1] - opt.trace_func[-1]) < 1e-3
         sol_scipy = optimize.fmin_l_bfgs_b(
             squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
         # Compare to SciPy's LFBGS

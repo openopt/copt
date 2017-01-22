@@ -178,7 +178,7 @@ def fmin_SAGA(
         grad = gradient_average + alpha * x
         z = x - step_size * grad
         g_prox(beta * step_size, z, 0, n_features)
-        certificate = np.linalg.norm((x - z) / step_size)
+        certificate = np.linalg.norm(x - z)
 
         if callback is not None:
             callback(x)
@@ -215,12 +215,16 @@ def fmin_PSSAGA(
         h_blocks=None,
         max_iter=100, tol=1e-6, verbose=False, callback=None, trace=False):
 
+    n_samples, n_features = A.shape
+    success = False
+
     if hasattr(g_prox, '__call__'):
         if not hasattr(g_prox, 'inspect_llvm'):
             g_prox = njit(g_prox)
     elif g_prox is None:
         @njit
         def g_prox(step_size, x, *args): pass
+        g_blocks = np.arange(n_features)
     else:
         raise NotImplementedError
 
@@ -231,8 +235,17 @@ def fmin_PSSAGA(
     elif h_prox is None:
         @njit
         def h_prox(step_size, x, *args): pass
+        h_blocks = np.arange(n_features)
     else:
         raise NotImplementedError
+
+    # .. define g and h if not done already ..
+    if g_func is None:
+        @njit
+        def g_func(*args): return 0
+    if h_func is None:
+        @njit
+        def h_func(*args): return 0
 
     y0 = x0.copy()
     y1 = x0.copy()
@@ -241,9 +254,6 @@ def fmin_PSSAGA(
 
     if step_size < 0:
         raise ValueError
-
-    n_samples, n_features = A.shape
-    success = False
 
     A = sparse.csr_matrix(A)
     if h_blocks is None:
@@ -272,7 +282,7 @@ def fmin_PSSAGA(
         epoch_iteration(
             y0, y1, x, z0, z1, memory_gradient, gradient_average, np.random.permutation(n_samples),
             step_size)
-        x = (y0 + y1) / 2.
+        # x = (y0 + y1) / 2.
 
         xmz = np.concatenate((x - z0, x - z1))
         certificate = np.linalg.norm(xmz)
@@ -508,11 +518,11 @@ def _epoch_factory_sparse_PSSAGA_fast(
 
                 # .. iterate on features inside block ..
                 for b_j in range(RB_g_indptr[g], RB_g_indptr[g+1]):
-                    bias_term = d_g[g] * (gradient_average[b_j] + alpha * x[b_j])
+                    bias_term = d_g[g] * (gradient_average[b_j] + 2 * alpha * x[b_j])
                     z0[b_j] = 2 * x[b_j] - y0[b_j] - step_size * (
                         grad_est[b_j] + bias_term)
 
-                g_prox(2 * step_size * beta * d_g[g], z0,
+                g_prox(2 * d_g[g] * step_size * beta, z0,
                        RB_g_indptr[g], RB_g_indptr[g+1])
 
                 # .. update y ..
@@ -525,11 +535,11 @@ def _epoch_factory_sparse_PSSAGA_fast(
 
                 # .. iterate on features inside block ..
                 for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
-                    bias_term = d_h[h] * (gradient_average[b_j] + alpha * x[b_j])
+                    bias_term = d_h[h] * (gradient_average[b_j] + 2 * alpha * x[b_j])
                     z1[b_j] = 2 * x[b_j] - y1[b_j] - step_size * (
                         grad_est[b_j] + bias_term)
 
-                h_prox(2 * step_size * gamma * d_h[h], z1,
+                h_prox(2 * d_h[h] * step_size * gamma, z1,
                        RB_h_indptr[h], RB_h_indptr[h+1])
 
                 # .. update y ..
@@ -549,7 +559,7 @@ def _epoch_factory_sparse_PSSAGA_fast(
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(np.dot(x[idx], A_i), b[i]) / n_samples
-        obj += 0.5 * alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
+        obj += (0.5 * alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x))
         return obj
 
     return epoch_iteration_template, full_loss
