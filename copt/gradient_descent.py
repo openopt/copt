@@ -13,7 +13,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
 
     Solves problems of the form
 
-            minimize_x f(x) + g(x)
+            minimize_x f(x) + alpha g(x)
 
 
     where we have access to the gradient of f and to the proximal operator of g.
