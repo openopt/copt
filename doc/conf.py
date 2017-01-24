@@ -141,7 +141,7 @@ html_sidebars = {
 }
 html_theme_options = {
     'description': 'Optimization in Python',
-    'github_user': 'fabianp',
+    'github_user': 'openopt',
     'github_repo': 'copt',
     'github_button': True,
     'fixed_sidebar': True,
