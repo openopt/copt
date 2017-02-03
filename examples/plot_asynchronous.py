@@ -35,24 +35,16 @@ opt_2cores = stochastic.fmin_SAGA(
     trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2)
 
 
-opt_3cores = stochastic.fmin_SAGA(
-    stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
-    step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=3)
+fmin = min(np.min(opt_1cores.trace_func), np.min(opt_2cores.trace_func))
 
-fmin = min(np.min(opt_1cores.trace_func), np.min(opt_2cores.trace_func),
-           np.min(opt_3cores.trace_func))
-
-plt.plot(opt_1cores.trace_time, opt_1cores.trace_func - fmin, lw=4, label='1 core',
+plt.plot(opt_1cores.trace_func - fmin, lw=4, label='1 core',
          color=colors[0])
-plt.plot(opt_2cores.trace_time, opt_2cores.trace_func - fmin, lw=4, label='2 cores',
+plt.plot(opt_2cores.trace_func - fmin, lw=4, label='2 cores',
          color=colors[1])
-plt.plot(opt_3cores.trace_time, opt_3cores.trace_func - fmin, lw=4, label='3 cores',
-         color=colors[2])
 
 plt.yscale('log')
 plt.ylabel('Function suboptimality')
-plt.xlabel('Time')
+plt.xlabel('Epochs (per core)')
 plt.grid()
 plt.legend()
 plt.show()
