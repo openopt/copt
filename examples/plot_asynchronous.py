@@ -35,8 +35,8 @@ opt_2cores = stochastic.fmin_SAGA(
     trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2)
 
 
+# .. plot the benchmarks ..
 fmin = min(np.min(opt_1cores.trace_func), np.min(opt_2cores.trace_func))
-
 plt.plot(opt_1cores.trace_func - fmin, lw=4, label='1 core',
          color=colors[0])
 plt.plot(opt_2cores.trace_func - fmin, lw=4, label='2 cores',
@@ -44,7 +44,8 @@ plt.plot(opt_2cores.trace_func - fmin, lw=4, label='2 cores',
 
 plt.yscale('log')
 plt.ylabel('Function suboptimality')
-plt.xlabel('Epochs (per core)')
+plt.xlabel('Epochs per core')
+plt.xlim(xmax=20)
 plt.grid()
 plt.legend()
 plt.show()
