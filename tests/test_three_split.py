@@ -9,12 +9,15 @@ n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
+
 # helper functions
 def logloss(x):
     return logistic._logistic_loss(x, X, y, 1.)
 
+
 def fprime_logloss(x):
     return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
+
 
 def fused_lasso(x):
     return np.abs(np.diff(x)).sum()

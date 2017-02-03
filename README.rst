@@ -22,5 +22,5 @@ Philosophy
 License
 =======
 
-New BSD. Same one as SciPy.
+New BSD
 
