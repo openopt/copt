@@ -3,12 +3,13 @@ from typing import Callable
 import numpy as np
 from scipy import optimize
 from scipy import linalg
+from datetime import datetime
 
 
 def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
              verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
-             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4
-             ) -> optimize.OptimizeResult:
+             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
+             trace=False, g_func=None) -> optimize.OptimizeResult:
     """Proximal gradient descent.
 
     Solves problems of the form
@@ -57,11 +58,13 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
         recovery." Convex optimization in signal processing and communications (2009)
     """
     xk = np.array(x0, copy=True)
-    success = False
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g_prox is None:
         g_prox = lambda x, y: y
+
+    if g_func is None:
+        def g_func(*args): return 0
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -73,6 +76,12 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
             L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
+
+    success = False
+    trace_func = []
+    trace_time = []
+    trace_x = []
+    start_time = datetime.now()
 
     it = 1
     # .. a while loop instead of a for loop ..
@@ -98,11 +107,16 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
                     f_next = fun(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
-        xk = x_next
+        xk[:] = x_next
+
+        if trace:
+            trace_x.append(xk.copy())
+            trace_func.append(fun(xk) + alpha * g_func(xk))
+            trace_time.append((datetime.now() - start_time).total_seconds())
 
         norm_increment = linalg.norm(incr, np.inf) / current_step_size
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s" % (it, norm_increment))
+            print("Iteration %s, prox-grad norm: %s, step size: %s" % (it, norm_increment, step_size))
 
         if norm_increment < tol:
             if verbose:
@@ -121,7 +135,8 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
     return optimize.OptimizeResult(
         x=xk, success=success,
         jac=incr / step_size,  # prox-grad mapping
-        nit=it)
+        nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
+        trace_time=trace_time)
 
 
 def fmin_DavisYin(

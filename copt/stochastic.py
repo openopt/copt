@@ -164,15 +164,20 @@ def fmin_SAGA(
     epoch_iteration, trace_loss = _epoch_factory_sparse_SAGA(
             fun, g_func, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
 
-    start_time = datetime.now()
-    trace_func = []
-    trace_certificate = []
-    trace_time = []
-    trace_x = []
 
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
+
+    # warm up for the JIT
+    epoch_iteration(
+        x, memory_gradient, gradient_average, np.array([0]), step_size)
+
+    trace_func = []
+    trace_certificate = []
+    trace_time = []
+    trace_x = []
+    start_time = datetime.now()
 
     # .. iterate on epochs ..
     for it in range(max_iter):
@@ -272,18 +277,23 @@ def fmin_PSSAGA(
         fun, g_func, h_func, fun_deriv, g_prox, h_prox, g_blocks, h_blocks, A, b,
         alpha, beta, gamma)
 
-    start_time = datetime.now()
-    trace_func = []
-    trace_certificate = []
-    trace_time = []
-    trace_x = []
-
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
     x = y0.copy()
     z0 = x.copy()
     z1 = x.copy()
+
+    # warm up for the JIT
+    epoch_iteration(
+        y0, y1, x, z0, z1, memory_gradient, gradient_average, np.array([0]),
+        step_size)
+
+    trace_func = []
+    trace_certificate = []
+    trace_time = []
+    trace_x = []
+    start_time = datetime.now()
 
     # .. iterate on epochs ..
     for it in range(max_iter):
@@ -307,7 +317,7 @@ def fmin_PSSAGA(
             break
     if trace:
         if verbose:
-            print.write('.. computing trace ..')
+            print('.. computing trace ..')
         # .. compute function values ..
         trace_func = []
         for i in range(len(trace_x)):
@@ -535,7 +545,7 @@ def _epoch_factory_sparse_PSSAGA(
 
                 # .. iterate on features inside block ..
                 for b_j in range(RB_g_indptr[g], RB_g_indptr[g+1]):
-                    bias_term = d_g[g] * (gradient_average[b_j] + 2 * alpha * x[b_j])
+                    bias_term = d_g[g] * (gradient_average[b_j] + alpha * x[b_j])
                     z0[b_j] = 2 * x[b_j] - y0[b_j] - step_size * (
                         grad_est[b_j] + bias_term)
 
@@ -552,7 +562,7 @@ def _epoch_factory_sparse_PSSAGA(
 
                 # .. iterate on features inside block ..
                 for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
-                    bias_term = d_h[h] * (gradient_average[b_j] + 2 * alpha * x[b_j])
+                    bias_term = d_h[h] * (gradient_average[b_j] + alpha * x[b_j])
                     z1[b_j] = 2 * x[b_j] - y1[b_j] - step_size * (
                         grad_est[b_j] + bias_term)
 
@@ -576,7 +586,7 @@ def _epoch_factory_sparse_PSSAGA(
             idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
             A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
             obj += fun(np.dot(x[idx], A_i), b[i]) / n_samples
-        obj += (0.5 * alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x))
+        obj += 0.5 * alpha * np.dot(x, x) + beta * g_func(x) + gamma * h_func(x)
         return obj
 
     return epoch_iteration_template, full_loss
