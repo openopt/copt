@@ -21,6 +21,7 @@ copt is a library for composite optimization written in pure Python
     copt.fmin_CondatVu
     copt.fmin_SAGA
     copt.fmin_PSSAGA
+    copt.prox.prox_tv1d
 
 
 

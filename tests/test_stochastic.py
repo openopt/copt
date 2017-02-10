@@ -166,7 +166,7 @@ def test_prox_groups():
             X_sparse, y, np.zeros(n_features), step_size=step_size,
             gamma=beta, h_prox=g_prox_stochastic, h_blocks=groups, alpha=alpha)
         assert opt4.certificate < 1e-2
-        np.testing.assert_allclose(opt3.x, opt4.x, atol=1e-1)
+        np.testing.assert_allclose(opt3.x, opt4.x, atol=1e-2)
 
 
 def test_fused_lasso():
@@ -206,4 +206,4 @@ def test_fused_lasso():
                 X, y, np.zeros(n_features), step_size=step_size,
                 alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox_stochastic,
                 g_blocks=g_groups, h_prox=g_prox_stochastic, h_blocks=h_groups)
-            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-1)
+            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-2)

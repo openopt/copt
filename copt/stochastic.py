@@ -237,7 +237,8 @@ def fmin_PSSAGA(
     elif g_prox is None:
         @njit
         def g_prox(step_size, x, *args): pass
-        g_blocks = np.arange(n_features)
+        if g_blocks is None:
+             g_blocks = np.arange(n_features)
     else:
         raise NotImplementedError
 
@@ -248,7 +249,8 @@ def fmin_PSSAGA(
     elif h_prox is None:
         @njit
         def h_prox(step_size, x, *args): pass
-        h_blocks = np.arange(n_features)
+        if h_blocks is None:
+            h_blocks = np.arange(n_features)
     else:
         raise NotImplementedError
 
@@ -501,10 +503,14 @@ def _epoch_factory_sparse_PSSAGA(
     d_g = np.array(BS_g.sum(0), dtype=np.float).ravel()
     idx = (d_g != 0)
     d_g[idx] = n_samples / d_g[idx]
+    d_g[~idx] = 1
 
     d_h = np.array(BS_h.sum(0), dtype=np.float).ravel()
-    idx = d_h != 0
+    idx = (d_h != 0)
     d_h[idx] = n_samples / d_h[idx]
+    d_h[~idx] = 1
+    print(d_g)
+    print(d_h)
 
     @njit
     def epoch_iteration_template(
@@ -516,16 +522,21 @@ def _epoch_factory_sparse_PSSAGA(
         # .. iterate on samples ..
         for i in sample_indices:
 
+            if BS_g_indptr[i] == BS_g_indptr[i+1]:
+                continue
+
             # .. update x ..
             for g_j in range(BS_g_indptr[i], BS_g_indptr[i+1]):
                 g = BS_g_indices[g_j]
-                for b_j in range(RB_g_indptr[g], RB_g_indptr[g + 1]):
+                for b_j in range(RB_g_indptr[g], RB_g_indptr[g+1]):
                     x[b_j] = (y0[b_j] + y1[b_j]) / 2.
 
-            for h_j in range(BS_h_indptr[i], BS_h_indptr[i + 1]):
+            for h_j in range(BS_h_indptr[i], BS_h_indptr[i+1]):
                 h = BS_h_indices[h_j]
-                for b_j in range(RB_h_indptr[h], RB_h_indptr[h + 1]):
+                for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
                     x[b_j] = (y0[b_j] + y1[b_j]) / 2.
+
+            x[:] = (y0 + y1) / 2.
 
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
@@ -546,10 +557,10 @@ def _epoch_factory_sparse_PSSAGA(
                 # .. iterate on features inside block ..
                 for b_j in range(RB_g_indptr[g], RB_g_indptr[g+1]):
                     bias_term = d_g[g] * (gradient_average[b_j] + alpha * x[b_j])
-                    z0[b_j] = 2 * x[b_j] - y0[b_j] - step_size * (
+                    z0[b_j] = 2 * x[b_j] - y0[b_j] - .5 * step_size * (
                         grad_est[b_j] + bias_term)
 
-                g_prox(2 * d_g[g] * step_size * beta, z0,
+                g_prox(d_g[g] * step_size * beta, z0,
                        RB_g_indptr[g], RB_g_indptr[g+1])
 
                 # .. update y ..
@@ -563,10 +574,10 @@ def _epoch_factory_sparse_PSSAGA(
                 # .. iterate on features inside block ..
                 for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
                     bias_term = d_h[h] * (gradient_average[b_j] + alpha * x[b_j])
-                    z1[b_j] = 2 * x[b_j] - y1[b_j] - step_size * (
+                    z1[b_j] = 2 * x[b_j] - y1[b_j] - .5 * step_size * (
                         grad_est[b_j] + bias_term)
 
-                h_prox(2 * d_h[h] * step_size * gamma, z1,
+                h_prox(d_h[h] * step_size * gamma, z1,
                        RB_h_indptr[h], RB_h_indptr[h+1])
 
                 # .. update y ..
@@ -577,6 +588,7 @@ def _epoch_factory_sparse_PSSAGA(
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                grad_est[j_idx] = 0
             memory_gradient[i] = grad_i
 
     @njit
