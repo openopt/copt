@@ -308,7 +308,7 @@ def fmin_PSSAGA(
             trace_certificate.append(certificate)
             trace_time.append((datetime.now() - start_time).total_seconds())
         if verbose:
-            print('certificate: %s' % certificate)
+            print('Iteration: %s, certificate: %s' % (it, certificate))
         if certificate < tol:
             success = True
             break
@@ -487,7 +487,7 @@ def _factory_sparse_PSSAGA(
     d_weights = np.zeros(n_features)
     for h in range(n_blocks_h):
         for b_j in range(RB_h_indptr[h], RB_h_indptr[h + 1]):
-            d_weights[b_j] = d_h[h]
+            d_weights[b_j] = 1.0 / d_h[h]
 
     @njit
     def epoch_iteration_template(
@@ -501,7 +501,7 @@ def _factory_sparse_PSSAGA(
 
             for h_j in range(BS_h_indptr[i], BS_h_indptr[i+1]):
                 h = BS_h_indices[h_j]
-                g_prox(step_size * beta, y, x, RB_h_indptr[h], RB_h_indptr[h+1], 1./d_weights)
+                g_prox(step_size * beta, y, x, RB_h_indptr[h], RB_h_indptr[h+1], d_weights)
 
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
