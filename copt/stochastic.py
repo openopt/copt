@@ -170,22 +170,23 @@ def fmin_SAGA(
 
     # warm up for the JIT
     epoch_iteration(
-        x, memory_gradient, gradient_average, np.array([0]), step_size)
+        x.copy(), memory_gradient, gradient_average, np.array([0]), step_size)
 
     trace_func = []
-    trace_certificate = []
-    trace_time = []
-    trace_x = []
     start_time = datetime.now()
+    trace_time = [0.]
+    trace_x = [x.copy()]
+    trace_certificate = [np.inf]
 
     # .. iterate on epochs ..
     for it in range(max_iter):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = []
             for _ in range(n_jobs):
+                perm = np.random.randint(low=0, high=n_samples, size=n_samples)
                 futures.append(executor.submit(
                     epoch_iteration, x, memory_gradient, gradient_average,
-                    np.random.permutation(n_samples), step_size))
+                    perm, step_size))
             concurrent.futures.wait(futures)
 
         grad = gradient_average + alpha * x
@@ -289,10 +290,10 @@ def fmin_PSSAGA(
         step_size)
 
     trace_func = []
-    trace_certificate = []
-    trace_time = []
-    trace_x = []
     start_time = datetime.now()
+    trace_time = [0.]
+    trace_x = [x.copy()]
+    trace_certificate = [np.inf]
 
     # .. iterate on epochs ..
     for it in range(max_iter):
@@ -396,20 +397,24 @@ def _epoch_factory_sparse_SAGA(
         # .. SAGA estimate of the gradient ..
         incr = np.zeros(n_features, dtype=x.dtype)
         x_hat = np.empty(n_features, dtype=x.dtype)
+        grad_avg = np.empty(n_features, dtype=x.dtype)
 
         # .. inner iteration ..
         for i in sample_indices:
             # .. iterate on blocks ..
-            for g_j in range(BS_indptr[i], BS_indptr[i+1]):
-                g = BS_indices[g_j]
+            # for g_j in range(BS_indptr[i], BS_indptr[i+1]):
+            #     g = BS_indices[g_j]
+            #
+            #     # .. iterate on features inside block ..
+            #     for b_j in range(RB_indptr[g], RB_indptr[g+1]):
+            #         x_hat[b_j] = x[b_j]
+            #         grad_avg[b_j] = gradient_average[b_j]
+            # mem_i = memory_gradient[i]
 
-                # .. iterate on features inside block ..
-                for b_j in range(RB_indptr[g], RB_indptr[g+1]):
-                    x_hat[b_j] = x[b_j]
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                p += x_hat[j_idx] * A_data[j]
+                p += x[j_idx] * A_data[j]
 
             grad_i = f_prime(p, b[i])
 
@@ -425,14 +430,17 @@ def _epoch_factory_sparse_SAGA(
                 # .. iterate on features inside block ..
                 for b_j in range(RB_indptr[g], RB_indptr[g+1]):
                     incr[b_j] += d[g] * (
-                        gradient_average[b_j] + alpha * x_hat[b_j])
-                    incr[b_j] = x_hat[b_j] - step_size * incr[b_j]
+                        gradient_average[b_j] + alpha * x[b_j])
+                    # incr[b_j] = x[b_j] - step_size * incr[b_j]
+                    x[b_j] += step_size * incr[b_j]
 
-                g_prox(step_size * beta * d[g], incr, RB_indptr[g], RB_indptr[g+1])
+                # g_prox(step_size * beta * d[g], incr, RB_indptr[g], RB_indptr[g+1])
 
                 for b_j in range(RB_indptr[g], RB_indptr[g+1]):
                     # update vector of coefficients
-                    x[b_j] -= (x_hat[b_j] - incr[b_j])
+                    tmp = incr[b_j] - x[b_j]
+                    x[b_j] += tmp
+                    # x[b_j] = incr[b_j]
                     incr[b_j] = 0
 
             # .. update memory terms ..

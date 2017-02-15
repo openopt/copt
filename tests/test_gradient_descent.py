@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 from sklearn.linear_model import logistic
-from copt import fmin_PGD
+from copt import fmin_PGD, fmin_APGD
 from copt import prox
 from nose import tools
 
@@ -33,6 +33,14 @@ def test_optimize():
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
 
+    opt = fmin_APGD(
+        logloss, fprime_logloss, None, np.zeros(n_features),
+        tol=1e-3)
+    assert opt.success
+    sol_scipy = optimize.fmin_l_bfgs_b(
+        logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
+    np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
+
 
 def test_sklearn():
     for alpha in np.logspace(-3, 3, 3):
@@ -52,4 +60,9 @@ def test_sklearn():
         assert opt.success
         np.testing.assert_allclose(clf.coef_.ravel(), opt.x, rtol=1e-1)
 
+        opt = fmin_APGD(
+            logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features),
+            alpha=alpha, tol=1e-3)
+        assert opt.success
+        np.testing.assert_allclose(clf.coef_.ravel(), opt.x, rtol=1e-1)
 

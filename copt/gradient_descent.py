@@ -139,6 +139,145 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
         trace_time=trace_time)
 
 
+def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
+             verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
+             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
+             trace=False, g_func=None) -> optimize.OptimizeResult:
+    """Accelerated proximal gradient descent.
+
+    Solves problems of the form
+
+            minimize_x f(x) + alpha g(x)
+
+
+    where we have access to the gradient of f and to the proximal operator of g.
+
+    Arguments:
+        fun : f(x) returns the value of f at x.
+
+        fun_deriv : f_prime(x) returns the gradient of f.
+
+        g_prox : g_prox(x, alpha) returns the proximal operator of g at x
+            with parameter alpha.
+
+        x0 : array-like
+            Initial guess
+
+        backtracking : boolean
+            Whether to perform backtracking (i.e. line-search) or not.
+
+        max_iter : int
+            Maximum number of iterations.
+
+        verbose : int
+            Verbosity level, from 0 (no output) to 2 (output on each iteration)
+
+        step_size : float
+            Starting value for the line-search procedure. XXX
+
+        callback : callable
+            callback function (optional).
+
+    Returns:
+        res : The optimization result represented as a
+            ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+            ``x`` the solution array, ``success`` a Boolean flag indicating if
+            the optimizer exited successfully and ``message`` which describes
+            the cause of the termination. See `scipy.optimize.OptimizeResult`
+            for a description of other attributes.
+
+    References:
+        Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
+        recovery." Convex optimization in signal processing and communications (2009)
+    """
+    xk = np.array(x0, copy=True)
+    if not max_iter_backtracking > 0:
+        raise ValueError('Line search iterations need to be greater than 0')
+    if g_prox is None:
+        g_prox = lambda x, y: y
+
+    if g_func is None:
+        def g_func(*args): return 0
+
+    if step_size is None:
+        # sample to estimate Lipschitz constant
+        step_size_n_sample = 5
+        L = []
+        for _ in range(step_size_n_sample):
+            x_tmp = np.random.randn(x0.size)
+            x_tmp /= linalg.norm(x_tmp)
+            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
+        # give it a generous upper bound
+        step_size = 10. / np.mean(L)
+
+    success = False
+    trace_func = []
+    trace_time = []
+    trace_x = []
+    start_time = datetime.now()
+
+    it = 1
+    tk = 1
+    # .. a while loop instead of a for loop ..
+    # .. allows for infinite or floating point max_iter ..
+    while it <= max_iter:
+        # .. compute gradient and step size
+        current_step_size = step_size
+        grad_fk = fun_deriv(xk)
+        x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
+        incr = x_next - xk
+        if backtracking:
+            fk = fun(xk)
+            f_next = fun(x_next)
+            for _ in range(max_iter_backtracking):
+                if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                    # .. step size found ..
+                    break
+                else:
+                    # .. backtracking, reduce step size ..
+                    current_step_size *= backtracking_factor
+                    x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
+                    incr = x_next - xk
+                    f_next = fun(x_next)
+            else:
+                warnings.warn("Maxium number of line-search iterations reached")
+        t_next = (1 + np.sqrt(1 + 4 * it * it)) / 2
+        x_next = x_next + ((tk-1) / t_next) * (x_next - xk)
+
+        xk[:] = x_next
+        tk = t_next
+
+        if trace:
+            trace_x.append(xk.copy())
+            trace_func.append(fun(xk) + alpha * g_func(xk))
+            trace_time.append((datetime.now() - start_time).total_seconds())
+
+        norm_increment = linalg.norm(incr, np.inf) / current_step_size
+        if verbose > 0:
+            print("Iteration %s, prox-grad norm: %s, step size: %s" % (it, norm_increment, step_size))
+
+        if norm_increment < tol:
+            if verbose:
+                print("Achieved relative tolerance at iteration %s" % it)
+            success = True
+            break
+
+        if callback is not None:
+            callback(xk)
+        it += 1
+    if it >= max_iter:
+        warnings.warn(
+            "proximal_gradient did not reach the desired tolerance level",
+            RuntimeWarning)
+
+    return optimize.OptimizeResult(
+        x=xk, success=success,
+        jac=incr / step_size,  # prox-grad mapping
+        nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
+        trace_time=trace_time)
+
+
+
 def fmin_DavisYin(
         fun, fun_deriv, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),

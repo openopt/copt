@@ -18,22 +18,24 @@ y = np.sign(X.dot(w) + np.random.randn(n_samples))
 
 
 alpha = 1.0 / n_samples
-beta = 1.0 / n_samples
-step_size = stochastic.compute_step_size('logistic', X, alpha)
+beta = 0.0 / n_samples
+step_size = stochastic.compute_step_size('logistic', X, alpha) / 2.
 
-max_iter = 25
+max_iter = 100
 
 opt_1cores = stochastic.fmin_SAGA(
     stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
     step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1)
+    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1,
+    g_blocks=np.arange(n_features))
 
 
 opt_2cores = stochastic.fmin_SAGA(
     stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
     step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2)
-
+    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2,
+    g_blocks=np.arange(n_features))
+print('Sparsity', np.sum(opt_2cores.x == 0) / n_features)
 
 # .. plot the benchmarks ..
 fmin = min(np.min(opt_1cores.trace_func), np.min(opt_2cores.trace_func))
@@ -45,7 +47,8 @@ plt.plot(opt_2cores.trace_func - fmin, lw=4, label='2 cores',
 plt.yscale('log')
 plt.ylabel('Function suboptimality')
 plt.xlabel('Epochs per core')
-plt.xlim(xmax=20)
+# plt.xlim(xmax=80)
+# plt.ylim(ymin=1e-10)
 plt.grid()
 plt.legend()
 plt.show()
