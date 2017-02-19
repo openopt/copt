@@ -18,23 +18,25 @@ y = np.sign(X.dot(w) + np.random.randn(n_samples))
 
 
 alpha = 1.0 / n_samples
-beta = 0.0 / n_samples
-step_size = stochastic.compute_step_size('logistic', X, alpha) / 2.
+beta = 1.0 / n_samples
+step_size = stochastic.compute_step_size('logistic', X, alpha) / 5.
 
-max_iter = 100
+max_iter = 200
 
 opt_1cores = stochastic.fmin_SAGA(
     stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
     step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
     trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1,
-    g_blocks=np.arange(n_features))
+    g_blocks=np.arange(n_features)
+)
 
 
 opt_2cores = stochastic.fmin_SAGA(
     stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
     step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
     trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2,
-    g_blocks=np.arange(n_features))
+    g_blocks=np.arange(n_features)
+)
 print('Sparsity', np.sum(opt_2cores.x == 0) / n_features)
 
 # .. plot the benchmarks ..

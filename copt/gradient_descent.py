@@ -86,6 +86,12 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
+
+    if trace:
+        trace_x.append(xk.copy())
+        trace_func.append(fun(xk) + alpha * g_func(xk))
+        trace_time.append((datetime.now() - start_time).total_seconds())
+
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
@@ -139,7 +145,8 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
         trace_time=trace_time)
 
 
-def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
+def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
+              x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
              verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
              step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
              trace=False, g_func=None) -> optimize.OptimizeResult:
