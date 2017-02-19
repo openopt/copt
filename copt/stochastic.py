@@ -427,15 +427,13 @@ def _epoch_factory_sparse_SAGA(
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 x_j = x[j_idx]
-                incr = (grad_i - mem_i) * A_data[j]
-                incr += d[j_idx] * (
+                incr = (grad_i - mem_i) * A_data[j] + (
                     gradient_average[j_idx] + alpha * x_j)
 
-                ll = step_size * beta * d[j_idx]
                 x_new = x_j - step_size * incr
-                x[j_idx] += (x_new - x_j)
+                x[j_idx] = x_new
 
-                gradient_average[j_idx] += (grad_i - mem_i) * A_data[j] / n_samples
+            g_prox(step_size * beta, x, 0, n_features)
 
                 #
                 # for b_j in range(RB_indptr[g], RB_indptr[g+1]):
@@ -446,9 +444,9 @@ def _epoch_factory_sparse_SAGA(
                 #     incr[b_j] = 0
 
             # .. update memory terms ..
-            # for j in range(A_indptr[i], A_indptr[i+1]):
-            #     j_idx = A_indices[j]
-            #     gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
             memory_gradient[i] += (grad_i - mem_i)
 
     @njit
