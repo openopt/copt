@@ -36,9 +36,9 @@ def test_optimize():
     opt = fmin_APGD(
         logloss, fprime_logloss, None, np.zeros(n_features),
         tol=1e-3)
-    assert opt.success
     sol_scipy = optimize.fmin_l_bfgs_b(
         logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
+    assert opt.success
     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
 
 
@@ -52,17 +52,17 @@ def test_sklearn():
             return logistic._logistic_loss_and_grad(x, X, y, 0.)[1]
 
         clf = logistic.LogisticRegression(
-            penalty='l1', fit_intercept=False, C=1 / alpha)
+            penalty='l1', fit_intercept=False, C=1. / alpha)
         clf.fit(X, y)
         opt = fmin_PGD(
             logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features),
-            alpha=alpha, tol=1e-3)
+            alpha=alpha, tol=1e-3, max_iter=1000)
         assert opt.success
-        np.testing.assert_allclose(clf.coef_.ravel(), opt.x, rtol=1e-1)
+        np.testing.assert_allclose(clf.coef_.ravel(), opt.x, atol=1e-3)
 
         opt = fmin_APGD(
             logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features),
             alpha=alpha, tol=1e-3)
         assert opt.success
-        np.testing.assert_allclose(clf.coef_.ravel(), opt.x, rtol=1e-1)
+        np.testing.assert_allclose(clf.coef_.ravel(), opt.x, atol=1e-3)
 

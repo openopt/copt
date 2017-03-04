@@ -12,7 +12,6 @@ copt is a library for composite optimization written in pure Python
 
 
 
-
 .. autosummary::
    :toctree: generated/
 

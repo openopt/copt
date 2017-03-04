@@ -78,15 +78,15 @@ def test_prox_sparse():
 
         step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
         for beta in np.logspace(-3, 3, 3):
-            opt = stochastic.fmin_SAGA(
-                stochastic.f_logistic, stochastic.deriv_logistic,
-                X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
+            # opt = stochastic.fmin_SAGA(
+            #     stochastic.f_logistic, stochastic.deriv_logistic,
+            #     X, y, np.zeros(n_features), step_size=step_size,
+            #     alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
             opt2 = fmin_PGD(
                 loss, grad, prox.prox_L1, np.zeros(n_features),
                 alpha=beta)
-            # assert opt.success
-            np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
+            # # assert opt.success
+            # np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
 
             opt3 = stochastic.fmin_PSSAGA(
                 stochastic.f_logistic, stochastic.deriv_logistic,
@@ -102,9 +102,9 @@ def test_prox_sparse():
                 stochastic.f_logistic, stochastic.deriv_logistic,
                 X, y, np.zeros(n_features), step_size=step_size,
                 alpha=alpha, beta=beta, g_prox=g_prox, tol=0)
-            np.testing.assert_allclose(opt.x, opt3.x, rtol=1e-2)
-            assert np.abs(loss(opt.x) - loss(opt3.x)) < 0.1
-            assert np.abs(loss(opt.x) - loss(opt4.x)) < 0.1
+            np.testing.assert_allclose(opt2.x, opt3.x, rtol=1e-2)
+            assert np.abs(loss(opt2.x) - loss(opt3.x)) < 0.1
+            assert np.abs(loss(opt2.x) - loss(opt4.x)) < 0.1
 
 #
 # def test_prox_groups():

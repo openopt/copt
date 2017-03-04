@@ -113,6 +113,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
                     f_next = fun(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
+        certificate = np.linalg.norm((xk - x_next) / step_size)
         xk[:] = x_next
 
         if trace:
@@ -120,11 +121,10 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
             trace_func.append(fun(xk) + alpha * g_func(xk))
             trace_time.append((datetime.now() - start_time).total_seconds())
 
-        norm_increment = linalg.norm(incr, np.inf) / current_step_size
         if verbose > 0:
             print("Iteration %s, prox-grad norm: %s, step size: %s" % (it, norm_increment, step_size))
 
-        if norm_increment < tol:
+        if certificate < tol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
             success = True
@@ -140,7 +140,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
 
     return optimize.OptimizeResult(
         x=xk, success=success,
-        jac=incr / step_size,  # prox-grad mapping
+        certificate=certificate,
         nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
         trace_time=trace_time)
 
@@ -221,49 +221,50 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
     trace_func = []
     trace_time = []
     trace_x = []
+    trace_certificate = []
     start_time = datetime.now()
 
     it = 1
     tk = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
+    yk = xk.copy()
+    xk_prev = xk.copy()
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = fun_deriv(xk)
-        x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
-        incr = x_next - xk
+        grad_fk = fun_deriv(yk)
+        xk = g_prox(current_step_size * alpha, yk - current_step_size * grad_fk, *g_prox_args)
         if backtracking:
-            fk = fun(xk)
-            f_next = fun(x_next)
             for _ in range(max_iter_backtracking):
-                if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                incr = xk - yk
+                if fun(xk) <= fun(yk) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
                     break
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
-                    incr = x_next - xk
-                    f_next = fun(x_next)
+                    xk = g_prox(current_step_size * alpha, yk - current_step_size * grad_fk, *g_prox_args)
+                    # incr = x_next - xk
+                    # f_next = fun(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
-        t_next = (1 + np.sqrt(1 + 4 * it * it)) / 2
-        x_next = x_next + ((tk-1) / t_next) * (x_next - xk)
-
-        xk[:] = x_next
+        t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
+        yk = xk + ((tk-1.) / t_next) * (xk - xk_prev)
+        certificate = np.linalg.norm((xk - xk_prev) / step_size)
         tk = t_next
+        xk_prev = xk.copy()
 
         if trace:
+            trace_certificate.append(certificate)
             trace_x.append(xk.copy())
-            trace_func.append(fun(xk) + alpha * g_func(xk))
+            trace_func.append(fun(yk) + alpha * g_func(yk))
             trace_time.append((datetime.now() - start_time).total_seconds())
 
-        norm_increment = linalg.norm(incr, np.inf) / current_step_size
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s, step size: %s" % (it, norm_increment, step_size))
+            print("Iteration %s, certificate: %s, step size: %s" % (it, certificate, step_size))
 
-        if norm_increment < tol:
+        if certificate < tol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
             success = True
@@ -278,8 +279,10 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
             RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success,
-        jac=incr / step_size,  # prox-grad mapping
+        x=yk, success=success,
+        certificate=certificate,
+        # jac=incr / step_size,  # prox-grad mapping
+        trace_certificate=trace_certificate,
         nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
         trace_time=trace_time)
 
