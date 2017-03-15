@@ -5,7 +5,7 @@ Asynchronous Stochastic Gradient
 """
 import numpy as np
 import pylab as plt
-from copt import stochastic
+from copt import stochastic, loss
 from scipy import sparse
 colors = ['#7fc97f', '#beaed4', '#fdc086']
 
@@ -19,24 +19,22 @@ y = np.sign(X.dot(w) + np.random.randn(n_samples))
 
 alpha = 1.0 / n_samples
 beta = 1.0 / n_samples
-step_size = stochastic.compute_step_size('logistic', X, alpha) / 5.
 
 max_iter = 200
 
+f = loss.LogisticLoss(X, y, alpha)
+g = loss.NormL1(beta)
+
 opt_1cores = stochastic.fmin_SAGA(
-    stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
-    step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1,
-    g_blocks=np.arange(n_features)
-)
+    f, g, np.zeros(n_features), max_iter=max_iter, tol=-1,
+    trace=True, verbose=True)
 
 
 opt_2cores = stochastic.fmin_SAGA(
-    stochastic.f_logistic, stochastic.deriv_logistic, X, y, np.zeros(X.shape[1]),
-    step_size=step_size, alpha=alpha, beta=beta, max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, g_prox=stochastic.prox_L1, g_func=stochastic.f_L1, n_jobs=2,
-    g_blocks=np.arange(n_features)
-)
+    f, g, np.zeros(X.shape[1]),
+    max_iter=max_iter, tol=-1,
+    trace=True, verbose=True, n_jobs=2)
+
 print('Sparsity', np.sum(opt_2cores.x == 0) / n_features)
 
 # .. plot the benchmarks ..
