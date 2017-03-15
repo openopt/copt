@@ -21,6 +21,9 @@ script:
 - NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
 - cd doc && make html && cd ..
 after_success: coveralls
+cache:
+  directories:
+    - $HOME/copt_data
 deploy:
   provider: s3
   access_key_id: "AKIAIRIF5Q2ZCELOKNSQ"

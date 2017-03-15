@@ -160,7 +160,8 @@ def fmin_APGD(
 
     Arguments:
         f : loss function, differentiable
-        p : penalty, proximable
+
+        g : penalty, proximable
 
         fun_deriv : f_prime(x) returns the gradient of f.
 
