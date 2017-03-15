@@ -27,13 +27,13 @@ g = loss.NormL1(beta)
 
 opt_1cores = stochastic.fmin_SAGA(
     f, g, np.zeros(n_features), max_iter=max_iter, tol=-1,
-    trace=True, verbose=True)
+    trace=True)
 
 
 opt_2cores = stochastic.fmin_SAGA(
     f, g, np.zeros(X.shape[1]),
     max_iter=max_iter, tol=-1,
-    trace=True, verbose=True, n_jobs=2)
+    trace=True, n_jobs=2)
 
 print('Sparsity', np.sum(opt_2cores.x == 0) / n_features)
 
