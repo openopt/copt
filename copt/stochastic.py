@@ -84,37 +84,24 @@ def compute_step_size(loss: str, A, alpha: float, step_size_factor=4) -> float:
 
 
 def fmin_SAGA(
-        fun: Callable, fun_deriv: Callable, A, b, x0: np.ndarray,
-        alpha: float=0., beta: float=0., g_prox: Callable=None, step_size: float=-1,
-        g_func: Callable=None,
-        g_blocks: np.ndarray=None, n_jobs: int=1, max_iter=100, tol=1e-6,
+        f, g, x0: np.ndarray,
+        step_size: float=-1,
+        n_jobs: int=1, max_iter=100, tol=1e-6,
         verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
-        argmin_x 1/n \sum_{i=1}^n f(a_i^T x, b_i) + alpha * L2 + beta * g(x)
-
+                       argmin_x f(x) + g(x)
 
     Parameters
     ----------
-    fun
-        loss function
-
-    fun_deriv
-        derivative function
-
-    alpha
-        Amount of squared L2 regularization
+    f, g
+        loss functions. g can be none
 
     x0
         Starting point
 
-    g_blocks
-        If g is a block-separable function, this allows to specify which are the
-        blocks in this penalty. It is an array of integers with the same size as
-        x0 where each coordinate represents the group to which that coordinate
-        belongs to.
 
     Returns
     -------
@@ -131,47 +118,29 @@ def fmin_SAGA(
     Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
     incremental gradient method with support for non-strongly convex composite
     objectives." Advances in Neural Information Processing Systems. 2014.
+
+    Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. "ASAGA: Asynchronous
+    parallel SAGA". Proceedings of the 20th International Conference on
+    Artificial Intelligence and Statistics (AISTATS). 2017.
     """
 
     x = np.ascontiguousarray(x0).copy()
-    assert x.size == A.shape[1]
-    assert A.shape[0] == b.size
 
     if step_size < 0:
         raise ValueError
 
-    # TODO: encapsulate this in _get_factory
-    if hasattr(g_prox, '__call__'):
-        if not hasattr(g_prox, 'inspect_llvm'):
-            g_prox = njit(g_prox)
-    elif g_prox is None:
-        @njit
-        def g_prox(step_size, x, *args): return x
-    else:
-        raise NotImplementedError
-
-    if g_func is None:
-        @njit
-        def g_func(x, *args):
-            return 0
-
-    n_samples, n_features = A.shape
     success = False
-
-    A = sparse.csr_matrix(A)
-    if g_blocks is None:
-        g_blocks = np.zeros(n_features, dtype=np.int64)
-    epoch_iteration, init_gradient, trace_loss = _epoch_factory_sparse_SAGA(
-            fun, g_func, fun_deriv, g_prox, g_blocks, A, b, alpha, beta)
+    epoch_iteration, init_gradient = _factory_sparse_SAGA(f, g)
+    n_samples, n_features = f.A.shape
 
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
     init_gradient(memory_gradient, gradient_average, n_samples)
+    # XXX needed?
 
     # warm up for the JIT
-    epoch_iteration(
-        x.copy(), memory_gradient, gradient_average, np.array([0]), step_size)
+    epoch_iteration(x, memory_gradient, gradient_average, np.array([0]), step_size)
 
     trace_func = []
     start_time = datetime.now()
@@ -190,10 +159,7 @@ def fmin_SAGA(
                     perm, step_size))
             concurrent.futures.wait(futures)
 
-        grad = gradient_average + alpha * x
-        z = x - step_size * grad
-        g_prox(beta * step_size, z, 0, n_features)
-        certificate = np.linalg.norm(x - z)
+        certificate = np.inf
         if callback is not None:
             callback(x)
         if trace:
@@ -211,7 +177,7 @@ def fmin_SAGA(
         # .. compute function values ..
         trace_func = []
         for i in range(len(trace_x)):
-            trace_func.append(trace_loss(trace_x[i]))
+            trace_func.append(f(trace_x[i]) + g(trace_x[i]))
 
     return optimize.OptimizeResult(
         x=x, success=success, nit=it, trace_func=trace_func, trace_time=trace_time,
@@ -332,120 +298,6 @@ def fmin_PSSAGA(
 
 
 
-def fmin_STOS(
-        fun, fun_deriv, A, b, x0, g_prox=None, h_prox=None,
-        alpha: float=0.0,
-        beta: float=0.0,
-        gamma: float=0.0,
-        step_size=-1,
-        g_func=None,
-        h_func=None,
-        h_blocks=None,
-        max_iter=100, tol=1e-6, verbose=False, callback=None, trace=False):
-
-    n_samples, n_features = A.shape
-    success = False
-
-    if hasattr(g_prox, '__call__'):
-        pass
-        if not hasattr(g_prox, 'inspect_llvm'):
-            g_prox = njit(g_prox)
-    elif g_prox is None:
-        @njit
-        def g_prox(step_size, x, y, low, high, weights):
-            for i in range(low, high):
-                y[i] = x[i]
-    else:
-        raise NotImplementedError
-
-    if hasattr(h_prox, '__call__'):
-        pass
-        if not hasattr(h_prox, 'inspect_llvm'):
-            # if it has not yet been jitted
-            h_prox = njit(h_prox)
-    elif h_prox is None:
-        @njit
-        def h_prox(step_size, x, *args): pass
-        if h_blocks is None:
-             h_blocks = np.arange(n_features)
-    else:
-        raise NotImplementedError
-
-    # .. define g and h if not done already ..
-    if g_func is None:
-        @njit
-        def g_func(*args): return 0
-    if h_func is None:
-        @njit
-        def h_func(*args): return 0
-
-    y = x0.copy()
-    x = x0.copy()
-    z = x.copy()
-
-    # assert y.shape[1] == A.shape[1]
-    assert A.shape[0] == b.size
-
-    if step_size < 0:
-        raise ValueError
-
-    A = sparse.csr_matrix(A)
-    if h_blocks is None:
-        h_blocks = np.zeros(n_features, dtype=np.int64)
-    epoch_iteration, init_gradient, trace_loss = _factory_sparse_STOS(
-        fun, g_func, h_func, fun_deriv, g_prox, h_prox, h_blocks, A, b,
-        alpha, beta, gamma)
-
-    # .. memory terms ..
-    memory_gradient = np.zeros(n_samples)
-    gradient_average = np.zeros(n_features)
-    init_gradient(memory_gradient, gradient_average, n_samples)
-
-    # warm up for the JIT
-    epoch_iteration(
-        y, x, z, memory_gradient, gradient_average, np.array([0]),
-        step_size)
-
-    trace_func = []
-    start_time = datetime.now()
-    trace_time = [0.]
-    trace_x = [x.copy()]
-    trace_certificate = []
-
-    # .. iterate on epochs ..
-    for it in range(max_iter):
-        idxx = np.random.randint(0, n_samples, 1000)
-        epoch_iteration(
-            y, x, z, memory_gradient, gradient_average, idxx,
-            step_size / float(it+1))
-
-        certificate = np.linalg.norm(x - z)
-        if callback is not None:
-            callback(x)
-        if trace:
-            trace_x.append(z.copy())
-            trace_certificate.append(certificate)
-            trace_time.append((datetime.now() - start_time).total_seconds())
-        if verbose:
-            print('Iteration: %s, certificate: %s' % (it, certificate))
-        if certificate < tol:
-            success = True
-            break
-    if trace:
-        if verbose:
-            print('.. computing trace ..')
-        # .. compute function values ..
-        trace_func = []
-        for i in range(len(trace_x)):
-            trace_func.append(trace_loss(trace_x[i]))
-
-    return optimize.OptimizeResult(
-        x=x, y=y, z=z, success=success, nit=it, trace_x=trace_x,
-        certificate=certificate,
-        trace_func=trace_func, trace_certificate=np.array(trace_certificate),
-        trace_time=trace_time)
-
-
 @njit(nogil=True, cache=True)
 def _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks):
@@ -478,20 +330,29 @@ def _support_matrix(
     return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-def _epoch_factory_sparse_SAGA(
-        f_func, g_func, f_prime, g_prox, g_blocks, A, b, alpha, beta):
+def _factory_sparse_SAGA(f, g):
 
+    A = sparse.csr_matrix(f.A)
+    b = f.b
+    f_alpha = f.alpha
     A_data = A.data
     A_indices = A.indices
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
+    partial_gradient = f.partial_gradient_factory()
+    prox = g.block_prox_factory()
+
+    # .. compute the block support ..
+    if g.is_separable:
+        g_blocks = np.arange(n_features)
+    else:
+        raise NotImplementedError
     # g_blocks is a map from n_features -> n_features
     unique_blocks = np.unique(g_blocks)
     n_blocks = np.unique(g_blocks).size
     assert np.all(unique_blocks == np.arange(n_blocks))
 
-    # .. compute the block support ..
     BS_data, BS_indices, BS_indptr = _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks)
     BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr), (n_samples, n_blocks))
@@ -502,7 +363,6 @@ def _epoch_factory_sparse_SAGA(
         i_block = g_blocks[j_feat]
         reverse_blocks[i_block, j_feat] = True
     reverse_blocks = reverse_blocks.tocsr()
-    RB_indptr = reverse_blocks.indptr
 
     d = np.array(BS.sum(0), dtype=np.float).ravel()
     idx = (d != 0)
@@ -512,13 +372,12 @@ def _epoch_factory_sparse_SAGA(
     def init_gradient(memory_gradient, gradient_average, n_samples):
         for i in range(n_samples):
 
-            grad_i = f_prime(0., b[i])
+            grad_i = partial_gradient(0., b[i])
             memory_gradient[i] = grad_i
 
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 gradient_average[j_idx] += grad_i * A_data[j] / n_samples
-
 
     @njit(nogil=True)
     def epoch_iteration_template(
@@ -535,7 +394,7 @@ def _epoch_factory_sparse_SAGA(
                 j_idx = A_indices[j]
                 p += x[j_idx] * A_data[j]
 
-            grad_i = f_prime(p, b[i])
+            grad_i = partial_gradient(p, b[i])
             mem_i = memory_gradient[i]
 
             # .. update coefficients ..
@@ -543,20 +402,9 @@ def _epoch_factory_sparse_SAGA(
                 j_idx = A_indices[j]
                 x_j = x[j_idx]
                 incr = (grad_i - mem_i) * A_data[j] + (
-                    gradient_average[j_idx] + alpha * x_j)
+                    gradient_average[j_idx] + f_alpha * x_j)
 
-                x_new = x_j - step_size * incr
-                x[j_idx] = x_new
-
-            g_prox(step_size * beta, x, 0, n_features)
-
-                #
-                # for b_j in range(RB_indptr[g], RB_indptr[g+1]):
-                #     # update vector of coefficients
-                #     tmp = incr[b_j] - x[b_j]
-                #     x[b_j] += tmp
-                #     # x[b_j] = incr[b_j]
-                #     incr[b_j] = 0
+                x[j_idx] = prox(x_j - step_size * incr, step_size)
 
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):
@@ -564,16 +412,7 @@ def _epoch_factory_sparse_SAGA(
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
             memory_gradient[i] += (grad_i - mem_i)
 
-    @njit
-    def full_loss(x):
-        obj = 0.
-        for i in range(n_samples):
-            idx = A_indices[A_indptr[i]:A_indptr[i + 1]]
-            A_i = A_data[A_indptr[i]:A_indptr[i + 1]]
-            obj += f_func(np.dot(x[idx], A_i), b[i]) / n_samples
-        return obj + 0.5 * alpha * np.dot(x, x) + beta * g_func(x)
-
-    return epoch_iteration_template, init_gradient, full_loss
+    return epoch_iteration_template, init_gradient
 
 
 def _factory_sparse_PSSAGA(

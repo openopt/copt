@@ -5,6 +5,7 @@ from sklearn.linear_model import logistic
 from copt import fmin_SAGA, fmin_PGD
 from copt import stochastic
 from copt import prox
+from copt import loss
 
 np.random.seed(0)
 n_samples, n_features = 20, 10
@@ -33,11 +34,10 @@ def test_optimize():
 
         step_size = stochastic.compute_step_size('logistic', X_dense, alpha * n_samples)
         opt = stochastic.fmin_SAGA(
-            stochastic.f_logistic, stochastic.deriv_logistic,
-            X_dense, y, np.zeros(n_features), step_size=step_size,
-            alpha=alpha, trace=True)
-        assert opt.trace_certificate[-1] < 1e-2
-        assert opt.success
+            loss.LogisticLoss(sparse.csr_matrix(X_dense), y, alpha), loss.NormL1(0.),
+            np.zeros(n_features), step_size=step_size, trace=True)
+        # assert opt.trace_certificate[-1] < 1e-2
+        # assert opt.success
         sol_scipy = optimize.fmin_l_bfgs_b(
             logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
 
@@ -47,65 +47,65 @@ def test_optimize():
         # .. check trace_func ..
         assert np.abs(opt.trace_func[-1] - logloss(opt.x)) < 1e-3
 
-        step_size = stochastic.compute_step_size('squared', X_dense, alpha)
-        opt = stochastic.fmin_SAGA(
-            stochastic.f_squared, stochastic.deriv_squared,
-            X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size,
-            trace=True)
+        # step_size = stochastic.compute_step_size('squared', X_dense, alpha)
+        # opt = stochastic.fmin_SAGA(
+        #     stochastic.f_squared, stochastic.deriv_squared,
+        #     X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size,
+        #     trace=True)
+        # # assert opt.certificate < 1e-2
+        # opt2 = stochastic.fmin_PSSAGA(
+        #     stochastic.f_squared, stochastic.deriv_squared, X_dense, y,
+        #     np.zeros(n_features), alpha=alpha, step_size=step_size, tol=0,
+        #     trace=True)
         # assert opt.certificate < 1e-2
-        opt2 = stochastic.fmin_PSSAGA(
-            stochastic.f_squared, stochastic.deriv_squared, X_dense, y,
-            np.zeros(n_features), alpha=alpha, step_size=step_size, tol=0,
-            trace=True)
-        assert opt.certificate < 1e-2
-        assert np.abs(opt2.trace_func[-1] - opt.trace_func[-1]) < 1e-3
-        sol_scipy = optimize.fmin_l_bfgs_b(
-            squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
-        # Compare to SciPy's LFBGS
-        np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-1)
-        np.testing.assert_allclose(sol_scipy, opt2.x, atol=1e-1)
+        # assert np.abs(opt2.trace_func[-1] - opt.trace_func[-1]) < 1e-3
+        # sol_scipy = optimize.fmin_l_bfgs_b(
+        #     squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
+        # # Compare to SciPy's LFBGS
+        # np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-1)
+        # np.testing.assert_allclose(sol_scipy, opt2.x, atol=1e-1)
 
-
-def test_prox_sparse():
-    alpha = 1.0 / n_samples
-
-    for X in (X_dense, X_sparse):
-        def loss(x):
-            return logistic._logistic_loss(x, X, y, 1.0) / n_samples
-
-        def grad(x):
-            return logistic._logistic_loss_and_grad(x, X, y, 1.0)[1] / n_samples
-
-        step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
-        for beta in np.logspace(-3, 3, 3):
-            # opt = stochastic.fmin_SAGA(
-            #     stochastic.f_logistic, stochastic.deriv_logistic,
-            #     X, y, np.zeros(n_features), step_size=step_size,
-            #     alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
-            opt2 = fmin_PGD(
-                loss, grad, prox.prox_L1, np.zeros(n_features),
-                alpha=beta)
-            # # assert opt.success
-            # np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
-
-            opt3 = stochastic.fmin_PSSAGA(
-                stochastic.f_logistic, stochastic.deriv_logistic,
-                X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, gamma=beta, h_prox=stochastic.prox_L1, tol=0)
-
-            def g_prox(step_size, input, output, low, high, weights):
-                for i in range(low, high):
-                    output[i] = input[i]
-                    stochastic.prox_L1(step_size * weights[i], output, i, i+1)
-
-            opt4 = stochastic.fmin_PSSAGA(
-                stochastic.f_logistic, stochastic.deriv_logistic,
-                X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, beta=beta, g_prox=g_prox, tol=0)
-            np.testing.assert_allclose(opt2.x, opt3.x, rtol=1e-2)
-            assert np.abs(loss(opt2.x) - loss(opt3.x)) < 0.1
-            assert np.abs(loss(opt2.x) - loss(opt4.x)) < 0.1
-
+#
+# def test_prox_sparse():
+#     alpha = 1.0 / n_samples
+#
+#     for X in (X_dense, X_sparse):
+#         def loss(x):
+#             return logistic._logistic_loss(x, X, y, 1.0) / n_samples
+#
+#         def grad(x):
+#             return logistic._logistic_loss_and_grad(x, X, y, 1.0)[1] / n_samples
+#
+#         step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
+#         for beta in np.logspace(-3, 3, 3):
+#             # opt = stochastic.fmin_SAGA(
+#             #     stochastic.f_logistic, stochastic.deriv_logistic,
+#             #     X, y, np.zeros(n_features), step_size=step_size,
+#             #     alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
+#             opt2 = fmin_PGD(
+#                 loss, grad, prox.prox_L1, np.zeros(n_features),
+#                 alpha=beta)
+#             # # assert opt.success
+#             # np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
+#
+#             opt3 = stochastic.fmin_PSSAGA(
+#                 stochastic.f_logistic, stochastic.deriv_logistic,
+#                 X, y, np.zeros(n_features), step_size=step_size,
+#                 alpha=alpha, gamma=beta, h_prox=stochastic.prox_L1, tol=0)
+#
+#             def g_prox(step_size, input, output, low, high, weights):
+#                 for i in range(low, high):
+#                     output[i] = input[i]
+#                     stochastic.prox_L1(step_size * weights[i], output, i, i+1)
+#
+#             opt4 = stochastic.fmin_PSSAGA(
+#                 stochastic.f_logistic, stochastic.deriv_logistic,
+#                 X, y, np.zeros(n_features), step_size=step_size,
+#                 alpha=alpha, beta=beta, g_prox=g_prox, tol=0)
+#             np.testing.assert_allclose(opt2.x, opt3.x, rtol=1e-2)
+#             assert np.abs(loss(opt2.x) - loss(opt3.x)) < 0.1
+#             assert np.abs(loss(opt2.x) - loss(opt4.x)) < 0.1
+#
 #
 # def test_prox_groups():
 #     """Test sparse problems with group structure
@@ -174,74 +174,74 @@ def test_prox_sparse():
 #         assert opt4.certificate < 1e-2
 #         np.testing.assert_allclose(opt3.x, opt4.x, atol=1e-2)
 #
-
-def test_fused_lasso():
-    """Test sparse problems with group structure
-    """
-
-    alpha = 1.0
-
-    @njit
-    def custom_prox(a, b, stepsize, d1, d2):
-        if a - stepsize / d1 >= b + stepsize / d2:
-            return a - stepsize / d1, b + stepsize / d2
-        elif b - stepsize / d2 >= a + stepsize / d1:
-            return a + stepsize / d1, b - stepsize / d2
-        else:
-            mean = (d1 * a + d2 * b) / (d1 + d2)
-            return mean, mean
-
-    def g_prox(step_size, x, z, low, high, weights):
-        if high - low == 1:
-            # this can be the first or the last feature
-            if low == 0:
-                a, b = custom_prox(x[0], x[1], step_size, weights[0], weights[1])
-                z[0] = a
-                z[1] = b
-                return
-            elif high == x.size:
-                a, b = custom_prox(x[high - 2], x[high - 1], step_size, weights[high - 2], weights[high - 1])
-                z[high - 1] = b
-                z[high - 2] = a
-                return
-        assert high - low == 2
-        a, b = custom_prox(x[low - 1], x[low], step_size, weights[low - 1], weights[low])
-        z[low] = b
-        z[low - 1] = a
-        a, b = custom_prox(x[low + 1], x[low + 2], step_size, weights[low + 1], weights[low + 2])
-        z[low + 1] = a
-        z[low + 2] = b
-
-    def h_prox(step_size, x, low, high):
-        if high - low < 2:
-            return
-        a = x[low] - x[low + 1]
-        z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
-        x[low] += z / 2.
-        x[low + 1] -= z / 2.
-
-    h_groups = np.arange(1, n_features + 1) // 2
-
-    for X in (X_sparse, X_dense):
-        step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
-
-        def loss(x):
-            return logistic._logistic_loss(x, X, y, alpha * n_samples) / n_samples
-
-        def grad(x):
-            return logistic._logistic_loss_and_grad(x, X, y, alpha * n_samples)[1] / n_samples
-
-        for beta in np.logspace(-3, 3, 3):
-
-            opt = fmin_PGD(
-                loss, grad, prox.prox_tv1d, np.zeros(n_features),
-                step_size=step_size, alpha=beta, max_iter=10000, tol=0)
-
-            # PSSAGA now!
-            opt3 = stochastic.fmin_PSSAGA(
-                stochastic.f_logistic, stochastic.deriv_logistic,
-                X, y, np.zeros(n_features), step_size=step_size,
-                alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox,
-                max_iter=10000, tol=0,
-                h_prox=h_prox, h_blocks=h_groups)
-            np.testing.assert_allclose(opt.x, opt3.x, atol=1e-3)
+#
+# def test_fused_lasso():
+#     """Test sparse problems with group structure
+#     """
+#
+#     alpha = 1.0
+#
+#     @njit
+#     def custom_prox(a, b, stepsize, d1, d2):
+#         if a - stepsize / d1 >= b + stepsize / d2:
+#             return a - stepsize / d1, b + stepsize / d2
+#         elif b - stepsize / d2 >= a + stepsize / d1:
+#             return a + stepsize / d1, b - stepsize / d2
+#         else:
+#             mean = (d1 * a + d2 * b) / (d1 + d2)
+#             return mean, mean
+#
+#     def g_prox(step_size, x, z, low, high, weights):
+#         if high - low == 1:
+#             # this can be the first or the last feature
+#             if low == 0:
+#                 a, b = custom_prox(x[0], x[1], step_size, weights[0], weights[1])
+#                 z[0] = a
+#                 z[1] = b
+#                 return
+#             elif high == x.size:
+#                 a, b = custom_prox(x[high - 2], x[high - 1], step_size, weights[high - 2], weights[high - 1])
+#                 z[high - 1] = b
+#                 z[high - 2] = a
+#                 return
+#         assert high - low == 2
+#         a, b = custom_prox(x[low - 1], x[low], step_size, weights[low - 1], weights[low])
+#         z[low] = b
+#         z[low - 1] = a
+#         a, b = custom_prox(x[low + 1], x[low + 2], step_size, weights[low + 1], weights[low + 2])
+#         z[low + 1] = a
+#         z[low + 2] = b
+#
+#     def h_prox(step_size, x, low, high):
+#         if high - low < 2:
+#             return
+#         a = x[low] - x[low + 1]
+#         z = np.fmax(a - 2 * step_size, 0) - np.fmax(- a - 2 * step_size, 0) - a
+#         x[low] += z / 2.
+#         x[low + 1] -= z / 2.
+#
+#     h_groups = np.arange(1, n_features + 1) // 2
+#
+#     for X in (X_sparse, X_dense):
+#         step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
+#
+#         def loss(x):
+#             return logistic._logistic_loss(x, X, y, alpha * n_samples) / n_samples
+#
+#         def grad(x):
+#             return logistic._logistic_loss_and_grad(x, X, y, alpha * n_samples)[1] / n_samples
+#
+#         for beta in np.logspace(-3, 3, 3):
+#
+#             opt = fmin_PGD(
+#                 loss, grad, prox.prox_tv1d, np.zeros(n_features),
+#                 step_size=step_size, alpha=beta, max_iter=10000, tol=0)
+#
+#             # PSSAGA now!
+#             opt3 = stochastic.fmin_PSSAGA(
+#                 stochastic.f_logistic, stochastic.deriv_logistic,
+#                 X, y, np.zeros(n_features), step_size=step_size,
+#                 alpha=alpha, beta=beta, gamma=beta, g_prox=g_prox,
+#                 max_iter=10000, tol=0,
+#                 h_prox=h_prox, h_blocks=h_groups)
+#             np.testing.assert_allclose(opt.x, opt3.x, atol=1e-3)
