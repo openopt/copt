@@ -1,6 +1,6 @@
 import numpy as np
 from copt import fmin_PGD, fmin_APGD
-from copt import tv_prox, loss
+from copt import tv_prox, utils
 
 np.random.seed(0)
 n_samples, n_features = 100, 10
@@ -10,13 +10,13 @@ y = np.sign(np.random.randn(n_samples))
 
 def test_optimize():
 
-    logloss = loss.LogisticLoss(X, y)
+    logloss = utils.LogisticLoss(X, y)
     opt = fmin_PGD(logloss)
 
     assert np.linalg.norm(logloss.gradient(opt.x)) < 0.01
 
     for alpha in np.logspace(-3, 3, 5):
-        pen = loss.NormL1(alpha)
+        pen = utils.L1Norm(alpha)
         opt = fmin_PGD(logloss, pen)
         opt2 = fmin_APGD(logloss, pen)
         ss = 1. / logloss.lipschitz_constant()

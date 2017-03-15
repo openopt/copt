@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize, sparse
 from sklearn.linear_model import logistic
-from copt import fmin_PGD, fmin_CondatVu, tv_prox, loss
+from copt import fmin_PGD, fmin_CondatVu, tv_prox, utils
 
 np.random.seed(0)
 n_samples, n_features = 100, 10

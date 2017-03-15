@@ -5,7 +5,7 @@ Asynchronous Stochastic Gradient
 """
 import numpy as np
 import pylab as plt
-from copt import stochastic, loss
+from copt import stochastic, utils
 from scipy import sparse
 colors = ['#7fc97f', '#beaed4', '#fdc086']
 
@@ -22,8 +22,8 @@ beta = 1.0 / n_samples
 
 max_iter = 200
 
-f = loss.LogisticLoss(X, y, alpha)
-g = loss.NormL1(beta)
+f = utils.LogisticLoss(X, y, alpha)
+g = utils.L1Norm(beta)
 
 opt_1cores = stochastic.fmin_SAGA(
     f, g, np.zeros(n_features), max_iter=max_iter, tol=-1,

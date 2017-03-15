@@ -5,7 +5,7 @@ from sklearn.linear_model import logistic
 from copt import fmin_SAGA, fmin_PGD
 from copt import stochastic
 from copt import tv_prox
-from copt import loss
+from copt import utils
 
 np.random.seed(0)
 n_samples, n_features = 20, 10
@@ -33,7 +33,7 @@ def test_optimize():
             return - X_dense.T.dot(y - np.dot(X_dense, w)) + alpha * n_samples * w
 
         opt = stochastic.fmin_SAGA(
-            loss.LogisticLoss(sparse.csr_matrix(X_dense), y, alpha), loss.NormL1(0.),
+            utils.LogisticLoss(sparse.csr_matrix(X_dense), y, alpha), utils.L1Norm(0.),
             np.zeros(n_features), trace=True)
         # assert opt.trace_certificate[-1] < 1e-2
         # assert opt.success

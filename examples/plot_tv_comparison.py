@@ -7,14 +7,37 @@ Comparison of solvers with total variation regularization.
 import numpy as np
 from scipy import linalg
 import pylab as plt
+import copt as cp
 colors = ['#7fc97f', '#beaed4', '#fdc086']
 
+from datetime import datetime
 
-from copt.tv_prox import prox_tv2d, prox_tv1d_rows, prox_tv1d_cols
-from copt import fmin_DavisYin, fmin_PGD, fmin_APGD
-from copt.utils import Trace
-from copt.datasets import load_img1
-from scipy import misc
+class Trace:
+    """
+    XXX
+    """
+    def __init__(self, loss_func, print_freq=100, verbose=False):
+        self.loss_func = loss_func
+        self.values = []
+        self.times = []
+        self.start = None
+        self.counter = 0
+        self.print_freq = print_freq
+        self.verbose = verbose
+
+    def __call__(self, args):
+        fxk = self.loss_func(args)
+        if self.verbose and self.counter % self.print_freq == 0:
+            print('Iteration: %s, Trace obj: %s' %
+                  (self.counter, fxk))
+        self.counter += 1
+        self.values.append(fxk)
+        if self.start is None:
+            self.start = datetime.now()
+            self.times = [0]
+        else:
+            self.times.append((datetime.now() - self.start).total_seconds())
+
 
 ###############################################################
 # Load an ground truth image and generate the dataset (A, b) as
@@ -22,7 +45,7 @@ from scipy import misc
 #             b = A ground_truth + noise   ,
 #
 # where A is a random matrix. We will now load the ground truth image
-img = load_img1()
+img = cp.datasets.load_img1()
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)
@@ -59,16 +82,16 @@ for i, alpha in enumerate(all_alphas):
 
     max_iter = 5000
     trace_three = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_tos = fmin_DavisYin(
-        obj_fun, grad, prox_tv1d_rows, prox_tv1d_cols, np.zeros(n_features),
+    out_tos = cp.fmin_DavisYin(
+        obj_fun, grad, cp.tv_prox.prox_tv1d_rows, cp.tv_prox.prox_tv1d_cols, np.zeros(n_features),
         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
         callback=trace_three, max_iter=max_iter, tol=1e-16)
 
     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_gd = fmin_APGD(
-        obj_fun, grad, prox_tv2d, np.zeros(n_features),
-        alpha=alpha, g_prox_args=(n_rows, n_cols, 1000, 1e-1),
-        max_iter=max_iter, callback=trace_gd)
+    f = cp.LogisticLoss(A, b, l2_reg)
+    g = cp.TotalVariation2D(alpha, n_rows, n_cols)
+    out_gd = cp.fmin_APGD(
+        f, g, max_iter=max_iter, callback=trace_gd)
 
     ax[0, i].set_title(r'$\lambda=%s$' % alpha)
     ax[0, i].imshow(out_tos.x.reshape((n_rows, n_cols)),

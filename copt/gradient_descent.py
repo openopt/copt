@@ -1,10 +1,9 @@
 import warnings
-from typing import Callable
 import numpy as np
 from scipy import optimize
 from scipy import linalg
 from datetime import datetime
-from copt import loss
+from . import utils
 
 
 def fmin_PGD(
@@ -63,7 +62,7 @@ def fmin_PGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = loss.DummyProx()
+        g = utils.DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -205,7 +204,7 @@ def fmin_APGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = loss.DummyProx()
+        g = utils.DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant

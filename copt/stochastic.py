@@ -5,7 +5,7 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt.utils import norm_rows
-from copt import loss
+from copt import utils
 
 import concurrent.futures
 
@@ -131,7 +131,7 @@ def fmin_SAGA(
         step_size = 1. / (3 * f.lipschitz_constant())
 
     if g is None:
-        g = loss.DummyProx()
+        g = utils.DummyProx()
 
     success = False
     epoch_iteration, init_gradient = _factory_sparse_SAGA(f, g)
