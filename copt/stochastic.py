@@ -143,9 +143,6 @@ def fmin_SAGA(
     init_gradient(memory_gradient, gradient_average, n_samples)
     # XXX needed?
 
-    # warm up for the JIT
-    epoch_iteration(x, memory_gradient, gradient_average, np.array([0]), step_size)
-
     trace_func = []
     start_time = datetime.now()
     trace_time = [0.]

@@ -7,7 +7,7 @@ from datetime import datetime
 from copt import loss
 
 
-def fmin_PGD(f, g, x0: np.ndarray, tol=1e-6, max_iter=1000,
+def fmin_PGD(f, g=None, x0=None, tol=1e-12, max_iter=100,
              verbose=0, callback=None, backtracking: bool=True,
              step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
              trace=False) -> optimize.OptimizeResult:
@@ -58,7 +58,10 @@ def fmin_PGD(f, g, x0: np.ndarray, tol=1e-6, max_iter=1000,
         Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
-    xk = np.array(x0, copy=True)
+    if x0 is None:
+        xk = np.zeros(f.n_features)
+    else:
+        xk = np.array(x0, copy=True)
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
@@ -69,9 +72,9 @@ def fmin_PGD(f, g, x0: np.ndarray, tol=1e-6, max_iter=1000,
         step_size_n_sample = 5
         L = []
         for _ in range(step_size_n_sample):
-            x_tmp = np.random.randn(x0.size)
+            x_tmp = np.random.randn(f.n_features)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f(x0) - f(x_tmp)))
+            L.append(linalg.norm(f(xk) - f(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 

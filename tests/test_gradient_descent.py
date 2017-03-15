@@ -11,15 +11,13 @@ y = np.sign(np.random.randn(n_samples))
 def test_optimize():
 
     logloss = loss.LogisticLoss(X, y)
-    opt = fmin_PGD(
-        logloss, None, np.zeros(n_features))
+    opt = fmin_PGD(logloss)
 
     assert np.linalg.norm(logloss.gradient(opt.x)) < 0.01
 
     for alpha in np.logspace(-3, 3, 5):
         pen = loss.NormL1(alpha)
-        opt = fmin_PGD(
-            logloss, pen, np.zeros(n_features))
+        opt = fmin_PGD(logloss, pen)
         ss = 1. / logloss.lipschitz_constant()
         gmap = (opt.x - pen.prox(opt.x - ss * logloss.gradient(opt.x), ss)) / ss
         assert np.linalg.norm(gmap) < 0.01

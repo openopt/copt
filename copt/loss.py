@@ -17,6 +17,7 @@ class LogisticLoss(SmoothLoss):
         self.b = b
         self.alpha = alpha
         self.A = sparse.csr_matrix(A)
+        self.n_features = A.shape[1]
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss
