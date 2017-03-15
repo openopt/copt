@@ -7,10 +7,11 @@ from datetime import datetime
 from copt import loss
 
 
-def fmin_PGD(f, g=None, x0=None, tol=1e-12, max_iter=100,
-             verbose=0, callback=None, backtracking: bool=True,
-             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
-             trace=False) -> optimize.OptimizeResult:
+def fmin_PGD(
+        f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
+        callback=None, backtracking: bool=True, step_size=None,
+        max_iter_backtracking=100, backtracking_factor=0.6, trace=False
+        ) -> optimize.OptimizeResult:
     """Proximal gradient descent.
 
     Solves problems of the form
@@ -21,14 +22,11 @@ def fmin_PGD(f, g=None, x0=None, tol=1e-12, max_iter=100,
     where we have access to the gradient of f and to the proximal operator of g.
 
     Arguments:
-        fun : f(x) returns the value of f at x.
+        f : loss function (smooth)
 
-        fun_deriv : f_prime(x) returns the gradient of f.
+        g : penalty term (proximable)
 
-        g_prox : g_prox(x, alpha) returns the proximal operator of g at x
-            with parameter alpha.
-
-        x0 : array-like
+        x0 : array-like, optional
             Initial guess
 
         backtracking : boolean
@@ -146,11 +144,11 @@ def fmin_PGD(f, g=None, x0=None, tol=1e-12, max_iter=100,
         trace_time=trace_time)
 
 
-def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
-              x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
-             verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
-             step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
-             trace=False, g_func=None) -> optimize.OptimizeResult:
+def fmin_APGD(
+        f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
+        callback=None, backtracking: bool=True,
+        step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
+        trace=False) -> optimize.OptimizeResult:
     """Accelerated proximal gradient descent.
 
     Solves problems of the form
@@ -161,7 +159,8 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
     where we have access to the gradient of f and to the proximal operator of g.
 
     Arguments:
-        fun : f(x) returns the value of f at x.
+        f : loss function, differentiable
+        p : penalty, proximable
 
         fun_deriv : f_prime(x) returns the gradient of f.
 
@@ -198,23 +197,23 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
         Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
-    xk = np.array(x0, copy=True)
+    if x0 is None:
+        xk = np.zeros(f.n_features)
+    else:
+        xk = np.array(x0, copy=True)
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
-    if g_prox is None:
-        g_prox = lambda x, y: y
-
-    if g_func is None:
-        def g_func(*args): return 0
+    if g is None:
+        g = loss.DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
         step_size_n_sample = 5
         L = []
         for _ in range(step_size_n_sample):
-            x_tmp = np.random.randn(x0.size)
+            x_tmp = np.random.randn(f.n_features)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
+            L.append(linalg.norm(f(xk) - f(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 
@@ -234,20 +233,18 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = fun_deriv(yk)
-        xk = g_prox(current_step_size * alpha, yk - current_step_size * grad_fk, *g_prox_args)
+        grad_fk = f.gradient(yk)
+        xk = g.prox(yk - current_step_size * grad_fk, current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
                 incr = xk - yk
-                if fun(xk) <= fun(yk) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                if f(xk) <= f(yk) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
                     break
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    xk = g_prox(current_step_size * alpha, yk - current_step_size * grad_fk, *g_prox_args)
-                    # incr = x_next - xk
-                    # f_next = fun(x_next)
+                    xk = g.prox(yk - current_step_size * grad_fk, current_step_size)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
@@ -259,7 +256,7 @@ def fmin_APGD(fun: Callable, fun_deriv: Callable, g_prox : Callable,
         if trace:
             trace_certificate.append(certificate)
             trace_x.append(xk.copy())
-            trace_func.append(fun(yk) + alpha * g_func(yk))
+            trace_func.append(f(yk) + g(yk))
             trace_time.append((datetime.now() - start_time).total_seconds())
 
         if verbose > 0:

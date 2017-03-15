@@ -12,12 +12,14 @@ class SmoothLoss:
 
 class LogisticLoss(SmoothLoss):
 
-    def __init__(self, A, b, alpha=1.0):
+    def __init__(self, A, b, alpha='auto'):
         # A = sparse.csr_matrix(A)
         self.b = b
         self.alpha = alpha
         self.A = sparse.csr_matrix(A)
         self.n_features = A.shape[1]
+        if alpha == 'auto':
+            self.alpha = 1.0 / A.shape[0]
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss

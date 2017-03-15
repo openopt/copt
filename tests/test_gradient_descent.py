@@ -18,17 +18,12 @@ def test_optimize():
     for alpha in np.logspace(-3, 3, 5):
         pen = loss.NormL1(alpha)
         opt = fmin_PGD(logloss, pen)
+        opt2 = fmin_APGD(logloss, pen)
         ss = 1. / logloss.lipschitz_constant()
         gmap = (opt.x - pen.prox(opt.x - ss * logloss.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < 0.01
-    #
-    # opt = fmin_APGD(
-    #     logloss, fprime_logloss, None, np.zeros(n_features),
-    #     tol=1e-3)
-    # sol_scipy = optimize.fmin_l_bfgs_b(
-    #     logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
-    # assert opt.success
-    # np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)
+        assert np.linalg.norm(gmap) < 1e-6
+        gmap2 = (opt2.x - pen.prox(opt2.x - ss * logloss.gradient(opt2.x), ss)) / ss
+        assert np.linalg.norm(gmap2) < 1e-6
 
 
 
