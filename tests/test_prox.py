@@ -1,5 +1,5 @@
 import numpy as np
-from copt import prox
+from copt import tv_prox
 from numpy import testing
 
 
@@ -20,7 +20,7 @@ def test_tv1_prox():
     tv_norm = lambda x: np.sum(np.abs(np.diff(x)))
     for _ in range(1000):
         x = np.random.randn(n_features)
-        x_next = prox.prox_tv1d(gamma, x)
+        x_next = tv_prox.prox_tv1d(gamma, x)
         diff_obj = tv_norm(x) - tv_norm(x_next)
         testing.assert_array_less(
         ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
@@ -42,7 +42,7 @@ def test_tv2_prox():
 
     for nrun in range(20):
         x = np.random.randn(n_features)
-        x_next = prox.prox_tv2d(gamma, x, n_rows, n_cols, tol=1e-10, max_iter=10000)
+        x_next = tv_prox.prox_tv2d(gamma, x, n_rows, n_cols, tol=1e-10, max_iter=10000)
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
         testing.assert_array_less(
             ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
@@ -56,7 +56,7 @@ def test_tv2d_linear_operator():
         tmp2 = np.abs(np.diff(img, axis=1))
         return tmp1.sum() + tmp2.sum()
 
-    L = prox.tv2d_linear_operator(n_rows, n_cols)
+    L = tv_prox.tv2d_linear_operator(n_rows, n_cols)
     x = np.random.randn(n_rows * n_cols)
     testing.assert_almost_equal(
         np.abs(L.dot(x)).sum(), TV(x))

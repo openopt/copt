@@ -4,7 +4,7 @@ from scipy import optimize, sparse
 from sklearn.linear_model import logistic
 from copt import fmin_SAGA, fmin_PGD
 from copt import stochastic
-from copt import prox
+from copt import tv_prox
 from copt import loss
 
 np.random.seed(0)
@@ -32,10 +32,9 @@ def test_optimize():
         def fprime_squaredloss(w):
             return - X_dense.T.dot(y - np.dot(X_dense, w)) + alpha * n_samples * w
 
-        step_size = stochastic.compute_step_size('logistic', X_dense, alpha * n_samples)
         opt = stochastic.fmin_SAGA(
             loss.LogisticLoss(sparse.csr_matrix(X_dense), y, alpha), loss.NormL1(0.),
-            np.zeros(n_features), step_size=step_size, trace=True)
+            np.zeros(n_features), trace=True)
         # assert opt.trace_certificate[-1] < 1e-2
         # assert opt.success
         sol_scipy = optimize.fmin_l_bfgs_b(

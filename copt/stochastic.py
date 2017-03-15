@@ -5,6 +5,7 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt.utils import norm_rows
+from copt import loss
 
 import concurrent.futures
 
@@ -127,7 +128,10 @@ def fmin_SAGA(
     x = np.ascontiguousarray(x0).copy()
 
     if step_size < 0:
-        raise ValueError
+        step_size = 1. / (3 * f.lipschitz_constant())
+
+    if g is None:
+        g = loss.DummyProx()
 
     success = False
     epoch_iteration, init_gradient = _factory_sparse_SAGA(f, g)
@@ -356,13 +360,6 @@ def _factory_sparse_SAGA(f, g):
     BS_data, BS_indices, BS_indptr = _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks)
     BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr), (n_samples, n_blocks))
-
-    # .. estimate a mapping from blocks to features ..
-    reverse_blocks = sparse.dok_matrix((n_blocks, n_features), dtype=np.bool)
-    for j_feat in range(n_features):
-        i_block = g_blocks[j_feat]
-        reverse_blocks[i_block, j_feat] = True
-    reverse_blocks = reverse_blocks.tocsr()
 
     d = np.array(BS.sum(0), dtype=np.float).ravel()
     idx = (d != 0)

@@ -7,7 +7,7 @@ using copt.
 """
 import numpy as np
 from sklearn.linear_model import logistic
-from copt import fmin_PGD, prox
+from copt import fmin_PGD, tv_prox
 
 n_samples, n_features = 100, 10
 X = np.random.randn(n_samples, n_features)
@@ -22,5 +22,5 @@ def logloss(x):
 def fprime_logloss(x):
     return logistic._logistic_loss_and_grad(x, X, y, 1.)[1]
 
-out = fmin_PGD(logloss, fprime_logloss, prox.prox_L1, np.zeros(n_features))
+out = fmin_PGD(logloss, fprime_logloss, tv_prox.prox_L1, np.zeros(n_features))
 print('Solution', out)

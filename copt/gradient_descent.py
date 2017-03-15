@@ -4,17 +4,18 @@ import numpy as np
 from scipy import optimize
 from scipy import linalg
 from datetime import datetime
+from copt import loss
 
 
-def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1.0, tol=1e-6, max_iter=1000,
-             verbose=0, g_prox_args=(), callback=None, backtracking: bool=True,
+def fmin_PGD(f, g, x0: np.ndarray, tol=1e-6, max_iter=1000,
+             verbose=0, callback=None, backtracking: bool=True,
              step_size=None, max_iter_backtracking=100, backtracking_factor=0.4,
-             trace=False, g_func=None) -> optimize.OptimizeResult:
+             trace=False) -> optimize.OptimizeResult:
     """Proximal gradient descent.
 
     Solves problems of the form
 
-            minimize_x f(x) + alpha g(x)
+            minimize_x f(x) + g(x)
 
 
     where we have access to the gradient of f and to the proximal operator of g.
@@ -60,11 +61,8 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
     xk = np.array(x0, copy=True)
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
-    if g_prox is None:
-        g_prox = lambda x, y: y
-
-    if g_func is None:
-        def g_func(*args): return 0
+    if g is None:
+        g = loss.DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -73,7 +71,7 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
         for _ in range(step_size_n_sample):
             x_tmp = np.random.randn(x0.size)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
+            L.append(linalg.norm(f(x0) - f(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 
@@ -89,18 +87,18 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
 
     if trace:
         trace_x.append(xk.copy())
-        trace_func.append(fun(xk) + alpha * g_func(xk))
+        trace_func.append(f(xk) + g(xk))
         trace_time.append((datetime.now() - start_time).total_seconds())
 
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = fun_deriv(xk)
-        x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
+        grad_fk = f.gradient(xk)
+        x_next = g.prox(xk - current_step_size * grad_fk, current_step_size)
         incr = x_next - xk
         if backtracking:
-            fk = fun(xk)
-            f_next = fun(x_next)
+            fk = f(xk)
+            f_next = f(x_next)
             for _ in range(max_iter_backtracking):
                 if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
@@ -108,9 +106,9 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x_next = g_prox(current_step_size * alpha, xk - current_step_size * grad_fk, *g_prox_args)
+                    x_next = g.prox(xk - current_step_size * grad_fk, current_step_size)
                     incr = x_next - xk
-                    f_next = fun(x_next)
+                    f_next = f(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         certificate = np.linalg.norm((xk - x_next) / step_size)
@@ -118,11 +116,11 @@ def fmin_PGD(fun: Callable, fun_deriv: Callable, g_prox, x0: np.ndarray, alpha=1
 
         if trace:
             trace_x.append(xk.copy())
-            trace_func.append(fun(xk) + alpha * g_func(xk))
+            trace_func.append(f(xk) + g(xk))
             trace_time.append((datetime.now() - start_time).total_seconds())
 
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s, step size: %s" % (it, norm_increment, step_size))
+            print("Iteration %s, step size: %s" % (it, step_size))
 
         if certificate < tol:
             if verbose:
