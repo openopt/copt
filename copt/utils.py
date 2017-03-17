@@ -7,13 +7,13 @@ from .tv_prox import prox_tv2d
 class LogisticLoss:
 
     def __init__(self, A, b, alpha='auto'):
-        # A = sparse.csr_matrix(A)
         self.b = b
-        self.alpha = alpha
         self.A = sparse.csr_matrix(A)
-        self.n_features = A.shape[1]
+        self.n_features = self.A.shape[1]
         if alpha == 'auto':
-            self.alpha = 1.0 / A.shape[0]
+            self.alpha = 1. / A.shape[0]
+        else:
+            self.alpha = alpha
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss
@@ -56,13 +56,45 @@ class LogisticLoss:
         return partial_gradient
 
     def lipschitz_constant(self):
-        return 0.25 * norm_rows(self.A) + self.alpha
+        return 0.25 * norm_rows(self.A) + self.alpha * self.A.shape[0]
+
+
+class SquaredLoss:
+
+    def __init__(self, A, b, alpha='auto'):
+        self.b = b
+        self.A = sparse.csr_matrix(A)
+        if alpha == 'auto':
+            self.alpha = 1. / A.shape[0]
+        else:
+            self.alpha = float(alpha)
+
+    def __call__(self, x):
+        # loss function to be optimized, it's the logistic loss
+        z = self.A.dot(x) - self.b
+        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+
+    def gradient(self, x):
+        z = self.A.dot(x) - self.b
+        grad_w = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x
+        return grad_w
+
+    @staticmethod
+    def partial_gradient_factory():
+        @njit
+        def partial_gradient(p, b):
+            # compute p
+            return - (b - p)
+        return partial_gradient
+
+    def lipschitz_constant(self):
+        return norm_rows(self.A) + self.alpha * self.A.shape[0]
 
 
 class L1Norm:
+    is_separable = True
 
     def __init__(self, alpha=1.):
-        self.is_separable = True
         self.alpha = alpha
 
     def __call__(self, x):
@@ -72,7 +104,7 @@ class L1Norm:
         return np.fmax(x - self.alpha * step_size, 0) \
             - np.fmax(- x - self.alpha * step_size, 0)
 
-    def block_prox_factory(self):
+    def prox_factory(self):
         alpha = self.alpha
         @njit
         def prox_L1(x, step_size):
@@ -102,13 +134,15 @@ class TotalVariation2D:
 
 class DummyProx:
 
+    is_separable = True
+
     def __call__(self, x):
         return 0
 
     def prox(self, x, stepsize):
         return x
 
-    def block_prox_factory(self):
+    def prox_factory(self):
         @njit
         def prox_dummy(x, step_size):
             return x

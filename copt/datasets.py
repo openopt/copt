@@ -20,10 +20,10 @@ def load_rcv1():
     dir_name = os.path.join(home, 'copt_data')
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
-    file_name = os.path.join(dir_name, 'rcv1_full.binary')
+    file_name = os.path.join(dir_name, 'rcv1_full.binary.bz2')
     if not os.path.exists(file_name):
         print('Downloading RCV1 dataset ...')
-        url = 'http://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/rcv1_full.binary'
+        url = 'http://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/rcv1_full.binary.bz2'
         urllib.request.urlretrieve(url, file_name)
         print('Finished downloading')
     from sklearn import datasets

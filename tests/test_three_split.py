@@ -1,5 +1,5 @@
 import numpy as np
-from copt import fmin_DavisYin, fmin_PGD
+from copt import minimize_DavisYin, minimize_PGD
 from copt import tv_prox
 
 from sklearn.linear_model import logistic
@@ -25,7 +25,7 @@ def fused_lasso(x):
 
 def test_smooth():
 
-    opt = fmin_DavisYin(
+    opt = minimize_DavisYin(
         logloss, fprime_logloss, None, None,
         np.zeros(n_features), tol=1e-12)
 
@@ -42,11 +42,11 @@ def test_L1():
     for alpha in np.logspace(-3, 3, 5):
         x0 = np.zeros(n_features)
 
-        opt = fmin_DavisYin(
+        opt = minimize_DavisYin(
             logloss, fprime_logloss, tv_prox.prox_L1, None,
             x0.copy(), alpha=alpha, beta=alpha)
 
-        opt2 = fmin_DavisYin(
+        opt2 = minimize_DavisYin(
             logloss, fprime_logloss, None, tv_prox.prox_L1,
             x0.copy(), alpha=alpha, beta=alpha)
 
@@ -85,7 +85,7 @@ def test_fused():
 
     for alpha in np.logspace(-3, 3, 5):
         x0 = np.zeros(n_features)
-        opt1 = fmin_DavisYin(
+        opt1 = minimize_DavisYin(
             logloss, fprime_logloss, h_prox, g_prox, x0.copy(),
             alpha=alpha, beta=alpha)
         # opt2 = fmin_PGD(

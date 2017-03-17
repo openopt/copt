@@ -1,12 +1,13 @@
 import warnings
 import numpy as np
-from scipy import optimize
-from scipy import linalg
+from scipy import optimize, linalg
 from datetime import datetime
-from . import utils
+
+# .. local imports ..
+from .utils import DummyProx
 
 
-def fmin_PGD(
+def minimize_PGD(
         f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
         callback=None, backtracking: bool=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.6, trace=False
@@ -17,13 +18,12 @@ def fmin_PGD(
 
             minimize_x f(x) + g(x)
 
-
     where we have access to the gradient of f and to the proximal operator of g.
 
     Arguments:
         f : loss function (smooth)
 
-        g : penalty term (proximable)
+        g : penalty term (proximal)
 
         x0 : array-like, optional
             Initial guess
@@ -62,7 +62,7 @@ def fmin_PGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = utils.DummyProx()
+        g = DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -143,7 +143,7 @@ def fmin_PGD(
         trace_time=trace_time)
 
 
-def fmin_APGD(
+def minimize_APGD(
         f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
         callback=None, backtracking: bool=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
@@ -204,7 +204,7 @@ def fmin_APGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = utils.DummyProx()
+        g = DummyProx()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -286,7 +286,7 @@ def fmin_APGD(
 
 
 
-def fmin_DavisYin(
+def minimize_DavisYin(
         fun, fun_deriv, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
         g_prox_args=(), h_prox_args=(),
         verbose=0, callback=None, backtracking=True, step_size=None, max_iter_backtracking=100,

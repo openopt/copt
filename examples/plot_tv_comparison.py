@@ -82,7 +82,7 @@ for i, alpha in enumerate(all_alphas):
 
     max_iter = 5000
     trace_three = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-    out_tos = cp.fmin_DavisYin(
+    out_tos = cp.minimize_DavisYin(
         obj_fun, grad, cp.tv_prox.prox_tv1d_rows, cp.tv_prox.prox_tv1d_cols, np.zeros(n_features),
         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
         callback=trace_three, max_iter=max_iter, tol=1e-16)
@@ -90,7 +90,7 @@ for i, alpha in enumerate(all_alphas):
     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
     f = cp.LogisticLoss(A, b, l2_reg)
     g = cp.TotalVariation2D(alpha, n_rows, n_cols)
-    out_gd = cp.fmin_APGD(
+    out_gd = cp.minimize_APGD(
         f, g, max_iter=max_iter, callback=trace_gd)
 
     ax[0, i].set_title(r'$\lambda=%s$' % alpha)

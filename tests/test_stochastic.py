@@ -1,68 +1,20 @@
 import numpy as np
-from numba import njit
-from scipy import optimize, sparse
-from sklearn.linear_model import logistic
-from copt import fmin_SAGA, fmin_PGD
-from copt import stochastic
-from copt import tv_prox
-from copt import utils
+from scipy import sparse
+import copt as cp
 
 np.random.seed(0)
-n_samples, n_features = 20, 10
-X_sparse = sparse.random(n_samples, n_features, density=0.1, format='csr')
+n_samples, n_features = 100, 10
+X_sparse = sparse.random(n_samples, n_features, density=0.2, format='csr')
 X_dense = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
 
 def test_optimize():
-
     for alpha in np.logspace(-1, 3, 3):
-
-        def logloss(x):
-            return logistic._logistic_loss(x, X_dense, y, alpha * n_samples) / n_samples
-
-        def fprime_logloss(x):
-            return logistic._logistic_loss_and_grad(
-                x, X_dense, y, alpha * n_samples)[1] / n_samples
-
-        # now similar test byt with the squared loss instead
-        def squaredloss(w):
-            return 0.5 * ((y - np.dot(X_dense, w)) ** 2).sum() + 0.5 * alpha * n_samples * w.dot(w)
-
-        def fprime_squaredloss(w):
-            return - X_dense.T.dot(y - np.dot(X_dense, w)) + alpha * n_samples * w
-
-        opt = stochastic.fmin_SAGA(
-            utils.LogisticLoss(sparse.csr_matrix(X_dense), y, alpha), utils.L1Norm(0.),
-            np.zeros(n_features), trace=True)
-        # assert opt.trace_certificate[-1] < 1e-2
-        # assert opt.success
-        sol_scipy = optimize.fmin_l_bfgs_b(
-            logloss, np.zeros(n_features), fprime=fprime_logloss)[0]
-
-        # .. check both solutions are close ..
-        np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-3)
-
-        # .. check trace_func ..
-        assert np.abs(opt.trace_func[-1] - logloss(opt.x)) < 1e-3
-
-        # step_size = stochastic.compute_step_size('squared', X_dense, alpha)
-        # opt = stochastic.fmin_SAGA(
-        #     stochastic.f_squared, stochastic.deriv_squared,
-        #     X_dense, y, np.zeros(n_features), alpha=alpha, step_size=step_size,
-        #     trace=True)
-        # # assert opt.certificate < 1e-2
-        # opt2 = stochastic.fmin_PSSAGA(
-        #     stochastic.f_squared, stochastic.deriv_squared, X_dense, y,
-        #     np.zeros(n_features), alpha=alpha, step_size=step_size, tol=0,
-        #     trace=True)
-        # assert opt.certificate < 1e-2
-        # assert np.abs(opt2.trace_func[-1] - opt.trace_func[-1]) < 1e-3
-        # sol_scipy = optimize.fmin_l_bfgs_b(
-        #     squaredloss, np.zeros(n_features), fprime=fprime_squaredloss)[0]
-        # # Compare to SciPy's LFBGS
-        # np.testing.assert_allclose(sol_scipy, opt.x, atol=1e-1)
-        # np.testing.assert_allclose(sol_scipy, opt2.x, atol=1e-1)
+        for X in (X_dense, X_sparse):
+            f = cp.LogisticLoss(X, y, alpha)
+            opt = cp.minimize_SAGA(f)
+            assert np.linalg.norm(f.gradient(opt.x)) < 1e-3
 
 #
 # def test_prox_sparse():

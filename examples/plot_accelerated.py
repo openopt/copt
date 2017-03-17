@@ -1,14 +1,13 @@
 """
-Convergence of logistic regression
-==================================
+Effect of acceleration in gradient descent
+==========================================
 
-Implementation of logistic regression
-using copt.
+Showcase the improved convergence of accelerated gradient
+descent on a logistic regression problem.
 """
 import numpy as np
 import pylab as plt
-from copt import fmin_PGD, fmin_APGD
-from copt import utils, datasets
+from copt import utils, minimize_PGD, minimize_APGD
 
 # .. construct (random) dataset ..
 n_samples, n_features = 1000, 1000
@@ -17,8 +16,8 @@ X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
 logloss = utils.LogisticLoss(X, y)
-result_pgd = fmin_PGD(logloss, trace=True)
-result_apgd = fmin_APGD(logloss, trace=True, max_iter=200)
+result_pgd = minimize_PGD(logloss, trace=True)
+result_apgd = minimize_APGD(logloss, trace=True, max_iter=200)
 
 fmin = np.min(result_apgd.trace_func)
 plt.title('Comparison of full gradient optimizers')

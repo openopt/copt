@@ -21,19 +21,29 @@ Optimization algorithms
 .. autosummary::
    :toctree: generated/
 
-    copt.fmin_PGD
-    copt.fmin_DavisYin
-    copt.fmin_CondatVu
-    copt.fmin_SAGA
-    copt.fmin_PSSAGA
+    copt.minimize_PGD
+    copt.minimize_DavisYin
+    copt.minimize_CondatVu
+    copt.minimize_SAGA
 
 
-Proximal operators
-------------------
+Supported loss functions
+------------------------
+
+Smooth loss functions
+
 .. autosummary::
    :toctree: generated/
 
-    copt.prox.prox_tv1d
+    copt.LogisticLoss
+    copt.SquaredLoss
+
+
+.. autosummary::
+   :toctree: generated/
+
+    copt.L1Norm
+    copt.TotalVariation2D
 
 
 
