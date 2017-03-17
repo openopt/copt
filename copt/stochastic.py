@@ -197,11 +197,7 @@ def _factory_sparse_SAGA(f, g):
                 j_idx = A_indices[j]
                 incr = (grad_i - mem_i) * A_data[j] + d[j_idx] * (
                     gradient_average[j_idx] + f_alpha * x[j_idx])
-                # incr = (grad_i - mem_i) * A_data[j] + d[j_idx] * (
-                #     gradient_average[j_idx] + f_alpha * x[j_idx])
-                x[j_idx] = x[j_idx] - step_size * incr
-                #
-                # x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):

@@ -14,48 +14,19 @@ def test_optimize():
         for X in (X_dense, X_sparse):
             f = cp.LogisticLoss(X, y, alpha)
             opt = cp.minimize_SAGA(f)
-            assert np.linalg.norm(f.gradient(opt.x)) < 1e-3
+            assert np.linalg.norm(f.gradient(opt.x)) < 1e-4
 
-#
-# def test_prox_sparse():
-#     alpha = 1.0 / n_samples
-#
-#     for X in (X_dense, X_sparse):
-#         def loss(x):
-#             return logistic._logistic_loss(x, X, y, 1.0) / n_samples
-#
-#         def grad(x):
-#             return logistic._logistic_loss_and_grad(x, X, y, 1.0)[1] / n_samples
-#
-#         step_size = stochastic.compute_step_size('logistic', X, alpha * n_samples)
-#         for beta in np.logspace(-3, 3, 3):
-#             # opt = stochastic.fmin_SAGA(
-#             #     stochastic.f_logistic, stochastic.deriv_logistic,
-#             #     X, y, np.zeros(n_features), step_size=step_size,
-#             #     alpha=alpha, beta=beta, g_prox=stochastic.prox_L1)
-#             opt2 = fmin_PGD(
-#                 loss, grad, prox.prox_L1, np.zeros(n_features),
-#                 alpha=beta)
-#             # # assert opt.success
-#             # np.testing.assert_allclose(opt.x, opt2.x, atol=1e-1)
-#
-#             opt3 = stochastic.fmin_PSSAGA(
-#                 stochastic.f_logistic, stochastic.deriv_logistic,
-#                 X, y, np.zeros(n_features), step_size=step_size,
-#                 alpha=alpha, gamma=beta, h_prox=stochastic.prox_L1, tol=0)
-#
-#             def g_prox(step_size, input, output, low, high, weights):
-#                 for i in range(low, high):
-#                     output[i] = input[i]
-#                     stochastic.prox_L1(step_size * weights[i], output, i, i+1)
-#
-#             opt4 = stochastic.fmin_PSSAGA(
-#                 stochastic.f_logistic, stochastic.deriv_logistic,
-#                 X, y, np.zeros(n_features), step_size=step_size,
-#                 alpha=alpha, beta=beta, g_prox=g_prox, tol=0)
-#             np.testing.assert_allclose(opt2.x, opt3.x, rtol=1e-2)
-#             assert np.abs(loss(opt2.x) - loss(opt3.x)) < 0.1
-#             assert np.abs(loss(opt2.x) - loss(opt4.x)) < 0.1
+
+def test_optimize_prox():
+    for alpha in np.logspace(-1, 3, 3):
+        for X in (X_dense, X_sparse):
+            f = cp.LogisticLoss(X, y)
+            g = cp.L1Norm(alpha)
+            opt = cp.minimize_SAGA(f, g)
+            gamma = 1. / f.lipschitz_constant()
+            gmap = (opt.x - g.prox(opt.x - gamma * f.gradient(opt.x), gamma)) / gamma
+            assert np.linalg.norm(gmap) < 1e-3
+
 #
 #
 # def test_prox_groups():
