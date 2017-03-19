@@ -6,15 +6,9 @@ from numba import njit
 from copt import utils
 
 
-@njit
-def deriv_squared(p, y):
-    # derivative of squared loss
-    return - (y - p)
-
-
 def minimize_SAGA(
     f, g=None, x0=None, step_size: float=-1, n_jobs: int=1, max_iter=100,
-    tol=1e-6, verbose=False, callback=None, trace=False) -> optimize.OptimizeResult:
+    tol=1e-6, verbose=False, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -69,49 +63,46 @@ def minimize_SAGA(
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
 
-    trace_func = []
     start_time = datetime.now()
-    trace_time = [0.]
-    trace_x = [x.copy()]
-    trace_certificate = [np.inf]
+    if trace:
+        trace_x = np.zeros((max_iter, n_features))
+    else:
+        trace_x = np.zeros((0, 0))
+    stop_flag = np.zeros(1, dtype=np.bool)
+    trace_func = []
+    trace_time = []
 
     # .. iterate on epochs ..
-    for it in range(max_iter):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = []
-            for _ in range(n_jobs):
-                perm = np.random.randint(low=0, high=n_samples, size=n_samples)
-                futures.append(executor.submit(
-                    epoch_iteration, x, memory_gradient, gradient_average,
-                    perm, step_size))
-            concurrent.futures.wait(futures)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for job_id in range(n_jobs):
+            futures.append(executor.submit(
+                epoch_iteration,
+                x, memory_gradient, gradient_average,
+                step_size, max_iter, job_id, tol, stop_flag, trace, trace_x))
+        concurrent.futures.wait(futures)
 
-        certificate = np.inf
-        if callback is not None:
-            callback(x)
-        if trace:
-            trace_x.append(x.copy())
-            trace_certificate.append(certificate)
-            trace_time.append((datetime.now() - start_time).total_seconds())
-
-        if verbose:
-            print('Iteration: %s, certificate: %s' % (it, certificate))
-        if certificate < tol:
-            success = True
-            break
+    n_iter, certificate = futures[0].result()
     if trace:
-        print('Computing trace')
+        delta = (datetime.now() - start_time).total_seconds()
+        trace_time = np.linspace(0, delta, n_iter)
+        if verbose:
+            print('Computing trace')
         # .. compute function values ..
         trace_func = []
-        for i in range(len(trace_x)):
+        for i in range(n_iter):
+            # TODO: could be parallelized
             trace_func.append(f(trace_x[i]) + g(trace_x[i]))
 
+    if certificate < tol:
+        success = True
+
     return optimize.OptimizeResult(
-        x=x, success=success, nit=it, trace_func=trace_func, trace_time=trace_time,
-        certificate=certificate, trace_certificate=trace_certificate)
+        x=x, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
+        certificate=certificate)
 
 
-@njit(nogil=True, cache=True)
+@njit(nogil=True)
 def _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks):
     """
@@ -177,33 +168,64 @@ def _factory_sparse_SAGA(f, g):
 
     @njit(nogil=True)
     def epoch_iteration_template(
-            x, memory_gradient, gradient_average, sample_indices, step_size):
+            x, memory_gradient, gradient_average, step_size, max_iter, job_id,
+            tol, stop_flag, trace, trace_x):
 
         # .. SAGA estimate of the gradient ..
+        x_old = x.copy()
+        cert = np.inf
+        it = 0
+        sample_indices = np.arange(n_samples)
+
+        if job_id == 0 and trace:
+            trace_x[0, :] = x
 
         # .. inner iteration ..
-        for i in sample_indices:
+        for it in range(1, max_iter):
+            np.random.shuffle(sample_indices)
+            for i in sample_indices:
+                p = 0.
+                for j in range(A_indptr[i], A_indptr[i+1]):
+                    j_idx = A_indices[j]
+                    p += x[j_idx] * A_data[j]
 
-            p = 0.
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                p += x[j_idx] * A_data[j]
+                grad_i = partial_gradient(p, b[i])
+                mem_i = memory_gradient[i]
 
-            grad_i = partial_gradient(p, b[i])
-            mem_i = memory_gradient[i]
+                # .. update coefficients ..
+                for j in range(A_indptr[i], A_indptr[i+1]):
+                    j_idx = A_indices[j]
+                    incr = (grad_i - mem_i) * A_data[j] + d[j_idx] * (
+                        gradient_average[j_idx] + f_alpha * x[j_idx])
+                    x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
-            # .. update coefficients ..
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                incr = (grad_i - mem_i) * A_data[j] + d[j_idx] * (
-                    gradient_average[j_idx] + f_alpha * x[j_idx])
-                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+                # .. update memory terms ..
+                for j in range(A_indptr[i], A_indptr[i+1]):
+                    j_idx = A_indices[j]
+                    gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                memory_gradient[i] = grad_i
 
-            # .. update memory terms ..
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
-            memory_gradient[i] = grad_i
+            if job_id == 0:
+                if trace:
+                    trace_x[it, :] = x
+                # .. convergence check ..
+                cert = np.linalg.norm(x - x_old) / step_size
+                x_old[:] = x
+                if cert < tol:
+                    stop_flag[0] = True
+            elif job_id == 1:
+                # .. recompute alpha bar ..
+                grad_tmp = np.zeros(n_features)
+                for i in sample_indices:
+                    for j in range(A_indptr[i], A_indptr[i + 1]):
+                        j_idx = A_indices[j]
+                        grad_tmp[j_idx] += memory_gradient[i] * A_data[j] / n_samples
+                # .. copy back to shared memory ..
+                gradient_average[:] = grad_tmp
+
+            if stop_flag[0]:
+                break
+        return it, cert
 
     return epoch_iteration_template
 

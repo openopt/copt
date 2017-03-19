@@ -21,16 +21,18 @@ Optimization algorithms
 .. autosummary::
    :toctree: generated/
 
+    copt.minimize_SAGA
     copt.minimize_PGD
     copt.minimize_DavisYin
     copt.minimize_CondatVu
-    copt.minimize_SAGA
 
 
 Supported loss functions
 ------------------------
 
-Smooth loss functions
+It is possible to your own functions. However, for convenience, the following are already defined and ready to use.
+
+Smooth loss functions:
 
 .. autosummary::
    :toctree: generated/
@@ -38,6 +40,7 @@ Smooth loss functions
     copt.LogisticLoss
     copt.SquaredLoss
 
+Nonsmooth loss functions:
 
 .. autosummary::
    :toctree: generated/

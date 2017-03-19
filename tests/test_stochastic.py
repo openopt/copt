@@ -14,7 +14,7 @@ def test_optimize():
         for X in (X_dense, X_sparse):
             f = cp.LogisticLoss(X, y, alpha)
             opt = cp.minimize_SAGA(f)
-            assert np.linalg.norm(f.gradient(opt.x)) < 1e-4
+            assert np.linalg.norm(f.gradient(opt.x)) < 1e-5
 
 
 def test_optimize_prox():
@@ -25,7 +25,7 @@ def test_optimize_prox():
             opt = cp.minimize_SAGA(f, g)
             gamma = 1. / f.lipschitz_constant()
             gmap = (opt.x - g.prox(opt.x - gamma * f.gradient(opt.x), gamma)) / gamma
-            assert np.linalg.norm(gmap) < 1e-3
+            assert np.linalg.norm(gmap) < 1e-5
 
 #
 #
