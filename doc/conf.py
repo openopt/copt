@@ -144,7 +144,7 @@ html_theme_options = {
     'github_user': 'openopt',
     'github_repo': 'copt',
     'github_button': True,
-    'fixed_sidebar': True,
+    'fixed_sidebar': False,
     'travis_button': True,
     'logo_text_align': 'center',
 }
