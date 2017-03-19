@@ -124,7 +124,7 @@ class TotalVariation2D:
         img = x.reshape((self.n_rows, self.n_cols))
         tmp1 = np.abs(np.diff(img, axis=0))
         tmp2 = np.abs(np.diff(img, axis=1))
-        return tmp1.sum() + tmp2.sum()
+        return self.alpha * (tmp1.sum() + tmp2.sum())
 
     def prox(self, x, step_size):
         return prox_tv2d(
