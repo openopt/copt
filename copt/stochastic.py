@@ -7,7 +7,7 @@ from copt import utils
 
 
 def minimize_SAGA(
-    f, g=None, x0=None, step_size: float=-1, n_jobs: int=1, max_iter=100,
+    f, g=None, x0=None, step_size=None, n_jobs: int=1, max_iter=100,
     tol=1e-6, verbose=False, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -20,13 +20,37 @@ def minimize_SAGA(
     f, g
         loss functions. g can be none
 
-    x0: np.ndarray, optional
+    x0: np.ndarray or None, optional
         Starting point for optimization.
 
+    step_size: float or None, optional
+        Step size for the optimization. If None is given, this will be
+        estimated from the function f.
+
+    n_jobs: int
+        Number of threads to use in the optimization. A number higher than 1
+        will use the Asynchronous SAGA optimization method described in
+        [Leblond et al., 2017]
+
+    max_iter: int
+        Maximum number of passes through the data in the optimization.
+
+    tol: float
+        Tolerance criterion. The algorithm will stop whenever the norm of the
+        gradient mapping (generalization of the gradient for nonsmooth optimization)
+        is below tol.
+
+    verbose: bool
+        Verbosity level. True might print some messages.
+
+    trace: bool
+        Whether to trace convergence of the function, useful for plotting and/or
+        debugging. If ye, the result will have extra members trace_func,
+        trace_time.
 
     Returns
     -------
-    opt
+    opt: OptimizeResult
         The optimization result represented as a
         ``scipy.optimize.OptimizeResult`` object. Important attributes are:
         ``x`` the solution array, ``success`` a Boolean flag indicating if
@@ -36,20 +60,22 @@ def minimize_SAGA(
 
     References
     ----------
-    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. "SAGA: A fast
+    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
     incremental gradient method with support for non-strongly convex composite
-    objectives." Advances in Neural Information Processing Systems. 2014.
+    objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
+    Information Processing Systems. 2014.
 
-    Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. "ASAGA: Asynchronous
-    parallel SAGA". Proceedings of the 20th International Conference on
-    Artificial Intelligence and Statistics (AISTATS). 2017.
+    Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. `ASAGA: Asynchronous
+    parallel SAGA <https://arxiv.org/abs/1606.04809>`_. Proceedings of the 20th
+    International Conference on Artificial Intelligence and Statistics (AISTATS).
+    2017.
     """
     if x0 is None:
         x = np.zeros(f.n_features)
     else:
         x = np.ascontiguousarray(x0).copy()
 
-    if step_size < 0:
+    if step_size is None:
         step_size = 1. / (3 * f.lipschitz_constant())
 
     if g is None:
