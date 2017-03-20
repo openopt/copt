@@ -5,6 +5,11 @@ from .tv_prox import prox_tv2d
 
 
 class LogisticLoss:
+    """Logistic regression loss function with L2 regularization
+
+    This loss function is very popular for binary classification tasks.
+    Labels (b) are assumed to be 1 or -1.
+    """
 
     def __init__(self, A, b, alpha='auto'):
         self.b = b
@@ -60,10 +65,12 @@ class LogisticLoss:
 
 
 class SquaredLoss:
+    """Least squares loss function with L2 regularization"""
 
     def __init__(self, A, b, alpha='auto'):
         self.b = b
         self.A = sparse.csr_matrix(A)
+        self.n_features = self.A.shape[1]
         if alpha == 'auto':
             self.alpha = 1. / A.shape[0]
         else:
