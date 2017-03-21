@@ -2,3 +2,8 @@
 branch = True
 source = copt
 include = */copt/*
+
+[report]
+omit = */copt/datasets.py
+exclude_lines =
+    if verbose
