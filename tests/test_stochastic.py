@@ -12,9 +12,10 @@ y = np.sign(np.random.randn(n_samples))
 def test_optimize():
     for alpha in np.logspace(-1, 3, 3):
         for X in (X_dense, X_sparse):
-            f = cp.LogisticLoss(X, y, alpha)
-            opt = cp.minimize_SAGA(f)
-            assert np.linalg.norm(f.gradient(opt.x)) < 1e-5
+            for alg in (cp.minimize_SAGA, cp.minimize_BCD):
+                f = cp.LogisticLoss(X, y, alpha)
+                opt = alg(f)
+                assert np.linalg.norm(f.gradient(opt.x)) < 1e-5
 
 
 def test_optimize_prox():

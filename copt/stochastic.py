@@ -98,7 +98,6 @@ def minimize_SAGA(
     trace_func = []
     trace_time = []
 
-    # .. iterate on epochs ..
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for job_id in range(n_jobs):
@@ -256,7 +255,9 @@ def _factory_sparse_SAGA(f, g):
     return _saga_algorithm
 
 
-def minimize_BCD(f, g=None, x0=None, step_size=None, max_iter=100):
+def minimize_BCD(
+        f, g=None, x0=None, step_size=None, max_iter=500, trace=False, verbose=False,
+        n_jobs=1):
     """Block Coordinate Descent
 
     Parameters
@@ -277,17 +278,28 @@ def minimize_BCD(f, g=None, x0=None, step_size=None, max_iter=100):
     if g is None:
         g = utils.DummyProx()
     if step_size is None:
-        step_size = 1. / (3 * f.lipschitz_constant())
+        step_size = 2. / f.lipschitz_constant()
 
     Ax = f.A.dot(xk)
     f_alpha = f.alpha
-    n_features, n_samples = f.A.shape
+    n_samples, n_features = f.A.shape
+    success = False
 
     partial_gradient = f.partial_gradient_factory()
     prox = g.prox_factory()
 
+    start_time = datetime.now()
+    if trace:
+        trace_x = np.zeros((max_iter, n_features))
+    else:
+        trace_x = np.zeros((0, 0))
+    stop_flag = np.zeros(1, dtype=np.bool)
+    trace_func = []
+    trace_time = []
+
+
     @njit(nogil=True)
-    def _bcd_algorithm(x, A_csc_data, A_csc_indices, A_csc_indptr, b):
+    def _bcd_algorithm(x, Ax, A_csc_data, A_csc_indices, A_csc_indptr, b):
         feature_indices = np.arange(n_features)
         for it in range(max_iter):
             np.random.shuffle(feature_indices)
@@ -300,8 +312,9 @@ def minimize_BCD(f, g=None, x0=None, step_size=None, max_iter=100):
                 x_new = prox(x[j] - step_size * (grad_j + f_alpha * x[j]), step_size)
                 for i_indptr in range(A_csc_indptr[j], A_csc_indptr[j+1]):
                     i_idx = A_csc_indices[i_indptr]
-                    Ax[i_indptr] += A_csc_data[i_indptr] * (x_new - x[j])
+                    Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
                 x[j] = x_new
+        return it, None
 
     X_csc = sparse.csc_matrix(f.A)
 
@@ -309,17 +322,26 @@ def minimize_BCD(f, g=None, x0=None, step_size=None, max_iter=100):
     start = datetime.now()
     trace_time = [(start - datetime.now()).total_seconds()]
 
-    counter = 0
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
-        for job_idx in range(max_iter):
-            idx = np.random.randint(0, n_features, n_features)
+        for job_id in range(n_jobs):
             futures.append(executor.submit(
-                _bcd_algorithm, xk, X_csc.data, X_csc.indices, X_csc.indptr, idx, f.b))
-        for _ in concurrent.futures.as_completed(futures):
-            if counter % n_jobs == 0:
-                trace_time.append((datetime.now() - start).total_seconds())
-                trace_func.append(full_loss(xk))
-                print(counter, trace_func[-1])
-            counter += 1
-    return trace_func, trace_time, xk
+                _bcd_algorithm,
+                xk, Ax, X_csc.data, X_csc.indices, X_csc.indptr, f.b))
+        concurrent.futures.wait(futures)
+
+    n_iter, certificate = futures[0].result()
+    if trace:
+        delta = (datetime.now() - start_time).total_seconds()
+        trace_time = np.linspace(0, delta, n_iter)
+        if verbose:
+            print('Computing trace')
+        # .. compute function values ..
+        trace_func = []
+        for i in range(n_iter):
+            # TODO: could be parallelized
+            trace_func.append(f(trace_x[i]) + g(trace_x[i]))
+    return optimize.OptimizeResult(
+        x=xk, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
+        certificate=certificate)
+
