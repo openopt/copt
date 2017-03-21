@@ -16,7 +16,6 @@ Philosophy
 
   * Ø compiled code. State of the art performance.
   * Modular, extensible, general-purpose optimization library.
-  * Emphasis on large-scale problems.
 
 
 License
