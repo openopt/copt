@@ -299,9 +299,10 @@ def minimize_BCD(
 
 
     @njit(nogil=True)
-    def _bcd_algorithm(x, Ax, A_csc_data, A_csc_indices, A_csc_indptr, b):
+    def _bcd_algorithm(
+            x, Ax, A_csc_data, A_csc_indices, A_csc_indptr, b, trace_x):
         feature_indices = np.arange(n_features)
-        for it in range(max_iter):
+        for it in range(1, max_iter):
             np.random.shuffle(feature_indices)
             for j in feature_indices:
                 grad_j = 0.
@@ -314,6 +315,8 @@ def minimize_BCD(
                     i_idx = A_csc_indices[i_indptr]
                     Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
                 x[j] = x_new
+            if trace:
+                trace_x[it, :] = x
         return it, None
 
     X_csc = sparse.csc_matrix(f.A)
@@ -327,7 +330,8 @@ def minimize_BCD(
         for job_id in range(n_jobs):
             futures.append(executor.submit(
                 _bcd_algorithm,
-                xk, Ax, X_csc.data, X_csc.indices, X_csc.indptr, f.b))
+                xk, Ax, X_csc.data, X_csc.indices, X_csc.indptr, f.b,
+                trace_x))
         concurrent.futures.wait(futures)
 
     n_iter, certificate = futures[0].result()
