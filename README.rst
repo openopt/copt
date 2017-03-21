@@ -14,9 +14,9 @@ Project implementing some optimization routines in Python.
 Philosophy
 ==========
 
-  * No compiled code. State of the art performance.
-  * Automate as much as possible (line-search whenever possible).
-  * Optimization-centric API.
+  * Ø compiled code. State of the art performance.
+  * Modular, extensible, general-purpose optimization library.
+  * Emphasis on large-scale problems.
 
 
 License
