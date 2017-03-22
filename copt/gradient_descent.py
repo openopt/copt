@@ -194,7 +194,7 @@ def minimize_APGD(
             for a description of other attributes.
 
     References:
-        Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
+        Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
     if x0 is None:

@@ -60,15 +60,15 @@ def minimize_SAGA(
 
     References
     ----------
-    Defazio, Aaron, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
-    incremental gradient method with support for non-strongly convex composite
-    objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
-    Information Processing Systems. 2014.
+        Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
+        incremental gradient method with support for non-strongly convex composite
+        objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
+        Information Processing Systems. 2014.
 
-    Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. `ASAGA: Asynchronous
-    parallel SAGA <https://arxiv.org/abs/1606.04809>`_. Proceedings of the 20th
-    International Conference on Artificial Intelligence and Statistics (AISTATS).
-    2017.
+        Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. `ASAGA: Asynchronous
+        parallel SAGA <https://arxiv.org/abs/1606.04809>`_. Proceedings of the 20th
+        International Conference on Artificial Intelligence and Statistics (AISTATS).
+        2017.
     """
     if x0 is None:
         x = np.zeros(f.n_features)
