@@ -14,8 +14,7 @@ Project implementing some optimization routines in Python.
 Philosophy
 ==========
 
-  * Ø compiled code. State of the art performance.
-  * Modular, extensible, general-purpose optimization library.
+Ø compiled code. Ø bullshit. State of the art performance.
 
 
 License
