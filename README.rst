@@ -14,8 +14,15 @@ Project implementing some optimization routines in Python.
 Philosophy
 ==========
 
-  * Ø compiled code. State of the art performance.
-  * Modular, extensible, general-purpose optimization library.
+Ø compiled code. Ø bullshit. State of the art performance.
+
+Let me explain this better:
+
+- **Ø compiled code**, because we don't need to. `Numba <http://numba.pydata.org/>`_ generates machine-efficient code on the fly.
+    
+- **Ø bullshit**. Here you will only find methods that work out of the box. You won't find yourself painfully tweaking hyperparameters to make the method converge. Pinkie swear.
+
+- **State of the art performance**. We are constantly working on making the methods as fast as possible.
 
 
 License

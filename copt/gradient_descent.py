@@ -1,7 +1,8 @@
 import warnings
 import numpy as np
-from scipy import optimize, linalg
+from scipy import optimize, linalg, sparse
 from datetime import datetime
+from numba import njit
 
 # .. local imports ..
 from .utils import DummyProx
@@ -283,7 +284,6 @@ def minimize_APGD(
         trace_certificate=trace_certificate,
         nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
         trace_time=trace_time)
-
 
 
 def minimize_DavisYin(
