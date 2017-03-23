@@ -89,7 +89,6 @@ def minimize_SAGA(
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
 
-    start_time = datetime.now()
     if trace:
         trace_x = np.zeros((max_iter, n_features))
     else:
@@ -102,14 +101,16 @@ def minimize_SAGA(
         futures = []
         for job_id in range(n_jobs):
             futures.append(executor.submit(
-                epoch_iteration,
-                x, memory_gradient, gradient_average,
-                step_size, max_iter, job_id, tol, stop_flag, trace, trace_x))
+                epoch_iteration, x, memory_gradient, gradient_average,
+                step_size, max_iter, job_id, tol, stop_flag, trace, trace_x,
+                np.random.permutation(n_samples), True))
+        start_time = datetime.now()
+
+        n_iter, certificate = futures[0].result()
+        delta = (datetime.now() - start_time).total_seconds()
         concurrent.futures.wait(futures)
 
-    n_iter, certificate = futures[0].result()
     if trace:
-        delta = (datetime.now() - start_time).total_seconds()
         trace_time = np.linspace(0, delta, n_iter)
         if verbose:
             print('Computing trace')
@@ -194,13 +195,12 @@ def _factory_sparse_SAGA(f, g):
     @njit(nogil=True)
     def _saga_algorithm(
             x, memory_gradient, gradient_average, step_size, max_iter, job_id,
-            tol, stop_flag, trace, trace_x):
+            tol, stop_flag, trace, trace_x, sample_indices, async):
 
         # .. SAGA estimate of the gradient ..
         x_old = x.copy()
         cert = np.inf
         it = 0
-        sample_indices = np.arange(n_samples)
 
         if job_id == 0 and trace:
             trace_x[0, :] = x
@@ -238,18 +238,23 @@ def _factory_sparse_SAGA(f, g):
                 x_old[:] = x
                 if cert < tol:
                     stop_flag[0] = True
-            elif job_id == 1:
-                # .. recompute alpha bar ..
-                grad_tmp = np.zeros(n_features)
-                for i in sample_indices:
-                    for j in range(A_indptr[i], A_indptr[i + 1]):
-                        j_idx = A_indices[j]
-                        grad_tmp[j_idx] += memory_gradient[i] * A_data[j] / n_samples
-                # .. copy back to shared memory ..
-                gradient_average[:] = grad_tmp
+                    break
+
+                if async:
+                    # .. recompute alpha bar ..
+                    grad_tmp = np.zeros(n_features)
+                    for i in sample_indices:
+                        for j in range(A_indptr[i], A_indptr[i + 1]):
+                            j_idx = A_indices[j]
+                            grad_tmp[j_idx] += memory_gradient[i] * A_data[j] / n_samples
+                    # .. copy back to shared memory ..
+                    gradient_average[:] = grad_tmp
 
             if stop_flag[0]:
                 break
+
+        # .. if any job has finished, stop the whole algorithm ..
+        stop_flag[0] = True
         return it, cert
 
     return _saga_algorithm

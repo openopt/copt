@@ -13,7 +13,7 @@ class LogisticLoss:
 
     def __init__(self, A, b, alpha='auto'):
         self.b = b
-        self.A = sparse.csr_matrix(A)
+        self.A = A
         self.n_features = self.A.shape[1]
         if alpha == 'auto':
             self.alpha = 1. / A.shape[0]
