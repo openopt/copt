@@ -19,7 +19,7 @@ Operating System :: Unix
 setup(
     name='copt',
     description='Proximal gradient descent algorithm in Python',
-    long_description=open('README.rst').read(),
+    long_description=open('README.rst', encoding='utf-8').read(),
     version=copt.__version__,
     author='Fabian Pedregosa',
     author_email='f@bianp.net',
