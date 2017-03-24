@@ -25,8 +25,7 @@ Let me explain this better:
 - **State of the art performance**. We are constantly working on making the methods as fast as possible.
 
 
-License
-=======
+Documentation
+=============
 
-New BSD
-
+See http://copt.bianp.net
