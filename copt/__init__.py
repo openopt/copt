@@ -1,4 +1,4 @@
-__version__ = '0.1.dev0'
+__version__ = '0.2.0'
 
 from .gradient_descent import minimize_PGD, minimize_DavisYin, minimize_APGD
 from .primal_dual import fmin_CondatVu
