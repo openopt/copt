@@ -18,7 +18,7 @@ Philosophy
 
 Let me explain this better:
 
-- **Ø compiled code**, because we don't need to. `Numba <http://numba.pydata.org/>`_ generates machine-efficient code on the fly.
+- **Ø compiled code**, because we don't need to. `Numba <http://numba.pydata.org/>`_ generates machine-efficient code on the fly. This way, the code remains pure Python, which makes it both easier to develop and to deploy.
     
 - **Ø bullshit**. Here you will only find methods that work out of the box. No more tweaking hyperparameters to make the method converge. Pinkie swear.
 
