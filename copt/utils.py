@@ -99,6 +99,7 @@ class SquaredLoss:
 
 
 class L1Norm:
+    """L1 norm, i.e., the sum of absolute values"""
     is_separable = True
 
     def __init__(self, alpha=1.):
@@ -121,6 +122,10 @@ class L1Norm:
 
 
 class TotalVariation2D:
+    """2-dimensional Total Variation pseudo-norm
+
+    """
+
     def __init__(self, alpha, n_rows, n_cols, max_iter=100):
         self.alpha = alpha
         self.n_rows = n_rows
@@ -139,7 +144,7 @@ class TotalVariation2D:
             max_iter=self.max_iter)
 
 
-class DummyProx:
+class DummyLoss:
 
     is_separable = True
 

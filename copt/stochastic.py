@@ -79,7 +79,7 @@ def minimize_SAGA(
         step_size = 1. / (3 * f.lipschitz_constant())
 
     if g is None:
-        g = utils.DummyProx()
+        g = utils.DummyLoss()
 
     success = False
     epoch_iteration = _factory_sparse_SAGA(f, g)
@@ -281,7 +281,7 @@ def minimize_BCD(
     else:
         xk = np.array(x0, copy=True)
     if g is None:
-        g = utils.DummyProx()
+        g = utils.DummyLoss()
     if step_size is None:
         step_size = 2. / f.lipschitz_constant()
 

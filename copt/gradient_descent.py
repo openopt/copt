@@ -5,7 +5,7 @@ from datetime import datetime
 from numba import njit
 
 # .. local imports ..
-from .utils import DummyProx
+from .utils import DummyLoss
 
 
 def minimize_PGD(
@@ -63,7 +63,7 @@ def minimize_PGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = DummyProx()
+        g = DummyLoss()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -205,7 +205,7 @@ def minimize_APGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = DummyProx()
+        g = DummyLoss()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
