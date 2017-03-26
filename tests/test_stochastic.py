@@ -19,15 +19,16 @@ def test_optimize():
 
 
 def test_optimize_prox():
-    for alpha in np.logspace(-1, 3, 3):
-        for X in (X_dense, X_sparse):
-            for alg in (cp.minimize_SAGA, cp.minimize_BCD):
-                f = cp.LogisticLoss(X, y)
-                g = cp.L1Norm(alpha)
-                opt = alg(f, g)
-                gamma = 1. / f.lipschitz_constant()
-                gmap = (opt.x - g.prox(opt.x - gamma * f.gradient(opt.x), gamma)) / gamma
-                assert np.linalg.norm(gmap) < 1e-5
+    for alpha in np.logspace(-3, 3, 3):
+        for beta in np.logspace(-3, 3, 3):
+            for X in (X_dense, X_sparse):
+                for alg in (cp.minimize_SAGA, cp.minimize_BCD):
+                    f = cp.LogisticLoss(X, y, alpha)
+                    g = cp.L1Norm(beta)
+                    opt = alg(f, g)
+                    gamma = 1. / f.lipschitz_constant()
+                    gmap = (opt.x - g.prox(opt.x - gamma * f.gradient(opt.x), gamma)) / gamma
+                    assert np.linalg.norm(gmap) < 1e-5
 
 
 #
