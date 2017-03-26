@@ -305,15 +305,6 @@ def minimize_BCD(
             x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
             A_csc_indices, A_csc_indptr, b, trace_x, job_id):
         feature_indices = np.arange(n_features)
-        if job_id == 0:
-            # .. recompute Ax (TODO: do only in async) ..
-            for i in range(n_samples):
-                p = 0.
-                for j in range(A_csr_indptr[i], A_csr_indptr[i + 1]):
-                    j_idx = A_csr_indices[j]
-                    p += x[j_idx] * A_csr_data[j]
-                # .. copy back to shared memory ..
-                Ax[i] = p
         for it in range(1, max_iter):
             np.random.shuffle(feature_indices)
             for j in feature_indices:
@@ -329,17 +320,20 @@ def minimize_BCD(
                     i_idx = A_csc_indices[i_indptr]
                     Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
                 x[j] = x_new
+                if j == 0:
+                    # .. recompute Ax TODO: do only in async ..
+                    for i in range(n_samples):
+                        p = 0.
+                        for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
+                            j_idx = A_csr_indices[j]
+                            p += x[j_idx] * A_csr_data[j]
+                        # .. copy back to shared memory ..
+                        Ax[i] = p
+
             if job_id == 0:
                 if trace:
                     trace_x[it, :] = x
                 # .. recompute Ax ..
-                for i in range(n_samples):
-                    p = 0.
-                    for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
-                        j_idx = A_csr_indices[j]
-                        p += x[j_idx] * A_csr_data[j]
-                    # .. copy back to shared memory ..
-                    Ax[i] = p
 
         return it, None
 
