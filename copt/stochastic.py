@@ -230,31 +230,31 @@ def _factory_sparse_SAGA(f, g):
                             grad_i - memory_gradient[i]) * A_data[j] / n_samples
                 memory_gradient[i] = grad_i
 
+                if i == 0 and async:
+                    # .. recompute alpha bar ..
+                    grad_tmp = np.zeros(n_features)
+                    for i_inner in sample_indices:
+                        for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
+                            j_idx = A_indices[j]
+                            grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
+                    # .. copy back to shared memory ..
+                    gradient_average[:] = grad_tmp
+
             if job_id == 0:
                 if trace:
                     trace_x[it, :] = x
                 # .. convergence check ..
-                cert = np.linalg.norm(x - x_old) / step_size
-                x_old[:] = x
-                if cert < tol:
-                    stop_flag[0] = True
-                    break
-
-                if async:
-                    # .. recompute alpha bar ..
-                    grad_tmp = np.zeros(n_features)
-                    for i in sample_indices:
-                        for j in range(A_indptr[i], A_indptr[i + 1]):
-                            j_idx = A_indices[j]
-                            grad_tmp[j_idx] += memory_gradient[i] * A_data[j] / n_samples
-                    # .. copy back to shared memory ..
-                    gradient_average[:] = grad_tmp
-
-            if stop_flag[0]:
-                break
-
-        # .. if any job has finished, stop the whole algorithm ..
-        stop_flag[0] = True
+                # cert = np.linalg.norm(x - x_old) / step_size
+                # x_old[:] = x
+                # if cert < tol:
+                #     stop_flag[0] = True
+                #     break
+        #
+        #     if stop_flag[0]:
+        #         break
+        #
+        # # .. if any job has finished, stop the whole algorithm ..
+        # stop_flag[0] = True
         return it, cert
 
     return _saga_algorithm
