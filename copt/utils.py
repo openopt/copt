@@ -144,7 +144,7 @@ class TotalVariation2D:
             max_iter=self.max_iter)
 
 
-class DummyLoss:
+class ZeroLoss:
 
     is_separable = True
 

@@ -7,7 +7,7 @@ from copt import utils
 
 
 def minimize_SAGA(
-    f, g=None, x0=None, step_size=None, n_jobs: int=1, max_iter=100,
+    f, g=None, x0=None, step_size=None, n_jobs: int=1, max_iter=500,
     tol=1e-6, verbose=False, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -79,7 +79,7 @@ def minimize_SAGA(
         step_size = 1. / (3 * f.lipschitz_constant())
 
     if g is None:
-        g = utils.DummyLoss()
+        g = utils.ZeroLoss()
 
     success = False
     epoch_iteration = _factory_sparse_SAGA(f, g)
@@ -281,7 +281,7 @@ def minimize_BCD(
     else:
         xk = np.array(x0, copy=True)
     if g is None:
-        g = utils.DummyLoss()
+        g = utils.ZeroLoss()
     if step_size is None:
         step_size = 2. / f.lipschitz_constant()
 
@@ -305,6 +305,7 @@ def minimize_BCD(
             x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
             A_csc_indices, A_csc_indptr, b, trace_x, job_id):
         feature_indices = np.arange(n_features)
+        it = 0
         for it in range(1, max_iter):
             np.random.shuffle(feature_indices)
             for j in feature_indices:
@@ -333,7 +334,6 @@ def minimize_BCD(
             if job_id == 0:
                 if trace:
                     trace_x[it, :] = x
-                # .. recompute Ax ..
 
         return it, None
 

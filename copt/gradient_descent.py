@@ -5,11 +5,11 @@ from datetime import datetime
 from numba import njit
 
 # .. local imports ..
-from .utils import DummyLoss
+from .utils import ZeroLoss
 
 
 def minimize_PGD(
-        f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
+        f, g=None, x0=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking: bool=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.6, trace=False
         ) -> optimize.OptimizeResult:
@@ -63,7 +63,7 @@ def minimize_PGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = DummyLoss()
+        g = ZeroLoss()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -145,7 +145,7 @@ def minimize_PGD(
 
 
 def minimize_APGD(
-        f, g=None, x0=None, tol=1e-12, max_iter=100, verbose=0,
+        f, g=None, x0=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking: bool=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
         trace=False) -> optimize.OptimizeResult:
@@ -154,7 +154,6 @@ def minimize_APGD(
     Solves problems of the form
 
             minimize_x f(x) + alpha g(x)
-
 
     where we have access to the gradient of f and to the proximal operator of g.
 
@@ -205,7 +204,7 @@ def minimize_APGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
     if g is None:
-        g = DummyLoss()
+        g = ZeroLoss()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -221,9 +220,9 @@ def minimize_APGD(
     success = False
     trace_func = []
     trace_time = []
-    trace_x = []
     trace_certificate = []
     start_time = datetime.now()
+    certificate = np.inf
 
     it = 1
     tk = 1
@@ -256,7 +255,6 @@ def minimize_APGD(
 
         if trace:
             trace_certificate.append(certificate)
-            trace_x.append(xk.copy())
             trace_func.append(f(yk) + g(yk))
             trace_time.append((datetime.now() - start_time).total_seconds())
 
@@ -280,17 +278,15 @@ def minimize_APGD(
     return optimize.OptimizeResult(
         x=yk, success=success,
         certificate=certificate,
-        # jac=incr / step_size,  # prox-grad mapping
         trace_certificate=trace_certificate,
-        nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
+        nit=it, trace_func=np.array(trace_func),
         trace_time=trace_time)
 
 
 def minimize_DavisYin(
-        fun, fun_deriv, g_prox, h_prox, y0, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
-        g_prox_args=(), h_prox_args=(),
-        verbose=0, callback=None, backtracking=True, step_size=None, max_iter_backtracking=100,
-        backtracking_factor=0.4):
+        f, g=None, h=None, y0=None, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+        verbose=0, callback=None, backtracking=True, step_size=None,
+        max_iter_backtracking=100, backtracking_factor=0.4):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -349,15 +345,19 @@ def minimize_DavisYin(
     Pedregosa, Fabian. "On the convergence rate of the three operator splitting scheme." arXiv preprint
     arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
-    y = np.array(y0, copy=True)
+    if y0 is None:
+        y = np.zeros(f.n_features)
+    else:
+        y = np.array(y0, copy=True)
+    # y = np.array(y0, copy=True)
     success = False
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    if g_prox is None:
-        def g_prox(step_size, x, *args): return x
-    if h_prox is None:
-        def h_prox(step_size, x, *args): return x
+    if g is None:
+        g = ZeroLoss()
+    if h is None:
+        h = ZeroLoss()
 
     if step_size is None:
         # sample to estimate Lipschitz constant
@@ -367,7 +367,7 @@ def minimize_DavisYin(
         for _ in range(step_size_n_sample):
             x_tmp = np.random.randn(x0.size)
             x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(fun_deriv(x0) - fun_deriv(x_tmp)))
+            L.append(linalg.norm(f(x0) - f(x_tmp)))
         # give it a generous upper bound
         step_size = 10. / np.mean(L)
 
@@ -376,22 +376,22 @@ def minimize_DavisYin(
     # .. allows for infinite or floating point max_iter ..
     current_step_size = step_size
     while it <= max_iter:
-        x = g_prox(current_step_size * alpha, y, *g_prox_args)
-        grad_fk = fun_deriv(x)
-        z = h_prox(current_step_size * beta, 2 * x - y - current_step_size * grad_fk, *h_prox_args)
+        x = g.prox(y, current_step_size * alpha)
+        grad_fk = f.gradient(x)
+        z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta)
         incr = z - x
         norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
-                expected_descent = fun(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
-                if fun(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
+                expected_descent = f(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
+                if f(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
                     # step size found
                     break
                 else:
                     current_step_size *= backtracking_factor
                     y = x + backtracking_factor * (y - x)
-                    grad_fk = fun_deriv(x)
-                    z = h_prox(current_step_size * beta, 2 * x - y - current_step_size * grad_fk, *h_prox_args)
+                    grad_fk = f.gradient(x)
+                    z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta)
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
@@ -417,7 +417,7 @@ def minimize_DavisYin(
                 RuntimeWarning)
         it += 1
 
-    x_sol = g_prox(current_step_size * alpha, y, *g_prox_args)
+    x_sol = g.prox(y, current_step_size * alpha)
     return optimize.OptimizeResult(
         x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
