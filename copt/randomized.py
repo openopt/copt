@@ -283,7 +283,8 @@ def minimize_BCD(
     if g is None:
         g = utils.ZeroLoss()
     if step_size is None:
-        step_size = 2. / f.lipschitz_constant()
+        # XXX TODO: implement specific step-size
+        step_size = 100. / f.lipschitz_constant()
 
     Ax = f.A.dot(xk)
     f_alpha = f.alpha
@@ -303,8 +304,7 @@ def minimize_BCD(
     @njit(nogil=True)
     def _bcd_algorithm(
             x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
-            A_csc_indices, A_csc_indptr, b, trace_x, job_id):
-        feature_indices = np.arange(n_features)
+            A_csc_indices, A_csc_indptr, b, trace_x, job_id, feature_indices):
         it = 0
         for it in range(1, max_iter):
             np.random.shuffle(feature_indices)
@@ -347,15 +347,16 @@ def minimize_BCD(
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for job_id in range(n_jobs):
+            feature_indices = np.random.permutation(n_features)
             futures.append(executor.submit(
                 _bcd_algorithm,
                 xk, Ax, X_csr.data, X_csr.indices, X_csr.indptr, X_csc.data,
-                X_csc.indices, X_csc.indptr, f.b, trace_x, job_id))
+                X_csc.indices, X_csc.indptr, f.b, trace_x, job_id, feature_indices))
+        n_iter, certificate = futures[0].result()
+        delta = (datetime.now() - start_time).total_seconds()
         concurrent.futures.wait(futures)
 
-    n_iter, certificate = futures[0].result()
     if trace:
-        delta = (datetime.now() - start_time).total_seconds()
         trace_time = np.linspace(0, delta, n_iter)
         if verbose:
             print('Computing trace')
