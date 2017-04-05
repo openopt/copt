@@ -103,7 +103,7 @@ def minimize_SAGA(
             futures.append(executor.submit(
                 epoch_iteration, x, memory_gradient, gradient_average,
                 step_size, max_iter, job_id, tol, stop_flag, trace, trace_x,
-                np.random.permutation(n_samples), True))
+                np.random.permutation(n_samples), n_jobs > 1))
         start_time = datetime.now()
 
         n_iter, certificate = futures[0].result()
@@ -208,6 +208,7 @@ def _factory_sparse_SAGA(f, g):
         # .. inner iteration ..
         for it in range(1, max_iter):
             np.random.shuffle(sample_indices)
+            recompute_alpha = np.random.randint(0, 5 * n_samples)
 
             for i in sample_indices:
                 p = 0.
@@ -231,16 +232,16 @@ def _factory_sparse_SAGA(f, g):
                             grad_i - memory_gradient[i]) * A_data[j] / n_samples
                 memory_gradient[i] = grad_i
 
-            if async and np.random.randint(0, 5) == 0:
-                # .. recompute alpha bar ..
-                grad_tmp = np.zeros(n_features)
-                for i_inner in sample_indices:
-                    for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
-                        j_idx = A_indices[j]
-                        grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
-                # .. copy back to shared memory ..
-                for j in range(n_features):
-                    gradient_average[j] = grad_tmp[j]
+                if async and i == recompute_alpha:
+                    # .. recompute alpha bar ..
+                    grad_tmp = np.zeros(n_features)
+                    for i_inner in sample_indices:
+                        for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
+                            j_idx = A_indices[j]
+                            grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
+                    # .. copy back to shared memory ..
+                    for j in range(n_features):
+                        gradient_average[j] = grad_tmp[j]
 
             if job_id == 0:
                 if trace:
@@ -263,7 +264,7 @@ def _factory_sparse_SAGA(f, g):
 
 
 def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=1000, trace=False, verbose=False,
+        f, g=None, x0=None, step_size=None, max_iter=100, trace=False, verbose=False,
         n_jobs=1):
     """Block Coordinate Descent
 

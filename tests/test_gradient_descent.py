@@ -1,27 +1,32 @@
 import itertools
 import numpy as np
 import copt as cp
+import pytest
 
 np.random.seed(0)
 n_samples, n_features = 100, 20
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
-all_solvers = (cp.minimize_PGD, cp.minimize_APGD,
-               cp.minimize_DavisYin, cp.minimize_BCD,
-               cp.minimize_SAGA)
+all_solvers = (
+    ['PGD', cp.minimize_PGD],
+    ['APGD', cp.minimize_APGD],
+    ['DavisYin', cp.minimize_DavisYin],
+    ['BCD', cp.minimize_BCD],
+    ['SAGA', cp.minimize_SAGA])
 
 
-def test_optimize():
-    for alpha, beta, loss, solver in itertools.product(
+@pytest.mark.parametrize("name, solver", all_solvers)
+def test_optimize(name, solver):
+    for alpha, beta, loss in itertools.product(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5),
-            (cp.LogisticLoss, cp.SquaredLoss), all_solvers):
+            (cp.LogisticLoss, cp.SquaredLoss)):
         f = loss(X, y, alpha)
         g = cp.L1Norm(beta)
         ss = 1. / f.lipschitz_constant()
         opt = solver(f, g)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < 1e-3
+        assert np.linalg.norm(gmap) < 1e-3, name
 
 
 #
