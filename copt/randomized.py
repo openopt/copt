@@ -208,6 +208,7 @@ def _factory_sparse_SAGA(f, g):
         # .. inner iteration ..
         for it in range(1, max_iter):
             np.random.shuffle(sample_indices)
+
             for i in sample_indices:
                 p = 0.
                 for j in range(A_indptr[i], A_indptr[i+1]):
@@ -230,15 +231,16 @@ def _factory_sparse_SAGA(f, g):
                             grad_i - memory_gradient[i]) * A_data[j] / n_samples
                 memory_gradient[i] = grad_i
 
-                if i == 0 and async:
-                    # .. recompute alpha bar ..
-                    grad_tmp = np.zeros(n_features)
-                    for i_inner in sample_indices:
-                        for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
-                            j_idx = A_indices[j]
-                            grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
-                    # .. copy back to shared memory ..
-                    gradient_average[:] = grad_tmp
+            if async and np.random.randint(0, 5) == 0:
+                # .. recompute alpha bar ..
+                grad_tmp = np.zeros(n_features)
+                for i_inner in sample_indices:
+                    for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
+                        j_idx = A_indices[j]
+                        grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
+                # .. copy back to shared memory ..
+                for j in range(n_features):
+                    gradient_average[j] = grad_tmp[j]
 
             if job_id == 0:
                 if trace:
@@ -261,7 +263,7 @@ def _factory_sparse_SAGA(f, g):
 
 
 def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=500, trace=False, verbose=False,
+        f, g=None, x0=None, step_size=None, max_iter=1000, trace=False, verbose=False,
         n_jobs=1):
     """Block Coordinate Descent
 
@@ -284,7 +286,7 @@ def minimize_BCD(
         g = utils.ZeroLoss()
     if step_size is None:
         # XXX TODO: implement specific step-size
-        step_size = 100. / f.lipschitz_constant()
+        step_size = 10. / f.lipschitz_constant()
 
     Ax = f.A.dot(xk)
     f_alpha = f.alpha

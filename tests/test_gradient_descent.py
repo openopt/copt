@@ -3,12 +3,14 @@ import numpy as np
 import copt as cp
 
 np.random.seed(0)
-n_samples, n_features = 100, 200
+n_samples, n_features = 100, 20
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
-all_solvers = (cp.minimize_PGD, cp.minimize_APGD, cp.minimize_DavisYin,
-               cp.minimize_BCD, cp.minimize_SAGA)
+all_solvers = (cp.minimize_PGD, cp.minimize_APGD,
+               cp.minimize_DavisYin, cp.minimize_BCD,
+               cp.minimize_SAGA)
+
 
 def test_optimize():
     for alpha, beta, loss, solver in itertools.product(
@@ -19,7 +21,7 @@ def test_optimize():
         ss = 1. / f.lipschitz_constant()
         opt = solver(f, g)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < 1e-2
+        assert np.linalg.norm(gmap) < 1e-3
 
 
 #
