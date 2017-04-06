@@ -18,6 +18,7 @@ all_solvers = (
 loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]
 penalty_funcs = [cp.L1Norm]
 
+
 @pytest.mark.parametrize("name, solver, tol", all_solvers)
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)

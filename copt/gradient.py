@@ -284,14 +284,14 @@ def minimize_APGD(
 
 
 def minimize_DavisYin(
-        f, g=None, h=None, y0=None, alpha=1.0, beta=1.0, tol=1e-6, max_iter=1000,
+        f, g=None, h=None, y0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.4):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
 
-               minimize_x f(x) + alpha * g(x) + beta * h(x)
+               minimize_x f(x) + g(x) + h(x)
 
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
@@ -376,9 +376,9 @@ def minimize_DavisYin(
     # .. allows for infinite or floating point max_iter ..
     current_step_size = step_size
     while it <= max_iter:
-        x = g.prox(y, current_step_size * alpha)
+        x = g.prox(y, current_step_size)
         grad_fk = f.gradient(x)
-        z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta)
+        z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size)
         incr = z - x
         norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
@@ -391,7 +391,7 @@ def minimize_DavisYin(
                     current_step_size *= backtracking_factor
                     y = x + backtracking_factor * (y - x)
                     grad_fk = f.gradient(x)
-                    z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size * beta)
+                    z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size)
                     incr = z - x
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
@@ -417,7 +417,7 @@ def minimize_DavisYin(
                 RuntimeWarning)
         it += 1
 
-    x_sol = g.prox(y, current_step_size * alpha)
+    x_sol = g.prox(y, current_step_size)
     return optimize.OptimizeResult(
         x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
