@@ -16,7 +16,7 @@ all_solvers = (
     ['SAGA', cp.minimize_SAGA, 1e-3])
 
 loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]
-penalty_funcs = [cp.L1Norm]
+penalty_funcs = [cp.L1Norm, cp.TotalVariation2D]
 
 
 @pytest.mark.parametrize("name, solver, tol", all_solvers)
