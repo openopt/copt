@@ -7,7 +7,7 @@ from copt import utils
 
 
 def minimize_SAGA(
-    f, g=None, x0=None, step_size=None, n_jobs: int=1, max_iter=100,
+    f, g=None, x0=None, step_size=None, n_jobs: int=1, max_iter=500,
     tol=1e-6, verbose=False, trace=False) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -79,7 +79,7 @@ def minimize_SAGA(
         step_size = 1. / (3 * f.lipschitz_constant())
 
     if g is None:
-        g = utils.DummyLoss()
+        g = utils.ZeroLoss()
 
     success = False
     epoch_iteration = _factory_sparse_SAGA(f, g)
@@ -103,7 +103,7 @@ def minimize_SAGA(
             futures.append(executor.submit(
                 epoch_iteration, x, memory_gradient, gradient_average,
                 step_size, max_iter, job_id, tol, stop_flag, trace, trace_x,
-                np.random.permutation(n_samples), True))
+                np.random.permutation(n_samples), n_jobs > 1))
         start_time = datetime.now()
 
         n_iter, certificate = futures[0].result()
@@ -119,6 +119,7 @@ def minimize_SAGA(
         for i in range(n_iter):
             # TODO: could be parallelized
             trace_func.append(f(trace_x[i]) + g(trace_x[i]))
+        trace_func = np.array(trace_func)
 
     if certificate < tol:
         success = True
@@ -208,6 +209,8 @@ def _factory_sparse_SAGA(f, g):
         # .. inner iteration ..
         for it in range(1, max_iter):
             np.random.shuffle(sample_indices)
+            recompute_alpha = np.random.randint(0, 3 * n_samples)
+
             for i in sample_indices:
                 p = 0.
                 for j in range(A_indptr[i], A_indptr[i+1]):
@@ -230,6 +233,17 @@ def _factory_sparse_SAGA(f, g):
                             grad_i - memory_gradient[i]) * A_data[j] / n_samples
                 memory_gradient[i] = grad_i
 
+                if async and i == recompute_alpha:
+                    # .. recompute alpha bar ..
+                    grad_tmp = np.zeros(n_features)
+                    for i_inner in sample_indices:
+                        for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
+                            j_idx = A_indices[j]
+                            grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
+                    # .. copy back to shared memory ..
+                    for j in range(n_features):
+                        gradient_average[j] = grad_tmp[j]
+
             if job_id == 0:
                 if trace:
                     trace_x[it, :] = x
@@ -239,16 +253,6 @@ def _factory_sparse_SAGA(f, g):
                 if cert < tol:
                     stop_flag[0] = True
                     break
-
-                if async:
-                    # .. recompute alpha bar ..
-                    grad_tmp = np.zeros(n_features)
-                    for i in sample_indices:
-                        for j in range(A_indptr[i], A_indptr[i + 1]):
-                            j_idx = A_indices[j]
-                            grad_tmp[j_idx] += memory_gradient[i] * A_data[j] / n_samples
-                    # .. copy back to shared memory ..
-                    gradient_average[:] = grad_tmp
 
             if stop_flag[0]:
                 break
@@ -261,7 +265,7 @@ def _factory_sparse_SAGA(f, g):
 
 
 def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=500, trace=False, verbose=False,
+        f, g=None, x0=None, step_size=None, max_iter=100, trace=False, verbose=False,
         n_jobs=1):
     """Block Coordinate Descent
 
@@ -281,9 +285,10 @@ def minimize_BCD(
     else:
         xk = np.array(x0, copy=True)
     if g is None:
-        g = utils.DummyLoss()
+        g = utils.ZeroLoss()
     if step_size is None:
-        step_size = 2. / f.lipschitz_constant()
+        # XXX TODO: implement specific step-size
+        step_size = 10. / f.lipschitz_constant()
 
     Ax = f.A.dot(xk)
     f_alpha = f.alpha
@@ -303,17 +308,8 @@ def minimize_BCD(
     @njit(nogil=True)
     def _bcd_algorithm(
             x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
-            A_csc_indices, A_csc_indptr, b, trace_x, job_id):
-        feature_indices = np.arange(n_features)
-        if job_id == 0:
-            # .. recompute Ax (TODO: do only in async) ..
-            for i in range(n_samples):
-                p = 0.
-                for j in range(A_csr_indptr[i], A_csr_indptr[i + 1]):
-                    j_idx = A_csr_indices[j]
-                    p += x[j_idx] * A_csr_data[j]
-                # .. copy back to shared memory ..
-                Ax[i] = p
+            A_csc_indices, A_csc_indptr, b, trace_x, job_id, feature_indices):
+        it = 0
         for it in range(1, max_iter):
             np.random.shuffle(feature_indices)
             for j in feature_indices:
@@ -329,17 +325,19 @@ def minimize_BCD(
                     i_idx = A_csc_indices[i_indptr]
                     Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
                 x[j] = x_new
+                if j == 0:
+                    # .. recompute Ax TODO: do only in async ..
+                    for i in range(n_samples):
+                        p = 0.
+                        for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
+                            j_idx = A_csr_indices[j]
+                            p += x[j_idx] * A_csr_data[j]
+                        # .. copy back to shared memory ..
+                        Ax[i] = p
+
             if job_id == 0:
                 if trace:
                     trace_x[it, :] = x
-                # .. recompute Ax ..
-                for i in range(n_samples):
-                    p = 0.
-                    for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
-                        j_idx = A_csr_indices[j]
-                        p += x[j_idx] * A_csr_data[j]
-                    # .. copy back to shared memory ..
-                    Ax[i] = p
 
         return it, None
 
@@ -353,15 +351,16 @@ def minimize_BCD(
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for job_id in range(n_jobs):
+            feature_indices = np.random.permutation(n_features)
             futures.append(executor.submit(
                 _bcd_algorithm,
                 xk, Ax, X_csr.data, X_csr.indices, X_csr.indptr, X_csc.data,
-                X_csc.indices, X_csc.indptr, f.b, trace_x, job_id))
+                X_csc.indices, X_csc.indptr, f.b, trace_x, job_id, feature_indices))
+        n_iter, certificate = futures[0].result()
+        delta = (datetime.now() - start_time).total_seconds()
         concurrent.futures.wait(futures)
 
-    n_iter, certificate = futures[0].result()
     if trace:
-        delta = (datetime.now() - start_time).total_seconds()
         trace_time = np.linspace(0, delta, n_iter)
         if verbose:
             print('Computing trace')

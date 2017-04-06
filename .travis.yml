@@ -16,9 +16,9 @@ install:
 - conda install --yes --file requirements.txt
 - conda install coverage pillow sphinx numpydoc matplotlib
 - pip install python-coveralls sphinx-gallery sphinx-autodoc-typehints
-- python setup.py install
+- python setup.py develop
 script:
-- NUMBA_DISABLE_JIT=1 nosetests -v --with-coverage --cover-package=copt
+- NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
 - cd doc && make html && cd ..
 after_success: coveralls
 cache:

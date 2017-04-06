@@ -179,7 +179,7 @@ def c_prox_tv2d(step_size, x, n_rows, n_cols, max_iter, tol):
     return x
 
 
-def prox_tv2d(step_size, w, n_rows, n_cols, max_iter=500, tol=1e-3):
+def prox_tv2d(step_size, w, n_rows, n_cols, max_iter=500, tol=1e-6):
     """
     Computes the proximal operator of the 2-dimensional total variation operator.
 

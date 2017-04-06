@@ -25,7 +25,6 @@ Optimization algorithms
     copt.minimize_PGD
     copt.minimize_APGD
     copt.minimize_DavisYin
-    copt.minimize_CondatVu
 
 
 Supported loss functions
