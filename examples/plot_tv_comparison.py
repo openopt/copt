@@ -1,9 +1,9 @@
-# """
-# Total variation regularization
-# ==============================
-#
-# Comparison of solvers with total variation regularization.
-# """
+"""
+Total variation regularization
+==============================
+
+Comparison of solvers with total variation regularization.
+"""
 # import numpy as np
 # from scipy import linalg
 # import pylab as plt
