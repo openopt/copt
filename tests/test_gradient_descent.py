@@ -16,13 +16,13 @@ all_solvers = (
     ['SAGA', cp.minimize_SAGA, 1e-3])
 
 loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]
-penalty_funcs = [cp.L1Norm, cp.TotalVariation2D]
+penalty_funcs = [cp.L1Norm]
 
 
-@pytest.mark.parametrize("name, solver, tol", all_solvers)
+@pytest.mark.parametrize("name_solver, solver, tol", all_solvers)
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
-def test_optimize(name, solver, tol, loss, penalty):
+def test_optimize(name_solver, solver, tol, loss, penalty):
     for alpha, beta in itertools.product(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
         f = loss(X, y, alpha)
@@ -30,7 +30,7 @@ def test_optimize(name, solver, tol, loss, penalty):
         ss = 1. / f.lipschitz_constant()
         opt = solver(f, g)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < tol, name
+        assert np.linalg.norm(gmap) < tol, name_solver
 
 
 #

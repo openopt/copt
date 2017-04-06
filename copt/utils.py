@@ -126,11 +126,12 @@ class TotalVariation2D:
 
     """
 
-    def __init__(self, alpha, n_rows, n_cols, max_iter=100):
+    def __init__(self, alpha, n_rows, n_cols, max_iter=100, tol=1e-6):
         self.alpha = alpha
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.max_iter = max_iter
+        self.tol = tol
 
     def __call__(self, x):
         img = x.reshape((self.n_rows, self.n_cols))
@@ -141,7 +142,7 @@ class TotalVariation2D:
     def prox(self, x, step_size):
         return prox_tv2d(
             step_size * self.alpha, x, self.n_rows, self.n_cols,
-            max_iter=self.max_iter)
+            max_iter=self.max_iter, tol=self.tol)
 
 
 class ZeroLoss:
