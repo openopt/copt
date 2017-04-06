@@ -3,6 +3,12 @@ from scipy import misc
 import os
 import hashlib
 import urllib.request
+from sklearn.externals.joblib import Memory
+
+
+# .. TODO: allow to be set also from environment variable ..
+DATA_DIR = os.path.join(os.path.expanduser("~"), 'copt_data')
+memory = Memory(cachedir=DATA_DIR, verbose=0)
 
 
 def load_img1(n_rows=20, n_cols=20):
@@ -15,13 +21,11 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
+@memory.cache
 def load_rcv1(md5_check=True):
-    from os.path import expanduser
-    home = expanduser("~")
-    dir_name = os.path.join(home, 'copt_data')
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
-    file_path = os.path.join(dir_name, 'rcv1_full.binary.bz2')
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    file_path = os.path.join(DATA_DIR, 'rcv1_full.binary.bz2')
     if not os.path.exists(file_path):
         print('RCV1 dataset is not present in data folder. Downloading it ...')
         url = 'http://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/rcv1_full.binary.bz2'
@@ -38,6 +42,7 @@ def load_rcv1(md5_check=True):
     return datasets.load_svmlight_file(file_path)
 
 
+@memory.cache
 def load_url(md5_check=True):
     from os.path import expanduser
     home = expanduser("~")
@@ -61,6 +66,7 @@ def load_url(md5_check=True):
     return datasets.load_svmlight_file(file_path)
 
 
+@memory.cache
 def load_covtype():
     from os.path import expanduser
     home = expanduser("~")

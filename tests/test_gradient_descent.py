@@ -4,29 +4,32 @@ import copt as cp
 import pytest
 
 np.random.seed(0)
-n_samples, n_features = 100, 20
+n_samples, n_features = 50, 20
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
 all_solvers = (
-    ['PGD', cp.minimize_PGD],
-    ['APGD', cp.minimize_APGD],
-    ['DavisYin', cp.minimize_DavisYin],
-    ['BCD', cp.minimize_BCD],
-    ['SAGA', cp.minimize_SAGA])
+    ['PGD', cp.minimize_PGD, 1e-4],
+    ['APGD', cp.minimize_APGD, 1e-4],
+    ['DavisYin', cp.minimize_DavisYin, 1e-3],
+    ['BCD', cp.minimize_BCD, 1e-2],
+    ['SAGA', cp.minimize_SAGA, 1e-3])
 
+loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]
+penalty_funcs = [cp.L1Norm]
 
-@pytest.mark.parametrize("name, solver", all_solvers)
-def test_optimize(name, solver):
-    for alpha, beta, loss in itertools.product(
-            np.logspace(-3, 3, 5), np.logspace(-3, 3, 5),
-            (cp.LogisticLoss, cp.SquaredLoss)):
+@pytest.mark.parametrize("name, solver, tol", all_solvers)
+@pytest.mark.parametrize("loss", loss_funcs)
+@pytest.mark.parametrize("penalty", penalty_funcs)
+def test_optimize(name, solver, tol, loss, penalty):
+    for alpha, beta in itertools.product(
+            np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
         f = loss(X, y, alpha)
-        g = cp.L1Norm(beta)
+        g = penalty(beta)
         ss = 1. / f.lipschitz_constant()
         opt = solver(f, g)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < 1e-3, name
+        assert np.linalg.norm(gmap) < tol, name
 
 
 #

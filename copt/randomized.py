@@ -208,7 +208,7 @@ def _factory_sparse_SAGA(f, g):
         # .. inner iteration ..
         for it in range(1, max_iter):
             np.random.shuffle(sample_indices)
-            recompute_alpha = np.random.randint(0, 5 * n_samples)
+            recompute_alpha = np.random.randint(0, 3 * n_samples)
 
             for i in sample_indices:
                 p = 0.
@@ -247,17 +247,17 @@ def _factory_sparse_SAGA(f, g):
                 if trace:
                     trace_x[it, :] = x
                 # .. convergence check ..
-                # cert = np.linalg.norm(x - x_old) / step_size
-                # x_old[:] = x
-                # if cert < tol:
-                #     stop_flag[0] = True
-                #     break
-        #
-        #     if stop_flag[0]:
-        #         break
-        #
-        # # .. if any job has finished, stop the whole algorithm ..
-        # stop_flag[0] = True
+                cert = np.linalg.norm(x - x_old) / step_size
+                x_old[:] = x
+                if cert < tol:
+                    stop_flag[0] = True
+                    break
+
+            if stop_flag[0]:
+                break
+
+        # .. if any job has finished, stop the whole algorithm ..
+        stop_flag[0] = True
         return it, cert
 
     return _saga_algorithm
