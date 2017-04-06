@@ -119,6 +119,7 @@ def minimize_SAGA(
         for i in range(n_iter):
             # TODO: could be parallelized
             trace_func.append(f(trace_x[i]) + g(trace_x[i]))
+        trace_func = np.array(trace_func)
 
     if certificate < tol:
         success = True

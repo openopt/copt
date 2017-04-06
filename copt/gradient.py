@@ -2,7 +2,6 @@ import warnings
 import numpy as np
 from scipy import optimize, linalg, sparse
 from datetime import datetime
-from numba import njit
 
 # .. local imports ..
 from .utils import ZeroLoss
