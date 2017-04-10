@@ -11,14 +11,11 @@ class LogisticLoss:
     Labels (b) are assumed to be 1 or -1.
     """
 
-    def __init__(self, A, b, alpha='auto'):
+    def __init__(self, A, b, alpha=0):
         self.b = b
         self.A = A
         self.n_features = self.A.shape[1]
-        if alpha == 'auto':
-            self.alpha = 1. / A.shape[0]
-        else:
-            self.alpha = alpha
+        self.alpha = float(alpha)
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss
@@ -60,21 +57,27 @@ class LogisticLoss:
             return (phi - 1) * b
         return partial_gradient
 
-    def lipschitz_constant(self):
-        return 0.25 * norm_rows(self.A) + self.alpha * self.A.shape[0]
+    def lipschitz_constant(self, kind='full'):
+        if kind == 'samples':
+            return 0.25 * norm_along_axis(self.A, 1) + self.alpha * self.A.shape[0]
+        elif kind == 'full':
+            from scipy.sparse.linalg import svds
+            s = svds(self.A, k=1, return_singular_vectors=False)[0]
+            return 0.25 * s * s / self.A.shape[0] + self.alpha
+        elif kind == 'features':
+            return 0.25 * norm_along_axis(self.A, 0) / self.A.shape[0] + self.alpha
+        else:
+            raise NotImplementedError
 
 
 class SquaredLoss:
     """Least squares loss function with L2 regularization"""
 
-    def __init__(self, A, b, alpha='auto'):
+    def __init__(self, A, b, alpha=0):
         self.b = b
         self.A = A
         self.n_features = self.A.shape[1]
-        if alpha == 'auto':
-            self.alpha = 1. / A.shape[0]
-        else:
-            self.alpha = float(alpha)
+        self.alpha = float(alpha)
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss
@@ -94,8 +97,17 @@ class SquaredLoss:
             return - (b - p)
         return partial_gradient
 
-    def lipschitz_constant(self):
-        return norm_rows(self.A) + self.alpha * self.A.shape[0]
+    def lipschitz_constant(self, kind='full'):
+        if kind == 'samples':
+            return norm_along_axis(self.A, 1) + self.alpha * self.A.shape[0]
+        elif kind == 'full':
+            from scipy.sparse.linalg import svds
+            s = svds(self.A, k=1, return_singular_vectors=False)[0]
+            return s * s / self.A.shape[0] + self.alpha
+        elif kind == 'features':
+            return norm_along_axis(self.A, 0) / self.A.shape[0] + self.alpha
+        else:
+            raise NotImplementedError
 
 
 class L1Norm:
@@ -162,8 +174,8 @@ class ZeroLoss:
         return prox_dummy
 
 
-def norm_rows(A):
+def norm_along_axis(A, axis=1):
     if sparse.issparse(A):
-        return np.max(A.multiply(A).sum(1))
+        return np.max(A.multiply(A).sum(axis))
     else:
-        return np.max((A * A).sum(1))
+        return np.max((A * A).sum(axis))

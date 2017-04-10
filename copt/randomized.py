@@ -76,7 +76,7 @@ def minimize_SAGA(
         x = np.ascontiguousarray(x0).copy()
 
     if step_size is None:
-        step_size = 1. / (3 * f.lipschitz_constant())
+        step_size = 1. / (3 * f.lipschitz_constant('samples'))
 
     if g is None:
         g = utils.ZeroLoss()
@@ -265,7 +265,7 @@ def _factory_sparse_SAGA(f, g):
 
 
 def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=100, trace=False, verbose=False,
+        f, g=None, x0=None, step_size=None, max_iter=300, trace=False, verbose=False,
         n_jobs=1):
     """Block Coordinate Descent
 
@@ -287,8 +287,7 @@ def minimize_BCD(
     if g is None:
         g = utils.ZeroLoss()
     if step_size is None:
-        # XXX TODO: implement specific step-size
-        step_size = 10. / f.lipschitz_constant()
+        step_size = 1. / f.lipschitz_constant('features')
 
     Ax = f.A.dot(xk)
     f_alpha = f.alpha
