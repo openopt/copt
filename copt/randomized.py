@@ -218,11 +218,13 @@ def _factory_sparse_SAGA(f, g):
                     p += x[j_idx] * A_data[j]
 
                 grad_i = partial_gradient(p, b[i])
+                old_grad = memory_gradient[i]
+                memory_gradient[i] = grad_i
 
                 # .. update coefficients ..
                 for j in range(A_indptr[i], A_indptr[i+1]):
                     j_idx = A_indices[j]
-                    incr = (grad_i - memory_gradient[i]) * A_data[j]
+                    incr = (grad_i - old_grad) * A_data[j]
                     incr += d[j_idx] * (gradient_average[j_idx] + f_alpha * x[j_idx])
                     x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
@@ -230,19 +232,18 @@ def _factory_sparse_SAGA(f, g):
                 for j in range(A_indptr[i], A_indptr[i+1]):
                     j_idx = A_indices[j]
                     gradient_average[j_idx] += (
-                            grad_i - memory_gradient[i]) * A_data[j] / n_samples
-                memory_gradient[i] = grad_i
+                            grad_i - old_grad) * A_data[j] / n_samples
 
-                if async and i == recompute_alpha:
-                    # .. recompute alpha bar ..
-                    grad_tmp = np.zeros(n_features)
-                    for i_inner in sample_indices:
-                        for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
-                            j_idx = A_indices[j]
-                            grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
-                    # .. copy back to shared memory ..
-                    for j in range(n_features):
-                        gradient_average[j] = grad_tmp[j]
+                # if async and i == recompute_alpha:
+                #     # .. recompute alpha bar ..
+                #     grad_tmp = np.zeros(n_features)
+                #     for i_inner in sample_indices:
+                #         for j in range(A_indptr[i_inner], A_indptr[i_inner + 1]):
+                #             j_idx = A_indices[j]
+                #             grad_tmp[j_idx] += memory_gradient[i_inner] * A_data[j] / n_samples
+                #     # .. copy back to shared memory ..
+                #     for j in range(n_features):
+                #         gradient_average[j] = grad_tmp[j]
 
             if job_id == 0:
                 if trace:
