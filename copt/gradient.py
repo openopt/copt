@@ -73,7 +73,7 @@ def minimize_PGD(
             x_tmp /= linalg.norm(x_tmp)
             L.append(linalg.norm(f(xk) - f(x_tmp)))
         # give it a generous upper bound
-        step_size = 1. / np.mean(L)
+        step_size = 2. / np.mean(L)
 
     success = False
     trace_func = []
@@ -214,7 +214,7 @@ def minimize_APGD(
             x_tmp /= linalg.norm(x_tmp)
             L.append(linalg.norm(f(xk) - f(x_tmp)))
         # give it a generous upper bound
-        step_size = 1. / np.mean(L)
+        step_size = 2. / np.mean(L)
 
     success = False
     trace_func = []
