@@ -4,88 +4,83 @@ Total variation regularization
 
 Comparison of solvers with total variation regularization.
 """
-# import numpy as np
-# from scipy import linalg
-# import pylab as plt
-# import copt as cp
-# colors = ['#7fc97f', '#beaed4', '#fdc086']
+import numpy as np
+from scipy import linalg
+import pylab as plt
+import copt as cp
+
+
+###############################################################
+# Load an ground truth image and generate the dataset (A, b) as
 #
-# from datetime import datetime
+#             b = A ground_truth + noise   ,
 #
-# class Trace:
-#     """
-#     XXX
-#     """
-#     def __init__(self, loss_func, print_freq=100, verbose=False):
-#         self.loss_func = loss_func
-#         self.values = []
-#         self.times = []
-#         self.start = None
-#         self.counter = 0
-#         self.print_freq = print_freq
-#         self.verbose = verbose
+# where A is a random matrix. We will now load the ground truth image
+img = cp.datasets.load_img1()
+n_rows, n_cols = img.shape
+n_features = n_rows * n_cols
+np.random.seed(0)
+n_samples = n_features
+
+# set L2 regularization (arbitrarily) to 1/n_samples
+l2_reg = 1.0 / n_samples
+
+
+A = np.random.uniform(-1, 1, size=(n_samples, n_features))
+for i in range(A.shape[0]):
+    A[i] /= linalg.norm(A[i])
+b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
+
+
+def TV(w):
+    img = w.reshape((n_rows, n_cols))
+    tmp1 = np.abs(np.diff(img, axis=0))
+    tmp2 = np.abs(np.diff(img, axis=1))
+    return tmp1.sum() + tmp2.sum()
+
+
+class TotalVariation1DCols:
+    def __init__(self, alpha, n_rows, n_cols):
+        self.alpha = alpha
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+
+    def __call__(self, x):
+        img = x.reshape((self.n_rows, self.n_cols))
+        tmp1 = np.abs(np.diff(img, axis=0))
+        return self.alpha * tmp1.sum()
+
+    def prox(self, x, step_size):
+        return cp.tv_prox.prox_tv1d_cols(
+            step_size * self.alpha, x, self.n_rows, self.n_cols)
+
+
+class TotalVariation1DRows:
+    def __init__(self, alpha, n_rows, n_cols):
+        self.alpha = alpha
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+
+    def __call__(self, x):
+        img = x.reshape((self.n_rows, self.n_cols))
+        tmp2 = np.abs(np.diff(img, axis=1))
+        return self.alpha * tmp2.sum()
+
+    def prox(self, x, step_size):
+        return cp.tv_prox.prox_tv1d_rows(
+            step_size * self.alpha, x, self.n_rows, self.n_cols)
+
+
+f, ax = plt.subplots(2, 3, sharey=False)
+all_alphas = [1e-6, 1e-3, 1e-1]
+xlim = [0.02, 0.02, 0.1]
+for i, alpha in enumerate(all_alphas):
 #
-#     def __call__(self, args):
-#         fxk = self.loss_func(args)
-#         if self.verbose and self.counter % self.print_freq == 0:
-#             print('Iteration: %s, Trace obj: %s' %
-#                   (self.counter, fxk))
-#         self.counter += 1
-#         self.values.append(fxk)
-#         if self.start is None:
-#             self.start = datetime.now()
-#             self.times = [0]
-#         else:
-#             self.times.append((datetime.now() - self.start).total_seconds())
-#
-#
-# ###############################################################
-# # Load an ground truth image and generate the dataset (A, b) as
-# #
-# #             b = A ground_truth + noise   ,
-# #
-# # where A is a random matrix. We will now load the ground truth image
-# img = cp.datasets.load_img1()
-# n_rows, n_cols = img.shape
-# n_features = n_rows * n_cols
-# np.random.seed(0)
-# n_samples = n_features
-#
-# # set L2 regularization (arbitrarily) to 1/n_samples
-# l2_reg = 1.0 / n_samples
-#
-#
-# A = np.random.uniform(-1, 1, size=(n_samples, n_features))
-# for i in range(A.shape[0]):
-#     A[i] /= linalg.norm(A[i])
-# b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
-#
-#
-# def TV(w):
-#     img = w.reshape((n_rows, n_cols))
-#     tmp1 = np.abs(np.diff(img, axis=0))
-#     tmp2 = np.abs(np.diff(img, axis=1))
-#     return tmp1.sum() + tmp2.sum()
-#
-#
-# def obj_fun(x):
-#     return 0.5 * np.linalg.norm(b - A.dot(x)) ** 2 / A.shape[0] + 0.5 * l2_reg * x.dot(x)
-#
-#
-# def grad(x):
-#     return - A.T.dot(b - A.dot(x)) / A.shape[0] + l2_reg * x
-#
-# f, ax = plt.subplots(2, 3, sharey=False)
-# all_alphas = [1e-6, 1e-3, 1e-1]
-# xlim = [0.02, 0.02, 0.1]
-# for i, alpha in enumerate(all_alphas):
-#
-#     max_iter = 5000
-#     trace_three = Trace(lambda x: obj_fun(x) + alpha * TV(x))
-#     out_tos = cp.minimize_DavisYin(
-#         obj_fun, grad, cp.tv_prox.prox_tv1d_rows, cp.tv_prox.prox_tv1d_cols, np.zeros(n_features),
-#         alpha=alpha, beta=alpha, g_prox_args=(n_rows, n_cols), h_prox_args=(n_rows, n_cols),
-#         callback=trace_three, max_iter=max_iter, tol=1e-16)
+    max_iter = 5000
+    out_tos = cp.minimize_DavisYin(
+        cp.SquaredLoss(A, b, l2_reg), TotalVariation1DCols(alpha, n_rows, n_cols),
+        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
+        max_iter=max_iter, tol=1e-16, verbose=1)
 #
 #     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
 #     f = cp.LogisticLoss(A, b, l2_reg)

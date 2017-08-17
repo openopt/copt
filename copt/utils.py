@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import sparse
+from scipy import sparse, special
 from numba import njit
 from .tv_prox import prox_tv2d
 
@@ -9,38 +9,50 @@ class LogisticLoss:
 
     This loss function is very popular for binary classification tasks.
     Labels (b) are assumed to be 1 or -1.
+
+    References
+    ----------
+    Loss function and gradients for full gradient methods are computed
+    as detailed in to
+    http://fa.bianp.net/blog/2013/numerical-optimizers-for-logistic-regression/
     """
 
-    def __init__(self, A, b, alpha=0):
+    def __init__(self, A, b, alpha=0, intercept=True):
         self.b = b
         self.A = A
-        self.n_features = self.A.shape[1]
+        self.intercept = intercept
+        if self.intercept == True:
+            self.n_features = self.A.shape[1] + 1
+        else:
+            self.n_features = self.A.shape[1]
         self.alpha = float(alpha)
 
     def __call__(self, x):
-        # loss function to be optimized, it's the logistic loss
-        z = self.A.dot(x)
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.
+        z = self.A.dot(x_) + c
         yz = self.b * z
         idx = yz > 0
         out = np.zeros_like(yz)
         out[idx] = np.log(1 + np.exp(-yz[idx]))
         out[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
-        out = out.mean() + .5 * self.alpha * x.dot(x)
+        out = out.mean() + .5 * self.alpha * x_.dot(x_)
         return out
 
     def gradient(self, x):
-        def phi(t):
-            # logistic function, returns 1 / (1 + exp(-t))
-            idx = t > 0
-            out = np.empty(t.size, dtype=np.float)
-            out[idx] = 1. / (1 + np.exp(-t[idx]))
-            exp_t = np.exp(t[~idx])
-            out[~idx] = exp_t / (1. + exp_t)
-            return out
-        z = self.A.dot(x)
-        z = phi(self.b * z)
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.
+        z = self.A.dot(x_) + c
+        z = special.expit(self.b * z)
         z0 = (z - 1) * self.b
-        grad_w = self.A.T.dot(z0) / self.A.shape[0] + self.alpha * x
+        grad_w = self.A.T.dot(z0) / self.A.shape[0] + self.alpha * x_
+        grad_c = z0.mean()
+        if self.intercept:
+            return np.concatenate((grad_w, [grad_c]))
         return grad_w
 
     @staticmethod
@@ -73,7 +85,7 @@ class LogisticLoss:
 class SquaredLoss:
     """Least squares loss function with L2 regularization"""
 
-    def __init__(self, A, b, alpha=0):
+    def __init__(self, A, b, alpha=0, intercept=True):
         self.b = b
         self.A = A
         self.n_features = self.A.shape[1]
@@ -114,22 +126,31 @@ class L1Norm:
     """L1 norm, i.e., the sum of absolute values"""
     is_separable = True
 
-    def __init__(self, alpha=1.):
+    def __init__(self, alpha=1., intercept=True):
         self.alpha = alpha
+        self.intercept = intercept
 
     def __call__(self, x):
-        return self.alpha * np.sum(np.abs(x))
+        x_ = x
+        if self.intercept:
+            x_ = x[:-1]
+        return self.alpha * np.sum(np.abs(x_))
 
     def prox(self, x, step_size):
-        return np.fmax(x - self.alpha * step_size, 0) \
-            - np.fmax(- x - self.alpha * step_size, 0)
+        x_ = x
+        if self.intercept:
+            x_ = x[:-1]
+        out = np.fmax(x_ - self.alpha * step_size, 0) \
+            - np.fmax(- x_ - self.alpha * step_size, 0)
+        if self.intercept:
+            return np.concatenate((out, (x_[-1],)))
+        return out
 
     def prox_factory(self):
-        alpha = self.alpha
         @njit
         def prox_L1(x, step_size):
-            return np.fmax(x - alpha * step_size, 0) \
-                   - np.fmax(- x - alpha * step_size, 0)
+            return np.fmax(x - self.alpha * step_size, 0) \
+                   - np.fmax(- x - self.alpha * step_size, 0)
         return prox_L1
 
 
@@ -164,7 +185,7 @@ class ZeroLoss:
     def __call__(self, x):
         return 0
 
-    def prox(self, x, stepsize):
+    def prox(self, x, step_size):
         return x
 
     def prox_factory(self):

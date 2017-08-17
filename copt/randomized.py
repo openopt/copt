@@ -59,15 +59,19 @@ def minimize_SAGA(
 
     References
     ----------
+    The SAGA algorithm was originally described in
+
         Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
         incremental gradient method with support for non-strongly convex composite
         objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
         Information Processing Systems. 2014.
 
-        Rémi Leblond, Fabian Pedregosa, Simon Lacoste-Julien. `ASAGA: Asynchronous
-        parallel SAGA <https://arxiv.org/abs/1606.04809>`_. Proceedings of the 20th
-        International Conference on Artificial Intelligence and Statistics (AISTATS).
-        2017.
+    The implemented has some improvements with respect to the original version, such as
+    better support for sparse datasets and is described in
+
+        Pedregosa, Fabian, Rémi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
+        Barrier: A Scalable Parallel Method for Composite Optimization." arXiv preprint
+        arXiv:1707.06468 (2017).
     """
     if x0 is None:
         x = np.zeros(f.n_features)
@@ -104,7 +108,7 @@ def minimize_SAGA(
     if trace:
         trace_time = np.linspace(0, delta, n_iter)
         if verbose:
-            print('Computing trace')
+            print('.. computing trace ..')
         # .. compute function values ..
         trace_func = []
         for i in range(n_iter):
@@ -192,6 +196,9 @@ def _factory_sparse_SAGA(f, g):
         cert = np.inf
         it = 0
 
+        if trace:
+            trace_x[0] = x
+
         # .. inner iteration ..
         for it in range(1, max_iter):
             np.random.shuffle(sample_indices)
@@ -209,15 +216,13 @@ def _factory_sparse_SAGA(f, g):
                 # .. update coefficients ..
                 for j in range(A_indptr[i], A_indptr[i+1]):
                     j_idx = A_indices[j]
-                    incr = (grad_i - old_grad) * A_data[j]
-                    incr += d[j_idx] * (gradient_average[j_idx] + f_alpha * x[j_idx])
+                    delta = (grad_i - old_grad) * A_data[j]
+                    incr = delta + d[j_idx] * (gradient_average[j_idx] + f_alpha * x[j_idx])
                     x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+                    gradient_average[j_idx] += delta / n_samples
 
-                # .. update memory terms ..
-                for j in range(A_indptr[i], A_indptr[i+1]):
-                    j_idx = A_indices[j]
-                    gradient_average[j_idx] += (
-                            grad_i - old_grad) * A_data[j] / n_samples
+            if trace:
+                trace_x[it] = x
 
         return it, cert
 

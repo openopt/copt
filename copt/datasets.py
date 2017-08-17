@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import misc
 import os
+from os.path import expanduser
 import hashlib
 import urllib.request
 
@@ -9,6 +10,7 @@ DATA_DIR = os.path.join(os.path.expanduser("~"), 'copt_data')
 
 
 def load_img1(n_rows=20, n_cols=20):
+    """Load sample image"""
     dir_path = os.path.dirname(os.path.realpath(__file__))
     grid = np.loadtxt(
         os.path.join(dir_path, 'data', 'img1.csv'),
@@ -19,6 +21,25 @@ def load_img1(n_rows=20, n_cols=20):
 
 
 def load_rcv1(md5_check=True):
+    """
+    Download and return the RCV1 dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#rcv1.binary
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 1 or -1.
+    """
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'rcv1_full.binary.bz2')
@@ -39,7 +60,26 @@ def load_rcv1(md5_check=True):
 
 
 def load_url(md5_check=True):
-    from os.path import expanduser
+    """
+    Download and return the URL dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 1 or -1.
+    """
+
     home = expanduser("~")
     dir_name = os.path.join(home, 'copt_data')
     if not os.path.exists(dir_name):
@@ -62,7 +102,26 @@ def load_url(md5_check=True):
 
 
 def load_covtype():
-    from os.path import expanduser
+    """
+    Download and return the URL dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 1 or -1.
+    """
+
     home = expanduser("~")
     dir_name = os.path.join(home, 'copt_data')
     if not os.path.exists(dir_name):

@@ -94,6 +94,7 @@ def minimize_PGD(
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f.gradient(xk)
+        # TODO: could compute loss and grad in the same function call
         x_next = g.prox(xk - current_step_size * grad_fk, current_step_size)
         incr = x_next - xk
         if backtracking:
@@ -120,7 +121,7 @@ def minimize_PGD(
             trace_time.append((datetime.now() - start_time).total_seconds())
 
         if verbose > 0:
-            print("Iteration %s, step size: %s" % (it, step_size))
+            print("Iteration %s, step size: %s, certificate: %s" % (it, step_size, certificate))
 
         if certificate < tol:
             if verbose:
@@ -260,7 +261,7 @@ def minimize_APGD(
         if verbose > 0:
             print("Iteration %s, certificate: %s, step size: %s" % (it, certificate, step_size))
 
-        if certificate < tol:
+        if False and certificate < tol:
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
             success = True
