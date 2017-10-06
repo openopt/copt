@@ -285,7 +285,7 @@ def minimize_APGD(
 
 def minimize_DavisYin(
         f, g=None, h=None, y0=None, tol=1e-6, max_iter=1000,
-        verbose=0, callback=None, backtracking=True, step_size=None,
+        verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.4, trace=False):
     """Davis-Yin three operator splitting method.
 
@@ -359,79 +359,95 @@ def minimize_DavisYin(
     if h is None:
         h = ZeroLoss()
 
+    if step_size is None:
+        if backtracking:
+            L = f.lipschitz_constant()
+            step_size = 5 / L
+            #
+            # # sample to estimate Lipschitz constant
+            # x0 = np.zeros(y.size)
+            # step_size_n_sample = 5
+            # L = []
+            # for _ in range(step_size_n_sample):
+            #     x_tmp = np.random.randn(x0.size)
+            #     x_tmp /= linalg.norm(x_tmp)
+            #     L.append(linalg.norm(f(x0) - f(x_tmp)))
+            # # give it a generous upper bound
+            # step_size = 10. / np.mean(L)
+        else:
+            L = f.lipschitz_constant()
+            step_size = 1 / L
+
     trace_func = []
     trace_time = []
-    trace_x = []
     start_time = datetime.now()
-
-    if step_size is None:
-        # sample to estimate Lipschitz constant
-        x0 = np.zeros(y.size)
-        step_size_n_sample = 5
-        L = []
-        for _ in range(step_size_n_sample):
-            x_tmp = np.random.randn(x0.size)
-            x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f(x0) - f(x_tmp)))
-        # give it a generous upper bound
-        step_size = 10. / np.mean(L)
 
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    current_step_size = step_size
+    rho = 1
     while it <= max_iter:
-        x = g.prox(y, current_step_size)
-        grad_fk = f.gradient(x)
-        z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size)
-        incr = z - x
-        norm_incr = linalg.norm(incr / current_step_size)
+        z = g.prox(y, step_size)
+        grad_fk = f.gradient(z)
+        x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
+        incr = x - z
+        norm_incr = linalg.norm(incr / (rho * step_size))
         if backtracking:
-            for _ in range(max_iter_backtracking):
-                fx = f(x)
-                expected_descent = fx + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
-                if f(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
+            if restart and (rho > 100 or rho < 0.01):
+                rho = 1
+                y = z + rho * (y - z)
+                step_size *= rho
+                rho = 1
+                x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
+                incr = x - z
+            fz = f(z)
+            it_ls = 0
+            while it_ls < max_iter_backtracking:
+                rhs = fz + grad_fk.dot(incr) + 0.5 * rho * step_size * (norm_incr ** 2)
+                if f(x) <= rhs:
                     # step size found
                     break
                 else:
-                    current_step_size *= backtracking_factor
-                    y = x + backtracking_factor * (y - x)
-                    grad_fk = f.gradient(x)
-                    z = h.prox(2 * x - y - current_step_size * grad_fk, current_step_size)
-                    incr = z - x
-                    norm_incr = linalg.norm(incr / current_step_size)
+                    rho *= backtracking_factor
+                    x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
+                    incr = x - z
+                    norm_incr = linalg.norm(incr / (rho * step_size))
             else:
                 warnings.warn("Maximum number of line-search iterations reached")
+            if it_ls == 0:
+                rho *= 1.03
 
         if trace:
-            trace_x.append(x.copy())
             trace_time.append((datetime.now() - start_time).total_seconds())
             if backtracking:
-                trace_func.append(fx + g(x) + h(x))
+                trace_func.append(f(x) + g(x) + h(x))
+            else:
+                trace_func.append(f(x) + g(x) + h(x))
 
         y += incr
 
         if verbose > 0:
             print("Iteration %s, prox-grad norm: %s, step size: %s" % (
-                it, norm_incr / current_step_size, current_step_size))
+                it, norm_incr / (rho * step_size), rho * step_size))
 
-        if norm_incr < tol * current_step_size:
+        if norm_incr < tol:
             success = True
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
             break
 
         if callback is not None:
-            callback(x)
+            callback(z)
         if it >= max_iter:
             warnings.warn(
                 "three_split did not reach the desired tolerance level",
                 RuntimeWarning)
         it += 1
 
-    x_sol = g.prox(y, current_step_size)
+    if len(trace_time) > 0:
+        trace_time = np.array(trace_time) - trace_time[0]
     return optimize.OptimizeResult(
-        x=x_sol, success=success,
-        jac=incr / current_step_size,  # prox-grad mapping
+        x=x, success=success,
+        jac=incr / (tol * step_size),  # prox-grad mapping
         nit=it, trace_func=np.array(trace_func),
         trace_time=trace_time)

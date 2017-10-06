@@ -17,13 +17,18 @@ import copt as cp
 #
 # where A is a random matrix. We will now load the ground truth image
 img = cp.datasets.load_img1()
+from scipy import misc
+img = misc.face(gray=True)
+img = img[:100, :100]
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)
 n_samples = n_features
+#n_samples = 2000
 
 # set L2 regularization (arbitrarily) to 1/n_samples
 l2_reg = 1.0 / n_samples
+l2_reg = 0
 
 
 A = np.random.uniform(-1, 1, size=(n_samples, n_features))
@@ -31,6 +36,7 @@ for i in range(A.shape[0]):
     A[i] /= linalg.norm(A[i])
 b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
 
+print(1)
 
 def TV(w):
     img = w.reshape((n_rows, n_cols))
@@ -75,12 +81,19 @@ f, ax = plt.subplots(2, 3, sharey=False)
 all_alphas = [1e-6, 1e-3, 1e-1]
 xlim = [0.02, 0.02, 0.1]
 for i, alpha in enumerate(all_alphas):
+    print(i, alpha)
 #
-    max_iter = 5000
+    max_iter = 500
     out_tos = cp.minimize_DavisYin(
         cp.SquaredLoss(A, b, l2_reg), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
-        max_iter=max_iter, tol=1e-16, verbose=1, trace=True)
+        max_iter=max_iter, tol=1e-14, verbose=1, trace=True)
+
+    tos_nols = cp.minimize_DavisYin(
+        cp.SquaredLoss(A, b, l2_reg), TotalVariation1DCols(alpha, n_rows, n_cols),
+        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
+        max_iter=max_iter, tol=1e-14, verbose=1, trace=True, backtracking=False)
+
 #
 #     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
 #     f = cp.LogisticLoss(A, b, l2_reg)
@@ -94,28 +107,36 @@ for i, alpha in enumerate(all_alphas):
     ax[0, i].set_xticks(())
     ax[0, i].set_yticks(())
 #
-    fmin = np.min(out_tos.trace_func) #, np.min(trace_gd.values))
+    fmin = min(np.min(out_tos.trace_func), np.min(tos_nols.trace_func)) #, np.min(trace_gd.values))
     scale = (np.array(out_tos.trace_func) - fmin)[0]
-    prox_split, = ax[1, i].plot(
-        np.array(out_tos.trace_time), (np.array(out_tos.trace_func) - fmin) / scale,
+    plot_tos, = ax[1, i].plot(
+#        np.array(out_tos.trace_time),
+        (np.array(out_tos.trace_func) - fmin) / scale,
         lw=4, marker='o', markevery=10,
         markersize=10)
+
+    plot_nols, = ax[1, i].plot(
+#        np.array(tos_nols.trace_time),
+        (np.array(tos_nols.trace_func) - fmin) / scale,
+        lw=4, marker='h', markevery=10,
+        markersize=10)
+
 #     prox_gd, = ax[1, i].plot(
 #         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
 #         lw=4, marker='^', markersize=10, markevery=10,
 #         color=colors[1])
     ax[1, i].set_xlabel('Time (in seconds)')
     ax[1, i].set_yscale('log')
-    ax[1, i].set_xlim((0, xlim[i]))
+    #ax[1, i].set_xlim((0, xlim[i]))
     ax[1, i].grid(True)
 #
 plt.gcf().subplots_adjust(bottom=0.15)
-# plt.figlegend(
-#     (prox_split, prox_gd),
-#     ('Three operator splitting', 'Proximal Gradient Descent'), ncol=5,
-#     scatterpoints=1,
-#     loc=(-0.00, -0.0), frameon=False,
-#     bbox_to_anchor=[0.05, 0.01])
-#
+plt.figlegend(
+    (plot_tos, plot_nols),
+    ('TOS (LS)', 'TOS (no LS)'), ncol=5,
+    scatterpoints=1,
+    loc=(-0.00, -0.0), frameon=False,
+    bbox_to_anchor=[0.05, 0.01])
+
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()

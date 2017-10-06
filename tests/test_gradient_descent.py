@@ -10,9 +10,9 @@ w = np.random.randn(n_features)
 y = np.sign(X.dot(w) + np.random.randn(n_samples))
 
 all_solvers = (
-    ['PGD', cp.minimize_PGD, 0.01],
-    # ['APGD', cp.minimize_APGD, 1e-4],
-    # ['DavisYin', cp.minimize_DavisYin, 1e-3],
+    ['PGD', cp.minimize_PGD, 1e-3],
+    ['APGD', cp.minimize_APGD, 1e-4],
+    ['DavisYin', cp.minimize_DavisYin, 1e-3],
     # ['BCD', cp.minimize_BCD, 1e-2],
     # ['SAGA', cp.minimize_SAGA, 1e-3]
 )
@@ -27,10 +27,10 @@ penalty_funcs = [cp.L1Norm]
 def test_optimize(name_solver, solver, tol, loss, penalty):
     for alpha, beta in itertools.product(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
-        f = loss(X, y, alpha, intercept=True)
+        f = loss(X, y, alpha, intercept=False)
         g = cp.utils.ZeroLoss()  # penalty(beta)
         ss = 1. / f.lipschitz_constant()
-        opt = solver(f, g, max_iter=1000, tol=0)
+        opt = solver(f, g, max_iter=100, tol=0)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
         assert np.linalg.norm(gmap) < tol, name_solver
 
