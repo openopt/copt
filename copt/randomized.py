@@ -79,7 +79,7 @@ def minimize_SAGA(
         x = np.ascontiguousarray(x0).copy()
 
     if step_size is None:
-        step_size = 1. / (3 * f.lipschitz_constant('samples'))
+        step_size = 1. / (2 * f.lipschitz_constant('samples'))
 
     if g is None:
         g = utils.ZeroLoss()
@@ -101,8 +101,7 @@ def minimize_SAGA(
 
     start_time = datetime.now()
     n_iter, certificate = epoch_iteration(x, memory_gradient, gradient_average,
-                step_size, max_iter, tol, trace, trace_x,
-                np.random.permutation(n_samples))
+                step_size, max_iter, tol, trace, trace_x)
     delta = (datetime.now() - start_time).total_seconds()
 
     if trace:
@@ -190,11 +189,12 @@ def _factory_sparse_SAGA(f, g):
     @njit(nogil=True)
     def _saga_algorithm(
             x, memory_gradient, gradient_average, step_size, max_iter, tol,
-            trace, trace_x, sample_indices):
+            trace, trace_x):
 
         # .. SAGA estimate of the gradient ..
         cert = np.inf
         it = 0
+        sample_indices = np.arange(n_samples)
 
         if trace:
             trace_x[0] = x

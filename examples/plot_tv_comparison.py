@@ -80,7 +80,7 @@ for i, alpha in enumerate(all_alphas):
     out_tos = cp.minimize_DavisYin(
         cp.SquaredLoss(A, b, l2_reg), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
-        max_iter=max_iter, tol=1e-16, verbose=1)
+        max_iter=max_iter, tol=1e-16, verbose=1, trace=True)
 #
 #     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
 #     f = cp.LogisticLoss(A, b, l2_reg)
@@ -88,28 +88,28 @@ for i, alpha in enumerate(all_alphas):
 #     out_gd = cp.minimize_APGD(
 #         f, g, max_iter=max_iter, callback=trace_gd)
 #
-#     ax[0, i].set_title(r'$\lambda=%s$' % alpha)
-#     ax[0, i].imshow(out_tos.x.reshape((n_rows, n_cols)),
-#                     interpolation='nearest', cmap=plt.cm.Blues)
-#     ax[0, i].set_xticks(())
-#     ax[0, i].set_yticks(())
+    ax[0, i].set_title(r'$\lambda=%s$' % alpha)
+    ax[0, i].imshow(out_tos.x.reshape((n_rows, n_cols)),
+                    interpolation='nearest', cmap=plt.cm.Blues)
+    ax[0, i].set_xticks(())
+    ax[0, i].set_yticks(())
 #
-#     fmin = min(np.min(trace_three.values), np.min(trace_gd.values))
-#     scale = (np.array(trace_three.values) - fmin)[0]
-#     prox_split, = ax[1, i].plot(
-#         np.array(trace_three.times), (np.array(trace_three.values) - fmin) / scale,
-#         lw=4, marker='o', markevery=10,
-#         markersize=10, color=colors[0])
+    fmin = np.min(out_tos.trace_func) #, np.min(trace_gd.values))
+    scale = (np.array(out_tos.trace_func) - fmin)[0]
+    prox_split, = ax[1, i].plot(
+        np.array(out_tos.trace_time), (np.array(out_tos.trace_func) - fmin) / scale,
+        lw=4, marker='o', markevery=10,
+        markersize=10)
 #     prox_gd, = ax[1, i].plot(
 #         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
 #         lw=4, marker='^', markersize=10, markevery=10,
 #         color=colors[1])
-#     ax[1, i].set_xlabel('Time (in seconds)')
-#     ax[1, i].set_yscale('log')
-#     ax[1, i].set_xlim((0, xlim[i]))
-#     ax[1, i].grid(True)
+    ax[1, i].set_xlabel('Time (in seconds)')
+    ax[1, i].set_yscale('log')
+    ax[1, i].set_xlim((0, xlim[i]))
+    ax[1, i].grid(True)
 #
-# plt.gcf().subplots_adjust(bottom=0.15)
+plt.gcf().subplots_adjust(bottom=0.15)
 # plt.figlegend(
 #     (prox_split, prox_gd),
 #     ('Three operator splitting', 'Proximal Gradient Descent'), ncol=5,
@@ -117,5 +117,5 @@ for i, alpha in enumerate(all_alphas):
 #     loc=(-0.00, -0.0), frameon=False,
 #     bbox_to_anchor=[0.05, 0.01])
 #
-# ax[1, 0].set_ylabel('Objective minus optimum')
-# plt.show()
+ax[1, 0].set_ylabel('Objective minus optimum')
+plt.show()

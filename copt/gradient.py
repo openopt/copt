@@ -286,7 +286,7 @@ def minimize_APGD(
 def minimize_DavisYin(
         f, g=None, h=None, y0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.4):
+        max_iter_backtracking=100, backtracking_factor=0.4, trace=False):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -359,6 +359,11 @@ def minimize_DavisYin(
     if h is None:
         h = ZeroLoss()
 
+    trace_func = []
+    trace_time = []
+    trace_x = []
+    start_time = datetime.now()
+
     if step_size is None:
         # sample to estimate Lipschitz constant
         x0 = np.zeros(y.size)
@@ -383,7 +388,8 @@ def minimize_DavisYin(
         norm_incr = linalg.norm(incr / current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
-                expected_descent = f(x) + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
+                fx = f(x)
+                expected_descent = fx + grad_fk.dot(incr) + 0.5 * current_step_size * (norm_incr ** 2)
                 if f(z) <= expected_descent * (1 + x.size * np.finfo(np.float64).eps):
                     # step size found
                     break
@@ -396,6 +402,12 @@ def minimize_DavisYin(
                     norm_incr = linalg.norm(incr / current_step_size)
             else:
                 warnings.warn("Maximum number of line-search iterations reached")
+
+        if trace:
+            trace_x.append(x.copy())
+            trace_time.append((datetime.now() - start_time).total_seconds())
+            if backtracking:
+                trace_func.append(fx + g(x) + h(x))
 
         y += incr
 
@@ -421,4 +433,5 @@ def minimize_DavisYin(
     return optimize.OptimizeResult(
         x=x_sol, success=success,
         jac=incr / current_step_size,  # prox-grad mapping
-        nit=it)
+        nit=it, trace_func=np.array(trace_func),
+        trace_time=trace_time)
