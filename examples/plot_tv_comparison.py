@@ -17,9 +17,9 @@ import copt as cp
 #
 # where A is a random matrix. We will now load the ground truth image
 img = cp.datasets.load_img1()
-from scipy import misc
-img = misc.face(gray=True)
-img = img[:100, :100]
+# from scipy import misc
+# img = misc.face(gray=True)
+# img = img[:100, :100]
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 np.random.seed(0)

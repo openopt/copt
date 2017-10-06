@@ -362,18 +362,7 @@ def minimize_DavisYin(
     if step_size is None:
         if backtracking:
             L = f.lipschitz_constant()
-            step_size = 5 / L
-            #
-            # # sample to estimate Lipschitz constant
-            # x0 = np.zeros(y.size)
-            # step_size_n_sample = 5
-            # L = []
-            # for _ in range(step_size_n_sample):
-            #     x_tmp = np.random.randn(x0.size)
-            #     x_tmp /= linalg.norm(x_tmp)
-            #     L.append(linalg.norm(f(x0) - f(x_tmp)))
-            # # give it a generous upper bound
-            # step_size = 10. / np.mean(L)
+            step_size = 2 / L
         else:
             L = f.lipschitz_constant()
             step_size = 1 / L
