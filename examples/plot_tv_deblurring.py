@@ -5,32 +5,32 @@ Total variation regularization
 Comparison of solvers with total variation regularization.
 """
 import numpy as np
-from scipy import linalg
+from scipy import ndimage, misc
+from scipy.sparse import linalg as splinalg
 import pylab as plt
 import copt as cp
 
 
-###############################################################
-# Load an ground truth image and generate the dataset (A, b) as
-#
-#             b = A ground_truth + noise   ,
-#
-# where A is a random matrix. We will now load the ground truth image
-img = cp.datasets.load_img1()
+img = misc.face(gray=True)[:500, :500]
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
+
+def blur_oper(x):
+    x_img = x.reshape(img.shape)
+    return ndimage.gaussian_filter(x_img, 20.)
+A = splinalg.LinearOperator(
+    matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
+    shape=(n_features, n_features))
+b = A.matvec(img.ravel()) + np.random.randn(n_features)
+
 np.random.seed(0)
 n_samples = n_features
 
-# set L2 regularization (arbitrarily) to 1/n_samples
 
-
-A = np.random.uniform(-1, 1, size=(n_samples, n_features))
-for i in range(A.shape[0]):
-    A[i] /= linalg.norm(A[i])
-b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
-
-print(1)
+# A = np.random.uniform(-1, 1, size=(n_samples, n_features))
+# for i in range(A.shape[0]):
+#     A[i] /= linalg.norm(A[i])
+# b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
 
 def TV(w):
     img = w.reshape((n_rows, n_cols))
@@ -72,7 +72,7 @@ class TotalVariation1DRows:
 
 
 f, ax = plt.subplots(2, 3, sharey=False)
-all_alphas = [1e-6, 1e-3, 1e-1]
+all_alphas = [1e-10, 1e-8, 1e-6]
 xlim = [0.02, 0.02, 0.1]
 for i, alpha in enumerate(all_alphas):
     print(i, alpha)
@@ -82,7 +82,7 @@ for i, alpha in enumerate(all_alphas):
         cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True)
-
+    break
     tos_nols = cp.minimize_DavisYin(
         cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
@@ -123,6 +123,7 @@ for i, alpha in enumerate(all_alphas):
     ax[1, i].set_yscale('log')
     #ax[1, i].set_xlim((0, xlim[i]))
     ax[1, i].grid(True)
+    break
 #
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(

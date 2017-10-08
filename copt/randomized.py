@@ -156,7 +156,7 @@ def _support_matrix(
 
 def _factory_sparse_SAGA(f, g):
 
-    A = sparse.csr_matrix(f.A)
+    A = sparse.csr_matrix(f.A.A)
     b = f.b
     f_alpha = f.alpha
     A_data = A.data
@@ -230,7 +230,8 @@ def _factory_sparse_SAGA(f, g):
 
 
 def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=300, trace=False, verbose=False):
+        f, g=None, x0=None, step_size=None, max_iter=300, trace=False, verbose=False,
+        tol=1e-3):
     """Block Coordinate Descent
 
     Parameters
@@ -269,7 +270,7 @@ def minimize_BCD(
     @njit(nogil=True)
     def _bcd_algorithm(
             x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
-            A_csc_indices, A_csc_indptr, b, trace_x):
+            A_csc_indices, A_csc_indptr, b, trace_x, tol):
         it = 0
         feature_indices = np.arange(n_features)
         for it in range(1, max_iter):
@@ -299,8 +300,8 @@ def minimize_BCD(
 
         return it, None
 
-    X_csc = sparse.csc_matrix(f.A)
-    X_csr = sparse.csr_matrix(f.A)
+    X_csc = sparse.csc_matrix(f.A.A)
+    X_csr = sparse.csr_matrix(f.A.A)
 
     trace_func = []
     start = datetime.now()
@@ -310,7 +311,7 @@ def minimize_BCD(
     start_time = datetime.now()
     n_iter, certificate = _bcd_algorithm(
                 xk, Ax, X_csr.data, X_csr.indices, X_csr.indptr, X_csc.data,
-                X_csc.indices, X_csc.indptr, f.b, trace_x)
+                X_csc.indices, X_csc.indptr, f.b, trace_x, tol)
     delta = (datetime.now() - start_time).total_seconds()
 
     if trace:

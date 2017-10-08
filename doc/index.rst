@@ -46,7 +46,9 @@ Nonsmooth loss functions:
    :toctree: generated/
 
     copt.L1Norm
+    copt.L1Ball
     copt.TotalVariation2D
+    copt.TraceNorm
 
 Datasets
 --------

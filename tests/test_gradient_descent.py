@@ -13,8 +13,8 @@ all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
     ['APGD', cp.minimize_APGD, 1e-4],
     ['DavisYin', cp.minimize_DavisYin, 1e-3],
-    # ['BCD', cp.minimize_BCD, 1e-2],
-    # ['SAGA', cp.minimize_SAGA, 1e-3]
+    ['BCD', cp.minimize_BCD, 1e-2],
+    ['SAGA', cp.minimize_SAGA, 1e-2]
 )
 
 loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]

@@ -1,5 +1,6 @@
 import numpy as np
-from scipy import sparse, special
+from scipy import sparse, special, linalg
+from scipy.sparse import linalg as splinalg
 from numba import njit
 from .tv_prox import prox_tv2d
 
@@ -19,7 +20,7 @@ class LogisticLoss:
 
     def __init__(self, A, b, alpha=0, intercept=True):
         self.b = b
-        self.A = A
+        self.A = splinalg.aslinearoperator(A)
         self.intercept = intercept
         if self.intercept == True:
             self.n_features = self.A.shape[1] + 1
@@ -32,7 +33,7 @@ class LogisticLoss:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.
-        z = self.A.dot(x_) + c
+        z = self.A.matvec(x_) + c
         yz = self.b * z
         idx = yz > 0
         out = np.zeros_like(yz)
@@ -46,10 +47,10 @@ class LogisticLoss:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.
-        z = self.A.dot(x_) + c
+        z = self.A.matvec(x_) + c
         z = special.expit(self.b * z)
         z0 = (z - 1) * self.b
-        grad_w = self.A.T.dot(z0) / self.A.shape[0] + self.alpha * x_
+        grad_w = self.A.rmatvec(z0) / self.A.shape[0] + self.alpha * x_
         grad_c = z0.mean()
         if self.intercept:
             return np.concatenate((grad_w, [grad_c]))
@@ -71,35 +72,53 @@ class LogisticLoss:
 
     def lipschitz_constant(self, kind='full'):
         if kind == 'samples':
-            return 0.25 * norm_along_axis(self.A, 1) + self.alpha * self.A.shape[0]
+            return 0.25 * norm_along_axis(self.A.A, 1) + self.alpha * self.A.shape[0]
         elif kind == 'full':
             from scipy.sparse.linalg import svds
             s = svds(self.A, k=1, return_singular_vectors=False)[0]
             return 0.25 * s * s / self.A.shape[0] + self.alpha
         elif kind == 'features':
-            return 0.25 * norm_along_axis(self.A, 0) / self.A.shape[0] + self.alpha
+            return 0.25 * norm_along_axis(self.A.A, 0) / self.A.shape[0] + self.alpha
         else:
             raise NotImplementedError
 
 
 class SquaredLoss:
-    """Least squares loss function with L2 regularization"""
+    """Least squares loss function with L2 regularization
 
-    def __init__(self, A, b, alpha=0, intercept=True):
+    Parameters
+    ----------
+    A: ndarray or LinearOperator
+        Design matrix. If None, it is taken as the identity
+        matrix.
+
+    b: ndarray
+
+    alpha: float
+        Amount of L2 regularization
+    """
+
+    def __init__(self, A, b, alpha=0, intercept=False):
+        if intercept:
+            raise NotImplementedError
         self.b = b
-        self.A = A
+        if A is None:
+            A = splinalg.LinearOperator(
+                matvec=lambda x: x, rmatvec=lambda x: x,
+                shape=(b.size, b.size)
+            )
+        self.A = splinalg.aslinearoperator(A)
         self.n_features = self.A.shape[1]
         self.alpha = float(alpha)
 
     def __call__(self, x):
         # loss function to be optimized, it's the logistic loss
-        z = self.A.dot(x) - self.b
-        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+        z = self.A.matvec(x) - self.b
+        return .5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
 
     def gradient(self, x):
-        z = self.A.dot(x) - self.b
-        grad_w = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x
-        return grad_w
+        z = self.A.matvec(x) - self.b
+        return self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
 
     @staticmethod
     def partial_gradient_factory():
@@ -111,13 +130,12 @@ class SquaredLoss:
 
     def lipschitz_constant(self, kind='full'):
         if kind == 'samples':
-            return norm_along_axis(self.A, 1) + self.alpha * self.A.shape[0]
+            return norm_along_axis(self.A.A, 1) + self.alpha * self.A.shape[0]
         elif kind == 'full':
-            from scipy.sparse.linalg import svds
-            s = svds(self.A, k=1, return_singular_vectors=False)[0]
+            s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
             return s * s / self.A.shape[0] + self.alpha
         elif kind == 'features':
-            return norm_along_axis(self.A, 0) / self.A.shape[0] + self.alpha
+            return norm_along_axis(self.A.A, 0) / self.A.shape[0] + self.alpha
         else:
             raise NotImplementedError
 
@@ -267,10 +285,60 @@ def euclidean_proj_l1ball(v, s=1):
     return w
 
 
-class TotalVariation2D:
-    """2-dimensional Total Variation pseudo-norm
 
-    """
+
+class TraceNorm:
+    """Trace (aka nuclear) norm, sum of singular values"""
+    is_separable = False
+
+    def __init__(self, shape, alpha=1.):
+        assert len(shape) == 2
+        self.shape = shape
+        self.alpha = alpha
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        return self.alpha * linalg.svdvals(X).sum()
+
+    def prox(self, x, step_size):
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        s_threshold = np.fmax(s - self.alpha * step_size, 0) \
+            - np.fmax(- s - self.alpha * step_size, 0)
+        return (U * s_threshold).dot(Vt).ravel()
+
+    def prox_factory(self):
+        raise NotImplementedError
+
+
+class TraceBall:
+    """Projection onto the trace (aka nuclear) norm, sum of singular values"""
+    is_separable = False
+
+    def __init__(self, shape, alpha=1.):
+        assert len(shape) == 2
+        self.shape = shape
+        self.alpha = alpha
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        if linalg.svdvals(X).sum() <= self.alpha:
+            return 0
+        else:
+            return np.inf
+
+    def prox(self, x, step_size):
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        s_threshold = euclidean_proj_l1ball(s, self.alpha)
+        return (U * s_threshold).dot(Vt).ravel()
+
+    def prox_factory(self):
+        raise NotImplementedError
+
+
+class TotalVariation2D:
+    """2-dimensional Total Variation pseudo-norm"""
 
     def __init__(self, alpha, n_rows, n_cols, max_iter=100, tol=1e-6):
         self.alpha = alpha

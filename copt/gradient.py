@@ -282,7 +282,6 @@ def minimize_APGD(
         nit=it, trace_func=np.array(trace_func),
         trace_time=trace_time)
 
-
 def minimize_DavisYin(
         f, g=None, h=None, y0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
@@ -361,11 +360,12 @@ def minimize_DavisYin(
 
     if step_size is None:
         if backtracking:
-            L = f.lipschitz_constant()
+            L = f.lipschitz_constant('full')
             step_size = 2 / L
         else:
-            L = f.lipschitz_constant()
+            L = f.lipschitz_constant('full')
             step_size = 1 / L
+            print('step size', step_size, f.A.shape)
 
     trace_func = []
     trace_time = []
@@ -380,7 +380,7 @@ def minimize_DavisYin(
         grad_fk = f.gradient(z)
         x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
         incr = x - z
-        norm_incr = linalg.norm(incr / (rho * step_size))
+        norm_delta = linalg.norm(incr)
         if backtracking:
             if restart and (rho > 100 or rho < 0.01):
                 rho = 1
@@ -392,7 +392,7 @@ def minimize_DavisYin(
             fz = f(z)
             it_ls = 0
             while it_ls < max_iter_backtracking:
-                rhs = fz + grad_fk.dot(incr) + 0.5 * rho * step_size * (norm_incr ** 2)
+                rhs = fz + grad_fk.dot(incr) + 0.5 * (norm_delta ** 2) / (rho * step_size)
                 if f(x) <= rhs:
                     # step size found
                     break
@@ -400,10 +400,12 @@ def minimize_DavisYin(
                     rho *= backtracking_factor
                     x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
                     incr = x - z
-                    norm_incr = linalg.norm(incr / (rho * step_size))
+                    norm_delta = linalg.norm(incr)
+                it_ls += 1
             else:
                 warnings.warn("Maximum number of line-search iterations reached")
             if it_ls == 0:
+                # .. so that it doubles every ~20 successful iterations ..
                 rho *= 1.03
 
         if trace:
@@ -416,10 +418,10 @@ def minimize_DavisYin(
         y += incr
 
         if verbose > 0:
-            print("Iteration %s, prox-grad norm: %s, step size: %s" % (
-                it, norm_incr / (rho * step_size), rho * step_size))
+            print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s" % (
+                it, norm_delta / (rho * step_size), rho * step_size, rho))
 
-        if norm_incr < tol:
+        if norm_delta < tol:
             success = True
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
