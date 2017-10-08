@@ -418,8 +418,9 @@ def minimize_DavisYin(
         y += incr
 
         if verbose > 0:
+            # if it % 100 == 0:
             print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s" % (
-                it, norm_delta / (rho * step_size), rho * step_size, rho))
+                    it, norm_delta / (rho * step_size), rho * step_size, rho))
 
         if norm_delta < tol:
             success = True
