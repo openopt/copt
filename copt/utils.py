@@ -3,6 +3,7 @@ from scipy import sparse, special, linalg
 from scipy.sparse import linalg as splinalg
 from numba import njit
 from .tv_prox import prox_tv2d
+import warnings
 
 
 class LogisticLoss:
@@ -332,6 +333,12 @@ class TraceBall:
         U, s, Vt = linalg.svd(X, full_matrices=False)
         s_threshold = euclidean_proj_l1ball(s, self.alpha)
         return (U * s_threshold).dot(Vt).ravel()
+        # try:
+        #     U, s, Vt = linalg.svd(X, full_matrices=False)
+        #     s_threshold = euclidean_proj_l1ball(s, self.alpha)
+        #     return (U * s_threshold).dot(Vt).ravel()
+        # except:
+        #     warnings.warn('SVD failed')
 
     def prox_factory(self):
         raise NotImplementedError

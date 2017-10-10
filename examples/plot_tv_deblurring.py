@@ -83,7 +83,7 @@ for i, alpha in enumerate(all_alphas):
         cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True)
-    break
+
     tos_nols = cp.minimize_DavisYin(
         cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
