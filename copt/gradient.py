@@ -283,7 +283,7 @@ def minimize_APGD(
         trace_time=trace_time)
 
 def minimize_DavisYin(
-        f, g=None, h=None, y0=None, tol=1e-6, max_iter=1000,
+        f, g=None, h=None, x0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.4, trace=False):
     """Davis-Yin three operator splitting method.
@@ -344,10 +344,10 @@ def minimize_DavisYin(
     Pedregosa, Fabian. "On the convergence rate of the three operator splitting scheme." arXiv preprint
     arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
-    if y0 is None:
-        y = np.zeros(f.n_features)
+    if x0 is None:
+        x0 = np.zeros(f.n_features)
     else:
-        y = np.array(y0, copy=True)
+        x0 = np.array(x0, copy=True)
     # y = np.array(y0, copy=True)
     success = False
     if not max_iter_backtracking > 0:
@@ -361,12 +361,12 @@ def minimize_DavisYin(
     if step_size is None:
         if backtracking:
             L = f.lipschitz_constant('full')
-            step_size = 2 / L
+            step_size = 1 / L
         else:
             L = f.lipschitz_constant('full')
             step_size = 1 / L
-            print('step size', step_size, f.A.shape)
 
+    y = x0 - g.prox(np.zeros(x0.size), step_size)
     trace_func = []
     trace_time = []
     start_time = datetime.now()
@@ -375,12 +375,15 @@ def minimize_DavisYin(
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
     rho = 1
+    if callback is not None:
+        callback(x0)
     while it <= max_iter:
         z = g.prox(y, step_size)
         grad_fk = f.gradient(z)
         x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
         incr = x - z
         norm_delta = linalg.norm(incr)
+        prox_grad_norm = norm_delta / (rho * step_size)
         if backtracking:
             if restart and (rho > 100 or rho < 0.01):
                 rho = 1
@@ -422,14 +425,14 @@ def minimize_DavisYin(
             print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s" % (
                     it, norm_delta / (rho * step_size), rho * step_size, rho))
 
-        if norm_delta < tol:
+        if prox_grad_norm < tol:
             success = True
             if verbose:
                 print("Achieved relative tolerance at iteration %s" % it)
             break
 
         if callback is not None:
-            callback(z)
+            callback(x)
         if it >= max_iter:
             warnings.warn(
                 "three_split did not reach the desired tolerance level",
@@ -442,4 +445,4 @@ def minimize_DavisYin(
         x=x, success=success,
         jac=incr / (tol * step_size),  # prox-grad mapping
         nit=it, trace_func=np.array(trace_func),
-        trace_time=trace_time)
+        trace_time=trace_time, certificate=prox_grad_norm)

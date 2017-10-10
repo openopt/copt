@@ -11,13 +11,14 @@ import pylab as plt
 import copt as cp
 
 
-img = misc.face(gray=True)[:500, :500]
+img = misc.face(gray=True)
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 
+
 def blur_oper(x):
     x_img = x.reshape(img.shape)
-    return ndimage.gaussian_filter(x_img, 20.)
+    return ndimage.gaussian_filter(x_img, 10.)
 A = splinalg.LinearOperator(
     matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
     shape=(n_features, n_features))
