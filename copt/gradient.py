@@ -432,7 +432,7 @@ def minimize_DavisYin(
             break
 
         if callback is not None:
-            callback(x)
+            callback(0.5 * (x + z))
         if it >= max_iter:
             warnings.warn(
                 "three_split did not reach the desired tolerance level",

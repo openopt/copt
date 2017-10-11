@@ -133,7 +133,18 @@ class SquaredLoss:
         if kind == 'samples':
             return norm_along_axis(self.A.A, 1) + self.alpha * self.A.shape[0]
         elif kind == 'full':
-            s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+            while True:
+                try:
+                    s = splinalg.svds(
+                        self.A, k=1,
+                        return_singular_vectors=False,
+                        tol=1e-3, maxiter=100)[0]
+                    break
+                except splinalg.ArpackError:
+                    # should we do something like increasing
+                    # ncv as the error message suggests?
+                    # doing nothing seems to fix the issue ...
+                    pass
             return s * s / self.A.shape[0] + self.alpha
         elif kind == 'features':
             return norm_along_axis(self.A.A, 0) / self.A.shape[0] + self.alpha
@@ -329,16 +340,15 @@ class TraceBall:
             return np.inf
 
     def prox(self, x, step_size):
-        X = x.reshape(self.shape)
-        U, s, Vt = linalg.svd(X, full_matrices=False)
-        s_threshold = euclidean_proj_l1ball(s, self.alpha)
-        return (U * s_threshold).dot(Vt).ravel()
-        # try:
-        #     U, s, Vt = linalg.svd(X, full_matrices=False)
-        #     s_threshold = euclidean_proj_l1ball(s, self.alpha)
-        #     return (U * s_threshold).dot(Vt).ravel()
-        # except:
-        #     warnings.warn('SVD failed')
+        try:
+            X = x.reshape(self.shape)
+            U, s, Vt = linalg.svd(X, full_matrices=False)
+            s_threshold = euclidean_proj_l1ball(s, self.alpha)
+            return (U * s_threshold).dot(Vt).ravel()
+        except linalg.LinAlgError:
+            # SVD did not converge
+            warnings.warn('SVD failed')
+            return x
 
     def prox_factory(self):
         raise NotImplementedError
