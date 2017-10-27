@@ -285,7 +285,7 @@ def minimize_APGD(
 def minimize_DavisYin(
         f, g=None, h=None, x0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.4, trace=False):
+        max_iter_backtracking=100, backtracking_factor=0.8, trace=False, increase_rho=True):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -360,11 +360,14 @@ def minimize_DavisYin(
 
     if step_size is None:
         if backtracking:
-            L = f.lipschitz_constant('full')
-            step_size = 1 / L
+            grad_fk = f.gradient(x0)
+            eps = 1e-6
+            x1 = x0 - eps * grad_fk
+            L = np.linalg.norm(grad_fk - f.gradient(x1)) / \
+                np.linalg.norm(x1 - x0)
+            step_size = 1. / f.lipschitz_constant('full')
         else:
-            L = f.lipschitz_constant('full')
-            step_size = 1 / L
+            step_size = 1. / f.lipschitz_constant('full')
 
     y = x0 - g.prox(np.zeros(x0.size), step_size)
     trace_func = []
@@ -375,55 +378,61 @@ def minimize_DavisYin(
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
     rho = 1
+    eps = 1e-6
     if callback is not None:
         callback(x0)
     while it <= max_iter:
+        if backtracking and increase_rho:
+            rho *= 1.001
         z = g.prox(y, step_size)
         grad_fk = f.gradient(z)
         x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
         incr = x - z
-        norm_delta = linalg.norm(incr)
-        prox_grad_norm = norm_delta / (rho * step_size)
+        norm_incr = linalg.norm(incr)
+        prox_grad_norm = norm_incr / (rho * step_size)
+        ls_tol = 0
         if backtracking:
-            if restart and (rho > 100 or rho < 0.01):
-                rho = 1
-                y = z + rho * (y - z)
-                step_size *= rho
-                rho = 1
-                x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
-                incr = x - z
+            # if restart and (rho > 10 or rho < 0.1):
+            #     # lets do a restart
+            #     y = z + rho * (y - z)
+            #     step_size = step_size * rho
+            #     rho = 1
+            #     continue
             fz = f(z)
             it_ls = 0
             while it_ls < max_iter_backtracking:
-                rhs = fz + grad_fk.dot(incr) + 0.5 * (norm_delta ** 2) / (rho * step_size)
-                if f(x) <= rhs:
+                rhs = fz + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * rho * step_size)
+                ls_tol = f(x) - rhs
+                if ls_tol <= 0:
                     # step size found
                     break
                 else:
+                    print(it, 'LS Decrease', rho * step_size, backtracking_factor * rho * step_size)
                     rho *= backtracking_factor
                     x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
                     incr = x - z
-                    norm_delta = linalg.norm(incr)
+                    norm_incr = linalg.norm(incr)
                 it_ls += 1
             else:
                 warnings.warn("Maximum number of line-search iterations reached")
-            if it_ls == 0:
-                # .. so that it doubles every ~20 successful iterations ..
-                rho *= 1.03
+            # if it_ls == 0:
+            #     rho *= 1.01
+        # if prox_grad_norm < 1e-12:
+        #     backtracking = False
 
         if trace:
             trace_time.append((datetime.now() - start_time).total_seconds())
             if backtracking:
-                trace_func.append(f(x) + g(x) + h(x))
+                trace_func.append(f(z) + g(z) + h(z))
             else:
-                trace_func.append(f(x) + g(x) + h(x))
+                trace_func.append(f(z) + g(z) + h(z))
 
         y += incr
 
         if verbose > 0:
             # if it % 100 == 0:
-            print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s" % (
-                    it, norm_delta / (rho * step_size), rho * step_size, rho))
+            print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s, ls-tol: %s" % (
+                    it, norm_incr / (rho * step_size), rho * step_size, rho, ls_tol))
 
         if prox_grad_norm < tol:
             success = True

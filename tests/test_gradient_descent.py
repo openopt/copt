@@ -12,7 +12,7 @@ y = np.sign(X.dot(w) + np.random.randn(n_samples))
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
     ['APGD', cp.minimize_APGD, 1e-4],
-    ['DavisYin', cp.minimize_DavisYin, 1e-3],
+    ['DavisYin', cp.minimize_DavisYin, 1e-2],
     ['BCD', cp.minimize_BCD, 1e-2],
     ['SAGA', cp.minimize_SAGA, 1e-2]
 )
@@ -30,7 +30,7 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
         f = loss(X, y, alpha, intercept=False)
         g = cp.utils.ZeroLoss()  # penalty(beta)
         ss = 1. / f.lipschitz_constant()
-        opt = solver(f, g, max_iter=100, tol=0)
+        opt = solver(f, g, max_iter=100, trace=True, tol=0)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
         assert np.linalg.norm(gmap) < tol, name_solver
 

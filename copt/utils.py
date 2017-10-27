@@ -6,7 +6,19 @@ from .tv_prox import prox_tv2d
 import warnings
 
 
-class LogisticLoss:
+class _GeneralizedLinearModel:
+    def __init__(self, A, b, alpha=0, intercept=False):
+        self.b = b
+        self.A = splinalg.aslinearoperator(A)
+        self.intercept = intercept
+        if self.intercept:
+            self.n_features = self.A.shape[1] + 1
+        else:
+            self.n_features = self.A.shape[1]
+        self.alpha = float(alpha)
+
+
+class LogisticLoss(_GeneralizedLinearModel):
     """Logistic regression loss function with L2 regularization
 
     This loss function is very popular for binary classification tasks.
@@ -18,16 +30,6 @@ class LogisticLoss:
     as detailed in to
     http://fa.bianp.net/blog/2013/numerical-optimizers-for-logistic-regression/
     """
-
-    def __init__(self, A, b, alpha=0, intercept=True):
-        self.b = b
-        self.A = splinalg.aslinearoperator(A)
-        self.intercept = intercept
-        if self.intercept == True:
-            self.n_features = self.A.shape[1] + 1
-        else:
-            self.n_features = self.A.shape[1]
-        self.alpha = float(alpha)
 
     def __call__(self, x):
         if self.intercept:
@@ -84,7 +86,7 @@ class LogisticLoss:
             raise NotImplementedError
 
 
-class SquaredLoss:
+class SquaredLoss(_GeneralizedLinearModel):
     """Least squares loss function with L2 regularization
 
     Parameters
@@ -99,25 +101,20 @@ class SquaredLoss:
         Amount of L2 regularization
     """
 
-    def __init__(self, A, b, alpha=0, intercept=False):
-        if intercept:
-            raise NotImplementedError
-        self.b = b
-        if A is None:
-            A = splinalg.LinearOperator(
-                matvec=lambda x: x, rmatvec=lambda x: x,
-                shape=(b.size, b.size)
-            )
-        self.A = splinalg.aslinearoperator(A)
-        self.n_features = self.A.shape[1]
-        self.alpha = float(alpha)
-
     def __call__(self, x):
-        # loss function to be optimized, it's the logistic loss
-        z = self.A.matvec(x) - self.b
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+            z = self.A.matvec(x_) + c - self.b
+        else:
+            z = self.A.matvec(x) - self.b
+
         return .5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
 
     def gradient(self, x):
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.
         z = self.A.matvec(x) - self.b
         return self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
 
@@ -138,7 +135,7 @@ class SquaredLoss:
                     s = splinalg.svds(
                         self.A, k=1,
                         return_singular_vectors=False,
-                        tol=1e-3, maxiter=100)[0]
+                        tol=1e-6, maxiter=100)[0]
                     break
                 except splinalg.ArpackError:
                     # should we do something like increasing
@@ -156,24 +153,15 @@ class L1Norm:
     """L1 norm, i.e., the sum of absolute values"""
     is_separable = True
 
-    def __init__(self, alpha=1., intercept=True):
+    def __init__(self, alpha=1.):
         self.alpha = alpha
-        self.intercept = intercept
 
     def __call__(self, x):
-        x_ = x
-        if self.intercept:
-            x_ = x[:-1]
-        return self.alpha * np.sum(np.abs(x_))
+        return self.alpha * np.sum(np.abs(x))
 
     def prox(self, x, step_size):
-        x_ = x
-        if self.intercept:
-            x_ = x[:-1]
-        out = np.fmax(x_ - self.alpha * step_size, 0) \
-            - np.fmax(- x_ - self.alpha * step_size, 0)
-        if self.intercept:
-            return np.concatenate((out, (x_[-1],)))
+        out = np.fmax(x - self.alpha * step_size, 0) \
+            - np.fmax(- x - self.alpha * step_size, 0)
         return out
 
     def prox_factory(self):
@@ -188,27 +176,17 @@ class L1Ball:
     """Projection onto the L1 ball"""
     is_separable = True
 
-    def __init__(self, alpha=1., intercept=True):
+    def __init__(self, alpha=1.):
         self.alpha = alpha
-        self.intercept = intercept
 
     def __call__(self, x):
-        x_ = x
-        if self.intercept:
-            x_ = x[:-1]
-        if np.abs(x_).sum() <= self.alpha:
+        if np.abs(x).sum() <= self.alpha:
             return 0
         else:
             return np.inf
 
     def prox(self, x, step_size):
-        x_ = x
-        if self.intercept:
-            x_ = x[:-1]
-
         out = euclidean_proj_l1ball(x_, self.alpha)
-        if self.intercept:
-            return np.concatenate((out, (x_[-1],)))
         return out
 
     def prox_factory(self):

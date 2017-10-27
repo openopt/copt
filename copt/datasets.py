@@ -123,7 +123,7 @@ def load_kdd10(md5_check=True):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'kddb.bz2')
     if not os.path.exists(file_path):
-        print('URL dataset is not present in data folder. Downloading it ...')
+        print('KDD10 dataset is not present in data folder. Downloading it ...')
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/kddb.bz2'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
@@ -169,5 +169,5 @@ def load_covtype():
     return datasets.load_svmlight_file(file_name)
 
 
-def load_kdd():
+def load_kdd12():
     pass

@@ -4,6 +4,8 @@ from scipy import sparse, optimize
 from numba import njit
 from copt import utils
 
+# def njit(*args, **kwargs):
+#     return lambda x: x
 
 def minimize_SAGA(
     f, g=None, x0=None, step_size=None, max_iter=500,
@@ -95,7 +97,7 @@ def minimize_SAGA(
     if trace:
         trace_x = np.zeros((max_iter, n_features))
     else:
-        trace_x = np.zeros((0, 0))
+        trace_x = np.zeros((1, n_features))
     trace_func = []
     trace_time = []
 
@@ -126,6 +128,7 @@ def minimize_SAGA(
 def _support_matrix(
         A_indices, A_indptr, g_blocks, n_blocks):
     """
+    Compute the matrix D as in Pedregosa et al. 2017
     """
     if n_blocks == 1:
         # XXX FIXME do something smart
@@ -194,6 +197,7 @@ def _factory_sparse_SAGA(f, g):
         # .. SAGA estimate of the gradient ..
         cert = np.inf
         it = 0
+        trace_idx = 0
         sample_indices = np.arange(n_samples)
 
         if trace:
@@ -222,7 +226,8 @@ def _factory_sparse_SAGA(f, g):
                     gradient_average[j_idx] += delta / n_samples
 
             if trace:
-                trace_x[it] = x
+                trace_idx = it
+            trace_x[trace_idx] = x
 
         return it, cert
 
@@ -326,4 +331,3 @@ def minimize_BCD(
     return optimize.OptimizeResult(
         x=xk, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
         certificate=certificate)
-

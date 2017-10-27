@@ -5,27 +5,34 @@ Total variation regularization
 Comparison of solvers with total variation regularization.
 """
 import numpy as np
-from scipy import ndimage, misc
+from scipy import ndimage, misc, sparse
 from scipy.sparse import linalg as splinalg
 import pylab as plt
 import copt as cp
 
+np.random.seed(0)
 
 img = misc.face(gray=True)
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
+n_samples = n_features # // 2
+max_iter = 1000
+print('#features', n_features)
 
+# def blur_oper(x):
+#     x_img = x.reshape(img.shape)
+#     return ndimage.gaussian_filter(x_img, 10.)
+# A = splinalg.LinearOperator(
+#     matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
+#     shape=(n_features, n_features))
 
-def blur_oper(x):
-    x_img = x.reshape(img.shape)
-    return ndimage.gaussian_filter(x_img, 10.)
-A = splinalg.LinearOperator(
-    matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
-    shape=(n_features, n_features))
-b = A.matvec(img.ravel()) + np.random.randn(n_features)
+A = sparse.rand(n_samples, n_features, density=1e-6)
+A = splinalg.aslinearoperator(A)
+b = A.matvec(img.ravel()) + 10 * np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
+
 
 
 # A = np.random.uniform(-1, 1, size=(n_samples, n_features))
@@ -73,12 +80,11 @@ class TotalVariation1DRows:
 
 
 f, ax = plt.subplots(2, 3, sharey=False)
-all_alphas = [1e-10, 1e-8, 1e-6]
+all_alphas = [0, 1e-8, 1e-6]
 xlim = [0.02, 0.02, 0.1]
 for i, alpha in enumerate(all_alphas):
     print(i, alpha)
 #
-    max_iter = 500
     out_tos = cp.minimize_DavisYin(
         cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
         TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
@@ -98,7 +104,7 @@ for i, alpha in enumerate(all_alphas):
 #
     ax[0, i].set_title(r'$\lambda=%s$' % alpha)
     ax[0, i].imshow(out_tos.x.reshape((n_rows, n_cols)),
-                    interpolation='nearest', cmap=plt.cm.Blues)
+                    interpolation='nearest', cmap=plt.cm.gray)
     ax[0, i].set_xticks(())
     ax[0, i].set_yticks(())
 #
@@ -124,7 +130,7 @@ for i, alpha in enumerate(all_alphas):
     ax[1, i].set_yscale('log')
     #ax[1, i].set_xlim((0, xlim[i]))
     ax[1, i].grid(True)
-    break
+
 #
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(
