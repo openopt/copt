@@ -98,6 +98,39 @@ def load_url(md5_check=True):
     return datasets.load_svmlight_file(file_path)
 
 
+
+def load_covtype():
+    """
+    Download and return the URL dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 1 or -1.
+    """
+    from sklearn import datasets  # lazy import
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    file_name = os.path.join(DATA_DIR, 'covtype.libsvm.binary.scale.bz2')
+    if not os.path.exists(file_name):
+        print('Covtype dataset is not present in data folder. Downloading it ...')
+        url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/covtype.libsvm.binary.scale.bz2'
+        urllib.request.urlretrieve(url, file_name)
+        print('Finished downloading')
+    return datasets.load_svmlight_file(file_name)
+
+
 def load_kdd10(md5_check=True):
     """
     Download and return the KDD10 dataset.
@@ -133,18 +166,18 @@ def load_kdd10(md5_check=True):
             print('MD5 hash do not coincide')
             print('Removing file and re-downloading')
             os.remove(file_path)
-            return load_url()
+            return load_kdd10()
     return datasets.load_svmlight_file(file_path)
 
 
-def load_covtype():
+def load_kdd12(md5_check=True):
     """
-    Download and return the URL dataset.
+    Download and return the KDD12 dataset.
 
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#kdd2012
 
     Parameters
     ----------
@@ -160,14 +193,61 @@ def load_covtype():
     from sklearn import datasets  # lazy import
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    file_name = os.path.join(DATA_DIR, 'covtype.libsvm.binary.scale.bz2')
-    if not os.path.exists(file_name):
-        print('Covtype dataset is not present in data folder. Downloading it ...')
-        url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/covtype.libsvm.binary.scale.bz2'
-        urllib.request.urlretrieve(url, file_name)
+    file_path = os.path.join(DATA_DIR, 'kddb12.bz2')
+    if not os.path.exists(file_path):
+        print('KDD12 dataset is not present in data folder. Downloading it ...')
+        url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/kdd12.bz2'
+        urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
-    return datasets.load_svmlight_file(file_name)
+    if md5_check:
+        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+        if not h == 'c6fc57735c3cf687dd182d60a7b51cda':
+            print('MD5 hash do not coincide')
+            print('Removing file and re-downloading')
+            os.remove(file_path)
+            return load_kdd12()
+    return datasets.load_svmlight_file(file_path)
 
 
-def load_kdd12():
-    pass
+def load_criteo(md5_check=True):
+    """
+    Download and return the criteo dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#criteo
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 1 or -1.
+    """
+    from sklearn import datasets  # lazy import
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
+    if not os.path.exists(file_path):
+        print('criteo dataset is not present in data folder. Downloading it ...')
+        url = 'https://s3-us-west-2.amazonaws.com/criteo-public-svm-data/criteo.kaggle2014.svm.tar.gz'
+        urllib.request.urlretrieve(url, file_path)
+        import tarfile
+        tar = tarfile.open(file_path)
+        tar.extractall(DATA_DIR)
+        print('Finished downloading')
+    if md5_check:
+        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+        if not h == 'd852b491d1b3afa26c1e7b49594ffc3e':
+            print('MD5 hash do not coincide')
+            print('Removing file and re-downloading')
+            os.remove(file_path)
+            return load_criteo()
+    return datasets.load_svmlight_file(os.path.join(DATA_DIR, 'criteo.kaggle2014.train.svm'))
+
+

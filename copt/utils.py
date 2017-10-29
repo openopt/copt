@@ -2,6 +2,7 @@ import numpy as np
 from scipy import sparse, special, linalg
 from scipy.sparse import linalg as splinalg
 from numba import njit
+from sklearn.utils.extmath import row_norms
 from .tv_prox import prox_tv2d
 import warnings
 
@@ -60,6 +61,17 @@ class LogisticLoss(_GeneralizedLinearModel):
         return grad_w
 
     @staticmethod
+    def partial_function_factory():
+        @njit
+        def partial_function(p, b):
+            # compute p
+            p *= b
+            if p > 0:
+                return np.log(1 + np.exp(-p))
+            else:
+                return -p + np.log(1 + np.exp(p))
+
+    @staticmethod
     def partial_gradient_factory():
         @njit
         def partial_gradient(p, b):
@@ -75,13 +87,13 @@ class LogisticLoss(_GeneralizedLinearModel):
 
     def lipschitz_constant(self, kind='full'):
         if kind == 'samples':
-            return 0.25 * norm_along_axis(self.A.A, 1) + self.alpha * self.A.shape[0]
+            return 0.25 * row_norms(self.A.A, True).max() + self.alpha * self.A.shape[0]
         elif kind == 'full':
             from scipy.sparse.linalg import svds
             s = svds(self.A, k=1, return_singular_vectors=False)[0]
             return 0.25 * s * s / self.A.shape[0] + self.alpha
         elif kind == 'features':
-            return 0.25 * norm_along_axis(self.A.A, 0) / self.A.shape[0] + self.alpha
+            return 0.25 * row_norms(self.A.A.T, True).max() / self.A.shape[0] + self.alpha
         else:
             raise NotImplementedError
 
@@ -128,7 +140,7 @@ class SquaredLoss(_GeneralizedLinearModel):
 
     def lipschitz_constant(self, kind='full'):
         if kind == 'samples':
-            return norm_along_axis(self.A.A, 1) + self.alpha * self.A.shape[0]
+            return row_norms(self.A.A, True).max() + self.alpha * self.A.shape[0]
         elif kind == 'full':
             while True:
                 try:
@@ -144,7 +156,7 @@ class SquaredLoss(_GeneralizedLinearModel):
                     pass
             return s * s / self.A.shape[0] + self.alpha
         elif kind == 'features':
-            return norm_along_axis(self.A.A, 0) / self.A.shape[0] + self.alpha
+            return row_norms(self.A.A, True).max() / self.A.shape[0] + self.alpha
         else:
             raise NotImplementedError
 
@@ -186,7 +198,7 @@ class L1Ball:
             return np.inf
 
     def prox(self, x, step_size):
-        out = euclidean_proj_l1ball(x_, self.alpha)
+        out = euclidean_proj_l1ball(x, self.alpha)
         return out
 
     def prox_factory(self):
@@ -371,8 +383,3 @@ class ZeroLoss:
         return prox_dummy
 
 
-def norm_along_axis(A, axis=1):
-    if sparse.issparse(A):
-        return np.max(A.multiply(A).sum(axis))
-    else:
-        return np.max((A * A).sum(axis))

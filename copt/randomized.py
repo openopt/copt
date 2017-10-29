@@ -157,7 +157,7 @@ def _support_matrix(
     return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-def _factory_sparse_SAGA(f, g):
+def _factory_sparse_SAGA(f, g, line_search=False):
 
     A = sparse.csr_matrix(f.A.A)
     b = f.b
@@ -168,6 +168,9 @@ def _factory_sparse_SAGA(f, g):
     n_samples, n_features = A.shape
 
     partial_gradient = f.partial_gradient_factory()
+    if line_search:
+        partial_functions = f.partial_function_factory()
+        norm_data = (A * A).sum(1)
     prox = g.prox_factory()
 
     # .. compute the block support ..
@@ -204,7 +207,7 @@ def _factory_sparse_SAGA(f, g):
             trace_x[0] = x
 
         # .. inner iteration ..
-        for it in range(1, max_iter):
+        for it in range(max_iter):
             np.random.shuffle(sample_indices)
 
             for i in sample_indices:
@@ -217,6 +220,8 @@ def _factory_sparse_SAGA(f, g):
                 old_grad = memory_gradient[i]
                 memory_gradient[i] = grad_i
 
+                # do line-search
+
                 # .. update coefficients ..
                 for j in range(A_indptr[i], A_indptr[i+1]):
                     j_idx = A_indices[j]
@@ -225,9 +230,13 @@ def _factory_sparse_SAGA(f, g):
                     x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
                     gradient_average[j_idx] += delta / n_samples
 
+            tmp = trace_x[trace_idx] - x
+            incr = np.sqrt((tmp * tmp).sum())
+            if incr < tol:
+                break
             if trace:
                 trace_idx = it
-            trace_x[trace_idx] = x
+        trace_x[trace_idx] = x
 
         return it, cert
 

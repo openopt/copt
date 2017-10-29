@@ -407,7 +407,6 @@ def minimize_DavisYin(
                     # step size found
                     break
                 else:
-                    print(it, 'LS Decrease', rho * step_size, backtracking_factor * rho * step_size)
                     rho *= backtracking_factor
                     x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
                     incr = x - z

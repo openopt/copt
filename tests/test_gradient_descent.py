@@ -25,12 +25,12 @@ penalty_funcs = [cp.L1Norm]
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
 def test_optimize(name_solver, solver, tol, loss, penalty):
-    for alpha, beta in itertools.product(
+    for alpha, beta in zip(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
         f = loss(X, y, alpha, intercept=False)
         g = cp.utils.ZeroLoss()  # penalty(beta)
         ss = 1. / f.lipschitz_constant()
-        opt = solver(f, g, max_iter=100, trace=True, tol=0)
+        opt = solver(f, g, max_iter=100, trace=False, tol=0)
         gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
         assert np.linalg.norm(gmap) < tol, name_solver
 
