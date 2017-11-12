@@ -39,36 +39,6 @@ def TV(w):
     return tmp1.sum() + tmp2.sum()
 
 
-class TotalVariation1DCols:
-    def __init__(self, alpha, n_rows, n_cols):
-        self.alpha = alpha
-        self.n_rows = n_rows
-        self.n_cols = n_cols
-
-    def __call__(self, x):
-        img = x.reshape((self.n_rows, self.n_cols))
-        tmp1 = np.abs(np.diff(img, axis=0))
-        return self.alpha * tmp1.sum()
-
-    def prox(self, x, step_size):
-        return cp.tv_prox.prox_tv1d_cols(
-            step_size * self.alpha, x, self.n_rows, self.n_cols)
-
-
-class TotalVariation1DRows:
-    def __init__(self, alpha, n_rows, n_cols):
-        self.alpha = alpha
-        self.n_rows = n_rows
-        self.n_cols = n_cols
-
-    def __call__(self, x):
-        img = x.reshape((self.n_rows, self.n_cols))
-        tmp2 = np.abs(np.diff(img, axis=1))
-        return self.alpha * tmp2.sum()
-
-    def prox(self, x, step_size):
-        return cp.tv_prox.prox_tv1d_rows(
-            step_size * self.alpha, x, self.n_rows, self.n_cols)
 
 
 f, ax = plt.subplots(2, 3, sharey=False)
@@ -76,17 +46,25 @@ all_alphas = [1e-6, 1e-3, 1e-1]
 xlim = [0.02, 0.02, 0.1]
 for i, alpha in enumerate(all_alphas):
     print(i, alpha)
-#
-    max_iter = 500
-    out_tos = cp.minimize_DavisYin(
-        cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
-        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
-        max_iter=max_iter, tol=1e-14, verbose=1, trace=True)
 
-    tos_nols = cp.minimize_DavisYin(
-        cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
-        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
-        max_iter=max_iter, tol=1e-14, verbose=1, trace=True, backtracking=False)
+
+    def prox_g(x, step_size):
+        return cp.tv_prox.prox_tv1d_cols(
+            step_size * alpha, x, n_rows, n_cols)
+
+
+    def prox_h(x, step_size):
+        return cp.tv_prox.prox_tv1d_rows(
+            step_size * alpha, x, n_rows, n_cols)
+
+    max_iter = 50
+    out_tos = cp.minimize_DavisYin(
+        cp.utils.squareloss_grad(A, b), prox_g, prox_h, np.zeros(n_features),
+        max_iter=max_iter, tol=1e-14, verbose=1, trace=True, step_size=1.0, backtracking=False)
+    #
+    # tos_nols = cp.minimize_DavisYin(
+    #     cp.SquaredLoss(A, b), prox_g, prox_h, np.zeros(n_features),
+    #     max_iter=max_iter, tol=1e-14, verbose=1, trace=True, backtracking=False)
 
 #
 #     trace_gd = Trace(lambda x: obj_fun(x) + alpha * TV(x))
@@ -101,19 +79,19 @@ for i, alpha in enumerate(all_alphas):
     ax[0, i].set_xticks(())
     ax[0, i].set_yticks(())
 #
-    fmin = min(np.min(out_tos.trace_func), np.min(tos_nols.trace_func)) #, np.min(trace_gd.values))
+    fmin = np.min(out_tos.trace_func)
     scale = (np.array(out_tos.trace_func) - fmin)[0]
     plot_tos, = ax[1, i].plot(
        np.array(out_tos.trace_time),
         (np.array(out_tos.trace_func) - fmin) / scale,
         lw=4, marker='o', markevery=10,
         markersize=10)
-
-    plot_nols, = ax[1, i].plot(
-       np.array(tos_nols.trace_time),
-        (np.array(tos_nols.trace_func) - fmin) / scale,
-        lw=4, marker='h', markevery=10,
-        markersize=10)
+    #
+    # plot_nols, = ax[1, i].plot(
+    #    np.array(tos_nols.trace_time),
+    #     (np.array(tos_nols.trace_func) - fmin) / scale,
+    #     lw=4, marker='h', markevery=10,
+    #     markersize=10)
 
 #     prox_gd, = ax[1, i].plot(
 #         np.array(trace_gd.times), (np.array(trace_gd.values) - fmin) / scale,
@@ -126,8 +104,8 @@ for i, alpha in enumerate(all_alphas):
 #
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(
-    (plot_tos, plot_nols),
-    ('TOS (LS)', 'TOS (no LS)'), ncol=5,
+    (plot_tos,),
+    ('TOS (LS)', ), ncol=5,
     scatterpoints=1,
     loc=(-0.00, -0.0), frameon=False,
     bbox_to_anchor=[0.05, 0.01])

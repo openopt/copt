@@ -8,9 +8,9 @@ from .utils import ZeroLoss
 
 
 def minimize_PGD(
-        f, g=None, x0=None, tol=1e-6, max_iter=500, verbose=0,
+        f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking: bool=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.6, trace=False
+        max_iter_backtracking=1000, backtracking_factor=0.6,
         ) -> optimize.OptimizeResult:
     """Proximal gradient descent.
 
@@ -21,7 +21,8 @@ def minimize_PGD(
     where we have access to the gradient of f and to the proximal operator of g.
 
     Arguments:
-        f : loss function (smooth)
+        f_grad: callable
+             Returns the function value and gradient of the objective function.
 
         g : penalty term (proximal)
 
@@ -55,70 +56,54 @@ def minimize_PGD(
         Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
-    if x0 is None:
-        xk = np.zeros(f.n_features)
-    else:
-        xk = np.array(x0, copy=True)
+    xk = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
-    if g is None:
-        g = ZeroLoss()
+
+    if g_prox is None:
+        g_prox = lambda x, y: x
+    else:
+        raise ValueError
 
     if step_size is None:
-        # sample to estimate Lipschitz constant
-        step_size_n_sample = 5
-        L = []
-        for _ in range(step_size_n_sample):
-            x_tmp = np.random.randn(f.n_features)
-            x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f(xk) - f(x_tmp)))
-        # give it a generous upper bound
-        step_size = 2. / np.mean(L)
+        step_size = 1
 
     success = False
-    trace_func = []
-    trace_time = []
-    trace_x = []
-    start_time = datetime.now()
+    certificate = np.NaN
 
     it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
 
-    if trace:
-        trace_x.append(xk.copy())
-        trace_func.append(f(xk) + g(xk))
-        trace_time.append((datetime.now() - start_time).total_seconds())
-
+    fk, grad_fk = f_grad(xk)
     while it <= max_iter:
+        if callback is not None:
+            cb_args = {'x': xk, 'grad': grad_fk, 'f': fk, 'gm': certificate}
+            callback(cb_args)
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = f.gradient(xk)
         # TODO: could compute loss and grad in the same function call
-        x_next = g.prox(xk - current_step_size * grad_fk, current_step_size)
+        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
         incr = x_next - xk
         if backtracking:
-            fk = f(xk)
-            f_next = f(x_next)
             for _ in range(max_iter_backtracking):
+                f_next, grad_next = f_grad(x_next)
                 if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
                     break
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x_next = g.prox(xk - current_step_size * grad_fk, current_step_size)
+                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
                     incr = x_next - xk
-                    f_next = f(x_next)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
+        else:
+            f_next, grad_next = f_grad(x_next)
         certificate = np.linalg.norm((xk - x_next) / step_size)
         xk[:] = x_next
-
-        if trace:
-            trace_x.append(xk.copy())
-            trace_func.append(f(xk) + g(xk))
-            trace_time.append((datetime.now() - start_time).total_seconds())
+        fk = f_next
+        grad_fk = grad_next
 
         if verbose > 0:
             print("Iteration %s, step size: %s, certificate: %s" % (it, step_size, certificate))
@@ -140,8 +125,7 @@ def minimize_PGD(
     return optimize.OptimizeResult(
         x=xk, success=success,
         certificate=certificate,
-        nit=it, trace_x=np.array(trace_x), trace_func=np.array(trace_func),
-        trace_time=trace_time)
+        nit=it)
 
 
 def minimize_APGD(
@@ -282,8 +266,9 @@ def minimize_APGD(
         nit=it, trace_func=np.array(trace_func),
         trace_time=trace_time)
 
+
 def minimize_DavisYin(
-        f, g=None, h=None, x0=None, tol=1e-6, max_iter=1000,
+        f_grad, g_prox=None, h_prox=None, x0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.8, trace=False, increase_rho=True):
     """Davis-Yin three operator splitting method.
@@ -345,7 +330,7 @@ def minimize_DavisYin(
     arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
     if x0 is None:
-        x0 = np.zeros(f.n_features)
+        x0 = np.zeros(f_grad.n_features)
     else:
         x0 = np.array(x0, copy=True)
     # y = np.array(y0, copy=True)
@@ -353,23 +338,16 @@ def minimize_DavisYin(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    if g is None:
-        g = ZeroLoss()
-    if h is None:
-        h = ZeroLoss()
+    if g_prox is None:
+        raise ValueError
+    if h_prox is None:
+        raise ValueError
 
     if step_size is None:
-        if backtracking:
-            grad_fk = f.gradient(x0)
-            eps = 1e-6
-            x1 = x0 - eps * grad_fk
-            L = np.linalg.norm(grad_fk - f.gradient(x1)) / \
-                np.linalg.norm(x1 - x0)
-            step_size = 1. / f.lipschitz_constant('full')
-        else:
-            step_size = 1. / f.lipschitz_constant('full')
+        backtracking = True
+        step_size = 1.
 
-    y = x0 - g.prox(np.zeros(x0.size), step_size)
+    y = x0 - h_prox(np.zeros(x0.size), step_size)
     trace_func = []
     trace_time = []
     start_time = datetime.now()
@@ -381,12 +359,14 @@ def minimize_DavisYin(
     eps = 1e-6
     if callback is not None:
         callback(x0)
+
+    x = x0.copy()
     while it <= max_iter:
         if backtracking and increase_rho:
-            rho *= 1.001
-        z = g.prox(y, step_size)
-        grad_fk = f.gradient(z)
-        x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
+            rho *= 1.01
+        z = h_prox(y, step_size)
+        fk, grad_fk = f_grad(z)
+        x = g_prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
         incr = x - z
         norm_incr = linalg.norm(incr)
         prox_grad_norm = norm_incr / (rho * step_size)
@@ -398,17 +378,17 @@ def minimize_DavisYin(
             #     step_size = step_size * rho
             #     rho = 1
             #     continue
-            fz = f(z)
+            fz, _ = f_grad(z)
             it_ls = 0
             while it_ls < max_iter_backtracking:
                 rhs = fz + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * rho * step_size)
-                ls_tol = f(x) - rhs
+                ls_tol = f_grad(x)[0] - rhs
                 if ls_tol <= 0:
                     # step size found
                     break
                 else:
                     rho *= backtracking_factor
-                    x = h.prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
+                    x = g_prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
                     incr = x - z
                     norm_incr = linalg.norm(incr)
                 it_ls += 1
@@ -419,12 +399,10 @@ def minimize_DavisYin(
         # if prox_grad_norm < 1e-12:
         #     backtracking = False
 
-        if trace:
-            trace_time.append((datetime.now() - start_time).total_seconds())
-            if backtracking:
-                trace_func.append(f(z) + g(z) + h(z))
-            else:
-                trace_func.append(f(z) + g(z) + h(z))
+        if callback is not None:
+            out = callback(x, z, y)
+            if not out:
+                break
 
         y += incr
 

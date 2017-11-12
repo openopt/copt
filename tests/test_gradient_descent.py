@@ -1,39 +1,53 @@
-import itertools
 import numpy as np
+from scipy import optimize
 import copt as cp
 import pytest
 
 np.random.seed(0)
 n_samples, n_features = 50, 20
-X = np.random.randn(n_samples, n_features)
+A = np.random.randn(n_samples, n_features)
 w = np.random.randn(n_features)
-y = np.sign(X.dot(w) + np.random.randn(n_samples))
+b = np.sign(A.dot(w) + np.random.randn(n_samples))
 
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
-    ['APGD', cp.minimize_APGD, 1e-4],
-    ['DavisYin', cp.minimize_DavisYin, 1e-2],
-    ['BCD', cp.minimize_BCD, 1e-2],
-    ['SAGA', cp.minimize_SAGA, 1e-2]
+    # ['APGD', cp.minimize_APGD, 1e-4],
+    # ['DavisYin', cp.minimize_DavisYin, 1e-2],
+    # ['BCD', cp.minimize_BCD, 1e-2],
+    # ['SAGA', cp.minimize_SAGA, 1e-2]
 )
 
-loss_funcs = [cp.LogisticLoss, cp.SquaredLoss]
-penalty_funcs = [cp.L1Norm]
+loss_funcs = [cp.utils.logloss_grad, cp.utils.squareloss_grad]
+penalty_funcs = [None]
+
+
+def test_gradient():
+    A = np.random.randn(10, 10)
+    b = np.sign(np.random.randn(10))
+    for f_grad in (
+            cp.utils.logloss_grad(A, b),
+            cp.utils.squareloss_grad(A, b)):
+        f = lambda x: f_grad(x)[0]
+        grad = lambda x: f_grad(x)[1]
+        eps = optimize.check_grad(f, grad, np.random.randn(10))
+        assert eps < 0.01
 
 
 @pytest.mark.parametrize("name_solver, solver, tol", all_solvers)
-@pytest.mark.parametrize("loss", loss_funcs)
+@pytest.mark.parametrize("loss_grad", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
-def test_optimize(name_solver, solver, tol, loss, penalty):
+def test_optimize(name_solver, solver, tol, loss_grad, penalty):
     for alpha, beta in zip(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
-        f = loss(X, y, alpha, intercept=False)
-        g = cp.utils.ZeroLoss()  # penalty(beta)
-        ss = 1. / f.lipschitz_constant()
-        opt = solver(f, g, max_iter=100, trace=False, tol=0)
-        gmap = (opt.x - g.prox(opt.x - ss * f.gradient(opt.x), ss)) / ss
-        assert np.linalg.norm(gmap) < tol, name_solver
+        f_grad = loss_grad(A, b, alpha)
+        opt = solver(f_grad, np.zeros(n_features),
+                     tol=0)
+        assert opt.certificate < tol, name_solver
 
+
+def test_optimizelp():
+    loss = cp.utils.ilogloss()
+    # opt = cp.minimizelp_SAGA()
 
 #
 #

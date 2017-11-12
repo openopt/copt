@@ -16,29 +16,24 @@ img = misc.face(gray=True)
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 n_samples = n_features # // 2
-max_iter = 1000
+max_iter = 100
 print('#features', n_features)
 
-# def blur_oper(x):
-#     x_img = x.reshape(img.shape)
-#     return ndimage.gaussian_filter(x_img, 10.)
-# A = splinalg.LinearOperator(
-#     matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
-#     shape=(n_features, n_features))
 
-A = sparse.rand(n_samples, n_features, density=1e-6)
-A = splinalg.aslinearoperator(A)
+def blur_oper(x):
+    x_img = x.reshape(img.shape)
+    return ndimage.gaussian_filter(x_img, 10.)
+A = splinalg.LinearOperator(
+    matvec=blur_oper, rmatvec=blur_oper, dtype=np.float,
+    shape=(n_features, n_features))
+
+# A = sparse.rand(n_samples, n_features, density=1e-6)
+# A = splinalg.aslinearoperator(A)
 b = A.matvec(img.ravel()) + 10 * np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
 
-
-
-# A = np.random.uniform(-1, 1, size=(n_samples, n_features))
-# for i in range(A.shape[0]):
-#     A[i] /= linalg.norm(A[i])
-# b = A.dot(img.ravel()) + 1.0 * np.random.randn(n_samples)
 
 def TV(w):
     img = w.reshape((n_rows, n_cols))
@@ -46,53 +41,37 @@ def TV(w):
     tmp2 = np.abs(np.diff(img, axis=1))
     return tmp1.sum() + tmp2.sum()
 
-
-class TotalVariation1DCols:
-    def __init__(self, alpha, n_rows, n_cols):
-        self.alpha = alpha
-        self.n_rows = n_rows
-        self.n_cols = n_cols
-
-    def __call__(self, x):
-        img = x.reshape((self.n_rows, self.n_cols))
-        tmp1 = np.abs(np.diff(img, axis=0))
-        return self.alpha * tmp1.sum()
-
-    def prox(self, x, step_size):
-        return cp.tv_prox.prox_tv1d_cols(
-            step_size * self.alpha, x, self.n_rows, self.n_cols)
-
-
-class TotalVariation1DRows:
-    def __init__(self, alpha, n_rows, n_cols):
-        self.alpha = alpha
-        self.n_rows = n_rows
-        self.n_cols = n_cols
-
-    def __call__(self, x):
-        img = x.reshape((self.n_rows, self.n_cols))
-        tmp2 = np.abs(np.diff(img, axis=1))
-        return self.alpha * tmp2.sum()
-
-    def prox(self, x, step_size):
-        return cp.tv_prox.prox_tv1d_rows(
-            step_size * self.alpha, x, self.n_rows, self.n_cols)
-
-
 f, ax = plt.subplots(2, 3, sharey=False)
 all_alphas = [0, 1e-8, 1e-6]
 xlim = [0.02, 0.02, 0.1]
+s = splinalg.svds(A, k=1, return_singular_vectors=False,
+                   tol=1e-6, maxiter=100)[0]
+step_size = A.shape[0] / (s * s)  # .. 1/L
+
 for i, alpha in enumerate(all_alphas):
     print(i, alpha)
-#
+
+
+    def g_prox(x, step_size):
+        return cp.tv_prox.prox_tv1d_cols(
+            step_size * alpha, x, n_rows, n_cols)
+
+
+    def h_prox(x, step_size):
+        return cp.tv_prox.prox_tv1d_rows(
+            step_size * alpha, x, n_rows, n_cols)
+
+
     out_tos = cp.minimize_DavisYin(
-        cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
-        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
+        cp.utils.squareloss_grad(A, b),
+        g_prox, h_prox, np.zeros(n_features),
+        step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True)
 
     tos_nols = cp.minimize_DavisYin(
-        cp.SquaredLoss(A, b), TotalVariation1DCols(alpha, n_rows, n_cols),
-        TotalVariation1DRows(alpha, n_rows, n_cols), np.zeros(n_features),
+        cp.utils.squareloss_grad(A, b),
+        g_prox, h_prox, np.zeros(n_features),
+        step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True, backtracking=False)
 
 #

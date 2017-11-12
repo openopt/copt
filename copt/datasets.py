@@ -20,6 +20,8 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
+
+
 def load_rcv1(md5_check=True):
     """
     Download and return the RCV1 dataset.
@@ -96,7 +98,6 @@ def load_url(md5_check=True):
             os.remove(file_path)
             return load_url()
     return datasets.load_svmlight_file(file_path)
-
 
 
 def load_covtype():

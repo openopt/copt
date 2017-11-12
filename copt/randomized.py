@@ -7,14 +7,15 @@ from copt import utils
 # def njit(*args, **kwargs):
 #     return lambda x: x
 
-def minimize_SAGA(
-    f, g=None, x0=None, step_size=None, max_iter=500,
-    tol=1e-6, verbose=False, trace=False) -> optimize.OptimizeResult:
+def minimizelp_SAGA(
+        f_deriv, n_samples, x0, alpha=0, beta=0, step_size=None,
+        max_iter=500, tol=1e-6, verbose=False, callback=None) -> optimize.OptimizeResult:
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
-                       argmin_x f(x) + g(x)
+        argmin_{x \in R^p} \sum_{i}^n_samples f(A_i^T x, b_i) + alpha * ||x||_2^2 +
+                                            + beta * ||x||_1
 
     Parameters
     ----------
@@ -31,7 +32,7 @@ def minimize_SAGA(
     n_jobs: int
         Number of threads to use in the optimization. A number higher than 1
         will use the Asynchronous SAGA optimization method described in
-        [Leblond et al., 2017]
+        [Pedregosa et al., 2017]
 
     max_iter: int
         Maximum number of passes through the data in the optimization.
@@ -71,126 +72,64 @@ def minimize_SAGA(
     The implemented has some improvements with respect to the original version, such as
     better support for sparse datasets and is described in
 
-        Pedregosa, Fabian, Rémi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
-        Barrier: A Scalable Parallel Method for Composite Optimization." arXiv preprint
-        arXiv:1707.06468 (2017).
+        Fabian Pedregosa, Rémi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
+        Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
+        Neural Information Processing Systems (NIPS) 2017.
     """
-    if x0 is None:
-        x = np.zeros(f.n_features)
-    else:
-        x = np.ascontiguousarray(x0).copy()
+    # convert any input to CSR sparse matrix representation. In the future we might want to
+    # implement also a version for dense data (numpy arrays) to better exploit data locality
+    x = np.ascontiguousarray(x0).copy()
+    n_features = x0.size
 
     if step_size is None:
-        step_size = 1. / (2 * f.lipschitz_constant('samples'))
+        # then need to use line search
+        raise ValueError
+    # we encapsulate it inside an array so it can be passed by reference
+    # and modified inside the iteration loop
+    step_size = np.array([step_size])
 
-    if g is None:
-        g = utils.ZeroLoss()
+    epoch_iteration = _factory_SAGA_epoch(f_deriv, alpha, beta)
 
-    success = False
-    epoch_iteration = _factory_sparse_SAGA(f, g)
-    n_samples, n_features = f.A.shape
-
-    # .. memory terms ..
+    # .. initialize memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
+    idx = np.arange(n_samples)
+    success = False
+    nit = 0
+    for nit in range(max_iter):
+        x_old = x.copy()
+        np.random.shuffle(idx)
+        epoch_iteration(x, idx, memory_gradient, gradient_average, step_size)
 
-    if trace:
-        trace_x = np.zeros((max_iter, n_features))
-    else:
-        trace_x = np.zeros((1, n_features))
-    trace_func = []
-    trace_time = []
+        if callback is not None:
+            callback(x)
 
-    start_time = datetime.now()
-    n_iter, certificate = epoch_iteration(x, memory_gradient, gradient_average,
-                step_size, max_iter, tol, trace, trace_x)
-    delta = (datetime.now() - start_time).total_seconds()
-
-    if trace:
-        trace_time = np.linspace(0, delta, n_iter)
-        if verbose:
-            print('.. computing trace ..')
-        # .. compute function values ..
-        trace_func = []
-        for i in range(n_iter):
-            trace_func.append(f(trace_x[i]) + g(trace_x[i]))
-        trace_func = np.array(trace_func)
-
-    if certificate < tol:
-        success = True
-
+        if np.abs(x - x_old).sum() < tol:
+            success = True
+            break
+    message = ''
     return optimize.OptimizeResult(
-        x=x, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
-        certificate=certificate)
+        x=x, success=success, nit=nit,
+        message=message)
 
 
-@njit(nogil=True)
-def _support_matrix(
-        A_indices, A_indptr, g_blocks, n_blocks):
-    """
-    Compute the matrix D as in Pedregosa et al. 2017
-    """
-    if n_blocks == 1:
-        # XXX FIXME do something smart
-        pass
-    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
-    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
-    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
-    BS_indptr[0] = 0
-    counter_indptr = 0
-    for i in range(A_indptr.size - 1):
-        low = A_indptr[i]
-        high = A_indptr[i + 1]
-        for j in range(low, high):
-            g_idx = g_blocks[A_indices[j]]
-            if seen_blocks[g_idx] == 0:
-                # if first time we encouter this block,
-                # add to the index and mark as seen
-                BS_indices[counter_indptr] = g_idx
-                seen_blocks[g_idx] = 1
-                counter_indptr += 1
-        BS_indptr[i+1] = counter_indptr
-        # cleanup
-        for j in range(BS_indptr[i], counter_indptr):
-            seen_blocks[BS_indices[j]] = 0
-    BS_data = np.ones(counter_indptr)
-    return BS_data, BS_indices[:counter_indptr], BS_indptr
+def _factory_SAGA_epoch(f_deriv, alpha, beta, line_search=False):
 
+    if beta > 0:
+        @njit
+        def prox(x, step_size):
+            np.fmax(x - beta * step_size, 0) - np.fmax(- x - beta * step_size, 0)
+    elif beta == 0:
+        @njit
+        def prox(x, step_size):
+            return x
+    else:
+        raise ValueError
 
-def _factory_sparse_SAGA(f, g, line_search=False):
-
-    A = sparse.csr_matrix(f.A.A)
-    b = f.b
-    f_alpha = f.alpha
     A_data = A.data
     A_indices = A.indices
     A_indptr = A.indptr
     n_samples, n_features = A.shape
-
-    partial_gradient = f.partial_gradient_factory()
-    if line_search:
-        partial_functions = f.partial_function_factory()
-        norm_data = (A * A).sum(1)
-    prox = g.prox_factory()
-
-    # .. compute the block support ..
-    if g.is_separable:
-        g_blocks = np.arange(n_features)
-    else:
-        raise NotImplementedError
-    # g_blocks is a map from n_features -> n_features
-    unique_blocks = np.unique(g_blocks)
-    n_blocks = np.unique(g_blocks).size
-    assert np.all(unique_blocks == np.arange(n_blocks))
-
-    BS_data, BS_indices, BS_indptr = _support_matrix(
-        A_indices, A_indptr, g_blocks, n_blocks)
-    BS = sparse.csr_matrix((BS_data, BS_indices, BS_indptr), (n_samples, n_blocks))
-
-    d = np.array(BS.sum(0), dtype=np.float).ravel()
-    idx = (d != 0)
-    d[idx] = n_samples / d[idx]
-    d[~idx] = 0.
 
     @njit(nogil=True)
     def _saga_algorithm(
@@ -202,9 +141,6 @@ def _factory_sparse_SAGA(f, g, line_search=False):
         it = 0
         trace_idx = 0
         sample_indices = np.arange(n_samples)
-
-        if trace:
-            trace_x[0] = x
 
         # .. inner iteration ..
         for it in range(max_iter):
