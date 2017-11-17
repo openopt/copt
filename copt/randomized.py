@@ -3,6 +3,7 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt import utils
+from tqdm import tqdm
 
 # def njit(*args, **kwargs):
 #     return lambda x: x

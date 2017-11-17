@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 from scipy import optimize, linalg, sparse
 from datetime import datetime
+from tqdm import trange
 
 # .. local imports ..
 from .utils import ZeroLoss
@@ -270,7 +271,7 @@ def minimize_APGD(
 def minimize_DavisYin(
         f_grad, g_prox=None, h_prox=None, x0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.8, trace=False, increase_rho=True):
+        max_iter_backtracking=100, backtracking_factor=0.5, trace=False, increase_rho=True):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -348,29 +349,20 @@ def minimize_DavisYin(
         step_size = 1.
 
     y = x0 - h_prox(np.zeros(x0.size), step_size)
-    trace_func = []
-    trace_time = []
-    start_time = datetime.now()
-
-    it = 1
-    # .. a while loop instead of a for loop ..
-    # .. allows for infinite or floating point max_iter ..
+    LS_EPS = np.finfo(np.float).eps * 1e2
     rho = 1
-    eps = 1e-6
-    if callback is not None:
-        callback(x0)
 
-    x = x0.copy()
-    while it <= max_iter:
-        if backtracking and increase_rho:
-            rho *= 1.01
-        z = h_prox(y, step_size)
-        fk, grad_fk = f_grad(z)
-        x = g_prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
-        incr = x - z
+    z = x0.copy()
+    pbar = trange(max_iter)
+    for it in pbar:
+        x = h_prox(y, step_size)
+        fk, grad_fk = f_grad(x)
+        z = g_prox(
+            x + rho * (x - y) - step_size * rho * grad_fk,
+            rho * step_size)
+        incr = z - x
         norm_incr = linalg.norm(incr)
         prox_grad_norm = norm_incr / (rho * step_size)
-        ls_tol = 0
         if backtracking:
             # if restart and (rho > 10 or rho < 0.1):
             #     # lets do a restart
@@ -378,38 +370,40 @@ def minimize_DavisYin(
             #     step_size = step_size * rho
             #     rho = 1
             #     continue
-            fz, _ = f_grad(z)
-            it_ls = 0
-            while it_ls < max_iter_backtracking:
-                rhs = fz + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * rho * step_size)
-                ls_tol = f_grad(x)[0] - rhs
-                if ls_tol <= 0:
+            for it_ls in range(max_iter_backtracking):
+                rhs = fk + grad_fk.dot(incr) \
+                      + (norm_incr ** 2) / (2 * rho * step_size)
+                ls_tol = f_grad(z)[0] - rhs
+                if ls_tol/fk <= LS_EPS:
                     # step size found
                     break
                 else:
                     rho *= backtracking_factor
-                    x = g_prox(z + rho * (z - y) - step_size * rho * grad_fk, rho * step_size)
-                    incr = x - z
+                    z = g_prox(
+                        x + rho * (x - y) - step_size * rho * grad_fk,
+                        rho * step_size)
+                    incr = z - x
                     norm_incr = linalg.norm(incr)
-                it_ls += 1
             else:
                 warnings.warn("Maximum number of line-search iterations reached")
-            # if it_ls == 0:
-            #     rho *= 1.01
+            if it_ls == 0 and abs(ls_tol/fk) > LS_EPS:
+                rho *= 1.07
         # if prox_grad_norm < 1e-12:
         #     backtracking = False
+        pbar.set_description('Iteration %i' % it)
+        pbar.set_postfix(tol=norm_incr / (rho * step_size), iter=it, rho=rho)
 
         if callback is not None:
-            out = callback(x, z, y)
-            if not out:
+            out = callback(locals())
+            if out is False:
                 break
 
         y += incr
 
-        if verbose > 0:
-            # if it % 100 == 0:
-            print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s, ls-tol: %s" % (
-                    it, norm_incr / (rho * step_size), rho * step_size, rho, ls_tol))
+        # if verbose > 0:
+        #     # if it % 100 == 0:
+        #     print("Iteration %s, prox-grad norm: %s, step size: %s, rho: %s" % (
+        #             it, norm_incr / (rho * step_size), rho * step_size, rho))
 
         if prox_grad_norm < tol:
             success = True
@@ -417,18 +411,14 @@ def minimize_DavisYin(
                 print("Achieved relative tolerance at iteration %s" % it)
             break
 
-        if callback is not None:
-            callback(0.5 * (x + z))
         if it >= max_iter:
             warnings.warn(
                 "three_split did not reach the desired tolerance level",
                 RuntimeWarning)
         it += 1
-
-    if len(trace_time) > 0:
-        trace_time = np.array(trace_time) - trace_time[0]
+    pbar.close()
     return optimize.OptimizeResult(
-        x=x, success=success,
+        x=z, success=success,
         jac=incr / (tol * step_size),  # prox-grad mapping
-        nit=it, trace_func=np.array(trace_func),
-        trace_time=trace_time, certificate=prox_grad_norm)
+        nit=it,
+        certificate=prox_grad_norm)

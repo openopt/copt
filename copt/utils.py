@@ -7,9 +7,14 @@ from .tv_prox import prox_tv2d
 import warnings
 
 
-def lipschitz_constant(A, b, loss='log'):
+def lipschitz_constant(A, loss, alpha=0):
+    """Computes the Lipschitz constant"""
     if loss == 'log':
         pass
+    elif loss == 'square':
+        s = splinalg.svds(A, k=1, return_singular_vectors=False,
+                          tol=1e-2, maxiter=20)[0]
+        return (s * s) / A.shape[0] + alpha
 
 
 def logloss_grad(A, b, alpha=0., intercept=False):
