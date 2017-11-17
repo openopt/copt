@@ -352,7 +352,6 @@ def minimize_DavisYin(
     LS_EPS = np.finfo(np.float).eps * 1e2
     rho = 1
 
-    z = x0.copy()
     pbar = trange(max_iter)
     for it in pbar:
         x = h_prox(y, step_size)

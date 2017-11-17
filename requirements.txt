@@ -4,3 +4,4 @@ scipy
 pytest
 pytest-cov
 scikit-learn
+tqdm
