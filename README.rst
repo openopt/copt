@@ -14,7 +14,7 @@ C-OPT is an optimization library written in pure Python that follows the scipy.o
 Philosophy
 ==========
 
-Ø compiled code. Ø bullshit. State of the art performance.
+Ø compiled code, Ø bullshit.
 
 Let me explain this better:
 
