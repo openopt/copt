@@ -49,7 +49,7 @@ s = splinalg.svds(A, k=1, return_singular_vectors=False,
                    tol=1e-3, maxiter=500)[0]
 alpha = 0.01 / n_samples
 step_size = cp.utils.get_step_size(A, 'square', alpha)
-f_grad = cp.utils.squareloss_grad(A, b, alpha)
+f_grad = cp.utils.squareloss(A, b, alpha)
 
 
 def loss(x, beta):

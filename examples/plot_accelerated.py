@@ -15,7 +15,7 @@ np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
-logloss = cp.utils.logloss_grad(X, y)
+logloss = cp.utils.logloss(X, y)
 cb_pgd = cp.utils.Trace()
 cb_apgd = cp.utils.Trace()
 result_pgd = cp.minimize_PGD(

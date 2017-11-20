@@ -1,11 +1,7 @@
 import warnings
 import numpy as np
 from scipy import optimize, linalg, sparse
-from datetime import datetime
 from tqdm import trange
-
-# .. local imports ..
-from .utils import ZeroLoss
 
 
 def minimize_PGD(

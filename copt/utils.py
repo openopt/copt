@@ -42,7 +42,7 @@ def lipschitz_constant(A, loss, alpha=0):
         return
 
 
-def logloss_grad(A, b, alpha=0., intercept=False):
+def logloss(A, b, alpha=0., intercept=False):
     """
 
     Parameters
@@ -107,7 +107,7 @@ def prox_L1(alpha):
 
 
 
-def squareloss_grad(A, b, alpha=0.):
+def squareloss(A, b, alpha=0.):
     """
 
     Parameters
@@ -479,18 +479,3 @@ def squareloss_grad(A, b, alpha=0.):
 #             max_iter=self.max_iter, tol=self.tol)
 #
 #
-class ZeroLoss:
-
-    is_separable = True
-
-    def __call__(self, x):
-        return 0
-
-    def prox(self, x, step_size):
-        return x
-
-    def prox_factory(self):
-        @njit
-        def prox_dummy(x, step_size):
-            return x
-        return prox_dummy
