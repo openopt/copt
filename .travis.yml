@@ -4,10 +4,6 @@ python:
   - "3.5"
   - "3.6"
 install:
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-fiinstall:
-- sudo apt-get update
 - pip install -r requirements.txt
 - pip install sphinx numpydoc matplotlib python-coveralls sphinx-gallery sphinx-autodoc-typehints scikit-image
 - python setup.py develop
