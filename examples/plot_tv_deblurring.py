@@ -48,9 +48,7 @@ n_samples = n_features
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                    tol=1e-3, maxiter=500)[0]
 alpha = 0.01 / n_samples
-L = cp.utils.lipschitz_constant(A, 'square', alpha)
-step_size = 1. / L   # .. 1/L
-
+step_size = cp.utils.get_step_size(A, 'square', alpha)
 f_grad = cp.utils.squareloss_grad(A, b, alpha)
 
 
@@ -98,7 +96,7 @@ for i, beta in enumerate(all_betas):
     tos_nols = cp.minimize_DavisYin(
         f_grad, g_prox, h_prox, np.zeros(n_features),
         step_size=step_size,
-        max_iter=max_iter, tol=1e-14, verbose=1, trace=True,
+        max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1, trace=True,
         backtracking=False, callback=callback)
     trace_nols = np.array([loss(x, beta) for x in trace_x])
     all_trace_nols.append(trace_nols)
@@ -155,4 +153,5 @@ plt.figlegend(
     bbox_to_anchor=[0.05, 0.01])
 
 ax[1, 0].set_ylabel('Objective minus optimum')
+ax[2, 0].set_ylabel('Objective minus optimum')
 plt.show()

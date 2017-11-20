@@ -5,16 +5,41 @@ from numba import njit
 from sklearn.utils.extmath import row_norms
 from .tv_prox import prox_tv2d
 import warnings
+from datetime import datetime
 
+
+class Trace:
+    def __init__(self):
+        self.trace_x = []
+        self.trace_time = []
+        self.start = datetime.now()
+
+    def __call__(self, kw):
+        self.trace_x.append(kw['x'].copy())
+        delta = (datetime.now() - self.start).total_seconds()
+        self.trace_time.append(delta)
+
+
+def get_step_size(A, loss, alpha=0, method='PGD'):
+    if loss == 'log':
+        s = splinalg.svds(A, k=1, return_singular_vectors=False,
+                          tol=1e-2, maxiter=20)[0]
+        L = 0.25 * (s * s) / A.shape[0] + alpha
+        return 1/L
+    elif loss == 'square':
+        s = splinalg.svds(A, k=1, return_singular_vectors=False,
+                          tol=1e-2, maxiter=20)[0]
+        L = (s * s) / A.shape[0] + alpha
+        return 1/L
+    raise NotImplementedError
 
 def lipschitz_constant(A, loss, alpha=0):
     """Computes the Lipschitz constant"""
     if loss == 'log':
         pass
     elif loss == 'square':
-        s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                          tol=1e-2, maxiter=20)[0]
-        return (s * s) / A.shape[0] + alpha
+
+        return
 
 
 def logloss_grad(A, b, alpha=0., intercept=False):
@@ -33,7 +58,7 @@ def logloss_grad(A, b, alpha=0., intercept=False):
     """
     A = splinalg.aslinearoperator(A)
 
-    def _logloss_grad(x):
+    def _logloss_grad(x, return_gradient=True):
         if intercept:
             x_, c = x[:-1], x[-1]
         else:
@@ -46,6 +71,8 @@ def logloss_grad(A, b, alpha=0., intercept=False):
         loss[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
         loss = loss.mean() + .5 * alpha * x_.dot(x_)
 
+        if not return_gradient:
+            return loss
         z = special.expit(b * z)
         z0 = (z - 1) * b
         grad = A.rmatvec(z0) / A.shape[0] + alpha * x_
@@ -96,9 +123,11 @@ def squareloss_grad(A, b, alpha=0.):
     """
     A = splinalg.aslinearoperator(A)
 
-    def _squareloss_grad(x):
+    def _squareloss_grad(x, return_gradient=True):
         z = A.matvec(x) - b
         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
+        if not return_gradient:
+            return loss
         grad = A.rmatvec(z) / A.shape[0] + alpha * x
         return loss, grad
     return _squareloss_grad

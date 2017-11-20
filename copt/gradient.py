@@ -57,7 +57,7 @@ def minimize_PGD(
         Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
-    xk = x0
+    x = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
@@ -76,16 +76,16 @@ def minimize_PGD(
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
 
-    fk, grad_fk = f_grad(xk)
+    fk, grad_fk = f_grad(x)
     while it <= max_iter:
         if callback is not None:
-            cb_args = {'x': xk, 'grad': grad_fk, 'f': fk, 'gm': certificate}
+            cb_args = {'x': x, 'grad': grad_fk, 'f': fk, 'gm': certificate}
             callback(cb_args)
         # .. compute gradient and step size
         current_step_size = step_size
         # TODO: could compute loss and grad in the same function call
-        x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
-        incr = x_next - xk
+        x_next = g_prox(x - current_step_size * grad_fk, current_step_size)
+        incr = x_next - x
         if backtracking:
             for _ in range(max_iter_backtracking):
                 f_next, grad_next = f_grad(x_next)
@@ -95,14 +95,14 @@ def minimize_PGD(
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x_next = g_prox(xk - current_step_size * grad_fk, current_step_size)
-                    incr = x_next - xk
+                    x_next = g_prox(x - current_step_size * grad_fk, current_step_size)
+                    incr = x_next - x
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         else:
             f_next, grad_next = f_grad(x_next)
-        certificate = np.linalg.norm((xk - x_next) / step_size)
-        xk[:] = x_next
+        certificate = np.linalg.norm((x - x_next) / step_size)
+        x[:] = x_next
         fk = f_next
         grad_fk = grad_next
 
@@ -116,7 +116,7 @@ def minimize_PGD(
             break
 
         if callback is not None:
-            callback(xk)
+            callback(locals())
         it += 1
     if it >= max_iter:
         warnings.warn(
@@ -124,13 +124,13 @@ def minimize_PGD(
             RuntimeWarning)
 
     return optimize.OptimizeResult(
-        x=xk, success=success,
+        x=x, success=success,
         certificate=certificate,
         nit=it)
 
 
 def minimize_APGD(
-        f, g=None, x0=None, tol=1e-6, max_iter=500, verbose=0,
+        f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking: bool=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
         trace=False) -> optimize.OptimizeResult:
@@ -143,9 +143,9 @@ def minimize_APGD(
     where we have access to the gradient of f and to the proximal operator of g.
 
     Arguments:
-        f : loss function, differentiable
+        f_grad : loss function, differentiable
 
-        g : penalty, proximable
+        g_prox : penalty, proximable
 
         fun_deriv : f_prime(x) returns the gradient of f.
 
@@ -182,66 +182,46 @@ def minimize_APGD(
         Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications to signal
         recovery." Convex optimization in signal processing and communications (2009)
     """
-    if x0 is None:
-        xk = np.zeros(f.n_features)
-    else:
-        xk = np.array(x0, copy=True)
+    x = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
-    if g is None:
-        g = ZeroLoss()
+    if g_prox is None:
+        g_prox = lambda x, s: x
 
     if step_size is None:
-        # sample to estimate Lipschitz constant
-        step_size_n_sample = 5
-        L = []
-        for _ in range(step_size_n_sample):
-            x_tmp = np.random.randn(f.n_features)
-            x_tmp /= linalg.norm(x_tmp)
-            L.append(linalg.norm(f(xk) - f(x_tmp)))
-        # give it a generous upper bound
-        step_size = 2. / np.mean(L)
+        step_size = 1
 
     success = False
-    trace_func = []
-    trace_time = []
-    trace_certificate = []
-    start_time = datetime.now()
     certificate = np.inf
 
     it = 1
     tk = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    yk = xk.copy()
-    xk_prev = xk.copy()
+    yk = x.copy()
+    xk_prev = x.copy()
     while it <= max_iter:
         # .. compute gradient and step size
         current_step_size = step_size
-        grad_fk = f.gradient(yk)
-        xk = g.prox(yk - current_step_size * grad_fk, current_step_size)
+        grad_fk = f_grad(yk)[1]
+        x = g_prox(yk - current_step_size * grad_fk, current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
-                incr = xk - yk
-                if f(xk) <= f(yk) + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
+                incr = x - yk
+                if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
                     # .. step size found ..
                     break
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    xk = g.prox(yk - current_step_size * grad_fk, current_step_size)
+                    x = g_prox(yk - current_step_size * grad_fk, current_step_size)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-        yk = xk + ((tk-1.) / t_next) * (xk - xk_prev)
-        certificate = np.linalg.norm((xk - xk_prev) / step_size)
+        yk = x + ((tk-1.) / t_next) * (x - xk_prev)
+        certificate = np.linalg.norm((x - xk_prev) / step_size)
         tk = t_next
-        xk_prev = xk.copy()
-
-        if trace:
-            trace_certificate.append(certificate)
-            trace_func.append(f(yk) + g(yk))
-            trace_time.append((datetime.now() - start_time).total_seconds())
+        xk_prev = x.copy()
 
         if verbose > 0:
             print("Iteration %s, certificate: %s, step size: %s" % (it, certificate, step_size))
@@ -253,7 +233,7 @@ def minimize_APGD(
             break
 
         if callback is not None:
-            callback(xk)
+            callback(locals())
         it += 1
     if it >= max_iter:
         warnings.warn(
@@ -263,9 +243,7 @@ def minimize_APGD(
     return optimize.OptimizeResult(
         x=yk, success=success,
         certificate=certificate,
-        trace_certificate=trace_certificate,
-        nit=it, trace_func=np.array(trace_func),
-        trace_time=trace_time)
+        nit=it)
 
 
 def minimize_DavisYin(
@@ -330,10 +308,7 @@ def minimize_DavisYin(
     Pedregosa, Fabian. "On the convergence rate of the three operator splitting scheme." arXiv preprint
     arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
-    if x0 is None:
-        x0 = np.zeros(f_grad.n_features)
-    else:
-        x0 = np.array(x0, copy=True)
+    x0 = np.array(x0, copy=True)
     # y = np.array(y0, copy=True)
     success = False
     if not max_iter_backtracking > 0:
@@ -372,7 +347,7 @@ def minimize_DavisYin(
             for it_ls in range(max_iter_backtracking):
                 rhs = fk + grad_fk.dot(incr) \
                       + (norm_incr ** 2) / (2 * rho * step_size)
-                ls_tol = f_grad(z)[0] - rhs
+                ls_tol = f_grad(z, return_gradient=False) - rhs
                 if ls_tol/fk <= LS_EPS:
                     # step size found
                     break

@@ -15,7 +15,7 @@ install:
 - source activate test-environment
 - conda install --yes --file requirements.txt
 - conda install coverage pillow sphinx numpydoc matplotlib
-- pip install python-coveralls sphinx-gallery sphinx-autodoc-typehints
+- pip install python-coveralls sphinx-gallery sphinx-autodoc-typehints scikit-image
 - python setup.py develop
 script:
 - NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
