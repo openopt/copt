@@ -11,14 +11,14 @@ import warnings
 from numba import njit
 
 
-def prox_L1(step_size: float, x: np.ndarray) -> np.ndarray:
+def prox_L1(step_size, x):
     """
     L1 proximal operator
     """
     return np.fmax(x - step_size, 0) - np.fmax(- x - step_size, 0)
 
 
-def prox_tv1d(step_size: float, w: np.ndarray) -> np.ndarray:
+def prox_tv1d(step_size, w):
     """
     Computes the proximal operator of the 1-dimensional total variation operator.
 

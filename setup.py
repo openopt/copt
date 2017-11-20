@@ -1,4 +1,5 @@
 import copt
+import io
 from distutils.core import setup
 import setuptools
 
@@ -19,7 +20,7 @@ Operating System :: Unix
 setup(
     name='copt',
     description='Proximal gradient descent algorithm in Python',
-    long_description=open('README.rst', encoding='utf-8').read(),
+    long_description=io.open('README.rst', encoding='utf-8').read(),
     version=copt.__version__,
     author='Fabian Pedregosa',
     author_email='f@bianp.net',

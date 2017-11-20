@@ -10,9 +10,9 @@ from .utils import ZeroLoss
 
 def minimize_PGD(
         f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
-        callback=None, backtracking: bool=True, step_size=None,
+        callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=1000, backtracking_factor=0.6,
-        ) -> optimize.OptimizeResult:
+        ):
     """Proximal gradient descent.
 
     Solves problems of the form
@@ -131,9 +131,9 @@ def minimize_PGD(
 
 def minimize_APGD(
         f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
-        callback=None, backtracking: bool=True,
+        callback=None, backtracking=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
-        trace=False) -> optimize.OptimizeResult:
+        trace=False):
     """Accelerated proximal gradient descent.
 
     Solves problems of the form

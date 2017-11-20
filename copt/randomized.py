@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def minimizelp_SAGA(
         f_deriv, n_samples, x0, alpha=0, beta=0, step_size=None,
-        max_iter=500, tol=1e-6, verbose=False, callback=None) -> optimize.OptimizeResult:
+        max_iter=500, tol=1e-6, verbose=False, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -73,7 +73,7 @@ def minimizelp_SAGA(
     The implemented has some improvements with respect to the original version, such as
     better support for sparse datasets and is described in
 
-        Fabian Pedregosa, Rémi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
+        Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
         Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
         Neural Information Processing Systems (NIPS) 2017.
     """

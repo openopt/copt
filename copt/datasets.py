@@ -2,7 +2,7 @@ import numpy as np
 from scipy import misc
 import os
 import hashlib
-import urllib.request
+from six.moves import urllib
 
 DATA_DIR = os.environ.get(
     'COPT_DATA_DIR',
