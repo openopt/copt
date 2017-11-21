@@ -242,7 +242,7 @@ def minimize_APGD(
         nit=it)
 
 
-def minimize_DavisYin(
+def minimize_TOS(
         f_grad, g_prox=None, h_prox=None, x0=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.5, trace=False, increase_rho=True):
@@ -311,9 +311,9 @@ def minimize_DavisYin(
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        raise ValueError
+        g_prox = lambda x, s: x
     if h_prox is None:
-        raise ValueError
+        h_prox = lambda x, s: x
 
     if step_size is None:
         backtracking = True

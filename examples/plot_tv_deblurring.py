@@ -82,7 +82,7 @@ for i, beta in enumerate(all_betas):
         trace_time.append((datetime.now() - start).total_seconds())
 
 
-    tos_ls = cp.minimize_DavisYin(
+    tos_ls = cp.minimize_TOS(
         f_grad, g_prox, h_prox, np.zeros(n_features),
         step_size=2 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True,
@@ -93,7 +93,7 @@ for i, beta in enumerate(all_betas):
     out_img.append(tos_ls.x.reshape(img.shape))
 
     trace_x, trace_time, start = [], [], datetime.now()
-    tos_nols = cp.minimize_DavisYin(
+    tos_nols = cp.minimize_TOS(
         f_grad, g_prox, h_prox, np.zeros(n_features),
         step_size=step_size,
         max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1, trace=True,
