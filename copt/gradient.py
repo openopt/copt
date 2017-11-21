@@ -243,7 +243,7 @@ def minimize_APGD(
 
 
 def minimize_TOS(
-        f_grad, g_prox=None, h_prox=None, x0=None, tol=1e-6, max_iter=1000,
+        f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, restart=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.5, trace=False, increase_rho=True):
     """Davis-Yin three operator splitting method.
@@ -304,8 +304,6 @@ def minimize_TOS(
     Pedregosa, Fabian. "On the convergence rate of the three operator splitting scheme." arXiv preprint
     arXiv:1610.07830 (2016) https://arxiv.org/abs/1610.07830
     """
-    x0 = np.array(x0, copy=True)
-    # y = np.array(y0, copy=True)
     success = False
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
