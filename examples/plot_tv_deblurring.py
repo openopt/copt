@@ -83,7 +83,7 @@ for i, beta in enumerate(all_betas):
 
 
     tos_ls = cp.minimize_TOS(
-        f_grad, g_prox, h_prox, np.zeros(n_features),
+        f_grad, np.zeros(n_features), g_prox, h_prox,
         step_size=2 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1, trace=True,
         callback=callback)
@@ -94,7 +94,7 @@ for i, beta in enumerate(all_betas):
 
     trace_x, trace_time, start = [], [], datetime.now()
     tos_nols = cp.minimize_TOS(
-        f_grad, g_prox, h_prox, np.zeros(n_features),
+        f_grad, np.zeros(n_features), g_prox, h_prox,
         step_size=step_size,
         max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1, trace=True,
         backtracking=False, callback=callback)
