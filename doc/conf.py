@@ -41,7 +41,6 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.linkcode',
     'sphinx_gallery.gen_gallery',
-    'sphinx_autodoc_typehints'
 ]
 
 autosummary_generate = True
