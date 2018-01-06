@@ -16,14 +16,9 @@ import copt as cp
 
 np.random.seed(0)
 
-from skimage import data
-from skimage import img_as_float
-from skimage.morphology import reconstruction
 
-# Convert to float: Important for subtraction later which won't work with uint8
-img = img_as_float(data.coins())
-# img = img_as_float(misc.face(gray=True))
-img = misc.imresize(img, (200, 200))
+img = misc.face(gray=True).astype(np.float)
+img = misc.imresize(img, 0.1)
 
 # astro = img_as_float(data.astronaut())
 # img = astro[30:180, 150:300]
@@ -39,7 +34,7 @@ A = splinalg.LinearOperator(
     rmatvec=lambda x: gf(x.reshape(img.shape), kernel_width),
     dtype=np.float, shape=(n_features, n_features))
 
-b = A.matvec(img.ravel()) + 5 * np.random.randn(n_samples)
+b = A.matvec(img.ravel()) + np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
@@ -47,7 +42,7 @@ n_samples = n_features
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                    tol=1e-3, maxiter=500)[0]
-alpha = 0.01 / n_samples
+alpha = 0 / n_samples
 step_size = cp.utils.get_step_size(A, 'square', alpha)
 f_grad = cp.utils.squareloss(A, b, alpha)
 
@@ -62,8 +57,8 @@ def loss(x, beta):
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
 all_betas = [0, 1e-6, 1e-5, 1e-4]
-all_trace_ls, all_trace_nols, out_img = [], [], []
-all_trace_ls_time, all_trace_nols_time = [], []
+all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
+all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
 
     def g_prox(x, step_size):
@@ -75,35 +70,45 @@ for i, beta in enumerate(all_betas):
         return cp.tv_prox.prox_tv1d_rows(
             step_size * beta, x, n_rows, n_cols)
 
-    trace_x, trace_time, start = [], [], datetime.now()
-
-    def callback(kw):
-        trace_x.append(kw['x'].copy())
-        trace_time.append((datetime.now() - start).total_seconds())
-
-
+    cb_tosls = cp.utils.Trace()
+    x0 = np.zeros(n_features)
+    cb_tosls(x0)
     tos_ls = cp.minimize_TOS(
-        f_grad, np.zeros(n_features), g_prox, h_prox,
+        f_grad, x0, g_prox, h_prox,
         step_size=2 * step_size,
-        max_iter=max_iter, tol=1e-14, verbose=1, trace=True,
-        callback=callback)
-    trace_ls = np.array([loss(x, beta) for x in trace_x])
+        max_iter=max_iter, tol=1e-14, verbose=1,
+        callback=cb_tosls)
+    trace_ls = np.array([loss(x, beta) for x in cb_tosls.trace_x])
     all_trace_ls.append(trace_ls)
-    all_trace_ls_time.append(trace_time)
+    all_trace_ls_time.append(cb_tosls.trace_time)
     out_img.append(tos_ls.x.reshape(img.shape))
 
-    trace_x, trace_time, start = [], [], datetime.now()
-    tos_nols = cp.minimize_TOS(
-        f_grad, np.zeros(n_features), g_prox, h_prox,
+    cb_tos = cp.utils.Trace()
+    x0 = np.zeros(n_features)
+    cb_tos(x0)
+    tos = cp.minimize_TOS(
+        f_grad, x0, g_prox, h_prox,
         step_size=step_size,
-        max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1, trace=True,
-        backtracking=False, callback=callback)
-    trace_nols = np.array([loss(x, beta) for x in trace_x])
+        max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1,
+        line_search=False, callback=cb_tos)
+    trace_nols = np.array([loss(x, beta) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
-    all_trace_nols_time.append(trace_time)
+    all_trace_nols_time.append(cb_tos.trace_time)
+
+    cb_pdhg = cp.utils.Trace()
+    x0 = np.zeros(n_features)
+    cb_pdhg(x0)
+    pdhg_nols = cp.gradient.minimize_PDHG(
+        f_grad, x0, g_prox, h_prox,
+        callback=cb_pdhg, verbose=2, max_iter=max_iter,
+        step_size=step_size,
+        step_size2=(1./step_size) / 2, tol=0, line_search=True)
+    trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
+    all_trace_pdhg.append(trace_pdhg)
+    all_trace_pdhg_time.append(cb_pdhg.trace_time)
 
 # .. plot the results ..
-f, ax = plt.subplots(3, 4, sharey=False)
+f, ax = plt.subplots(2, 4, sharey=False)
 xlim = [0.02, 0.02, 0.1]
 for i, beta in enumerate(all_betas):
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
@@ -114,44 +119,34 @@ for i, beta in enumerate(all_betas):
 
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
     scale = all_trace_ls[i][0] - fmin
-    ax[1, i].plot(
+    plot_tos, = ax[1, i].plot(
         (all_trace_ls[i] - fmin) / scale,
         lw=4, marker='o', markevery=100,
         markersize=10)
 
-    ax[1, i].plot(
+    plot_nols, = ax[1, i].plot(
         (all_trace_nols[i] - fmin) / scale,
         lw=4, marker='h', markevery=100,
         markersize=10)
+
+    plot_pdhg, = ax[1, i].plot(
+        (all_trace_pdhg[i] - fmin) / scale,
+        lw=4, marker='^', markevery=100,
+        markersize=10)
+
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')
     ax[1, i].set_ylim((1e-14, None))
     ax[1, i].grid(True)
 
-    plot_tos, = ax[2, i].plot(
-        all_trace_ls_time[i],
-        (all_trace_ls[i] - fmin) / scale,
-        lw=4, marker='o', markevery=100,
-        markersize=10)
-
-    plot_nols, = ax[2, i].plot(
-        all_trace_nols_time[i],
-        (all_trace_nols[i] - fmin) / scale,
-        lw=4, marker='h', markevery=100,
-        markersize=10)
-    ax[2, i].set_xlabel('Time (in seconds)')
-    ax[2, i].set_yscale('log')
-    ax[2, i].set_ylim((1e-14, None))
-    ax[2, i].grid(True)
 
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(
-    (plot_tos, plot_nols),
-    ('TOS (LS)', 'TOS (no LS)'), ncol=5,
+    (plot_tos, plot_nols, plot_pdhg),
+    ('TOS with line search', 'TOS without line search', 'PDHG'), ncol=5,
     scatterpoints=1,
     loc=(-0.00, -0.0), frameon=False,
     bbox_to_anchor=[0.05, 0.01])
 
 ax[1, 0].set_ylabel('Objective minus optimum')
-ax[2, 0].set_ylabel('Objective minus optimum')
 plt.show()

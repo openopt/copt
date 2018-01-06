@@ -9,15 +9,19 @@ from datetime import datetime
 
 
 class Trace:
-    def __init__(self):
+    def __init__(self, freq=1):
         self.trace_x = []
         self.trace_time = []
         self.start = datetime.now()
+        self._counter = 0
+        self.freq = freq
 
-    def __call__(self, kw):
-        self.trace_x.append(kw['x'].copy())
-        delta = (datetime.now() - self.start).total_seconds()
-        self.trace_time.append(delta)
+    def __call__(self, x):
+        if self._counter % self.freq == 0:
+            self.trace_x.append(x.copy())
+            delta = (datetime.now() - self.start).total_seconds()
+            self.trace_time.append(delta)
+        self._counter += 1
 
 
 def get_step_size(A, loss, alpha=0, method='PGD'):
@@ -32,14 +36,6 @@ def get_step_size(A, loss, alpha=0, method='PGD'):
         L = (s * s) / A.shape[0] + alpha
         return 1/L
     raise NotImplementedError
-
-def lipschitz_constant(A, loss, alpha=0):
-    """Computes the Lipschitz constant"""
-    if loss == 'log':
-        pass
-    elif loss == 'square':
-
-        return
 
 
 def logloss(A, b, alpha=0., intercept=False):
@@ -103,8 +99,6 @@ def prox_L1(alpha):
         return np.fmax(x - alpha * step_size, 0) \
                - np.fmax(- x - alpha * step_size, 0)
     return _prox_L1
-
-
 
 
 def squareloss(A, b, alpha=0.):
@@ -318,7 +312,7 @@ def squareloss(A, b, alpha=0.):
 #
 #     def prox_factory(self):
 #         raise NotImplementedError
-#
+
 
 
 def euclidean_proj_simplex(v, s=1.):

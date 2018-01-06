@@ -10,7 +10,7 @@ import pylab as plt
 import copt as cp
 
 # .. construct (random) dataset ..
-n_samples, n_features = 1000, 1000
+n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
@@ -34,8 +34,8 @@ plt.plot(trace_func_apgd - fmin, lw=4,
 plt.ylabel('Function suboptimality', fontweight='bold')
 plt.xlabel('gradient evaluations', fontweight='bold')
 plt.yscale('log')
-plt.ylim(ymin=1e-5)
-plt.xlim((0, 200))
+plt.ylim(ymin=1e-10)
+plt.xlim((0, 150))
 plt.legend()
 plt.grid()
 plt.show()

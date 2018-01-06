@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import misc
+from scipy import sparse, misc
 import os
 import hashlib
 from six.moves import urllib
@@ -20,9 +20,7 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
-
-
-def load_rcv1(md5_check=True):
+def load_rcv1(md5_check=True, subset='all'):
     """
     Download and return the RCV1 dataset.
 
@@ -42,23 +40,41 @@ def load_rcv1(md5_check=True):
     y: numpy array
         Labels, only takes values 1 or -1.
     """
-    from sklearn import datasets  # lazy import
+    import h5py
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    file_path = os.path.join(DATA_DIR, 'rcv1_full.binary.bz2')
+    file_path = os.path.join(DATA_DIR, 'rcv1.hdf5')
     if not os.path.exists(file_path):
         print('RCV1 dataset is not present in data folder. Downloading it ...')
-        url = 'http://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/rcv1_full.binary.bz2'
+        url = 'http://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/rcv1.hdf5'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
-    if md5_check:
-        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
-        if not h == '6131cf16515e9cce08d112c880b6b817':
-            print('MD5 hash do not coincide')
-            print('Removing file and re-downloading')
-            os.remove(file_path)
-            return load_rcv1()
-    return datasets.load_svmlight_file(file_path)
+    f = h5py.File(file_path, 'r')
+    X_train_data = np.asarray(f['X_train.data'])
+    X_train_indices = np.array(f['X_train.indices'])
+    X_train_indptr = np.array(f['X_train.indptr'])
+    y_train = np.array(f['y_train'])
+    X_train = sparse.csr_matrix(
+        (X_train_data, X_train_indices, X_train_indptr))
+
+    if subset == 'train':
+        return X_train, y_train
+
+    X_test_data = np.asarray(f['X_test.data'])
+    X_test_indices = np.array(f['X_test.indices'])
+    X_test_indptr = np.array(f['X_test.indptr'])
+    y_test = np.array(f['y_test'])
+    X_test = sparse.csr_matrix(
+        (X_test_data, X_test_indices, X_test_indptr))
+
+    if subset == 'test':
+        return X_test, y_test
+    elif subset == 'full':
+        X = sparse.vstack((X_train, X_test))
+        y = np.concatenate((y_train, y_test))
+        return X, y
+    else:
+        raise ValueError("subset '%s' not implemented, must be one of ('train', 'test', 'full')." % subset)
 
 
 def load_url(md5_check=True):
@@ -82,6 +98,12 @@ def load_url(md5_check=True):
         Labels, only takes values 1 or -1.
     """
     from sklearn import datasets  # lazy import
+    file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
+    data_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.data.npz')
+    data_indices = os.path.join(DATA_DIR, 'criteo.kaggle2014.indices.npy')
+    data_indptr = os.path.join(DATA_DIR, 'criteo.kaggle2014.indptr.npy')
+    data_target = os.path.join(DATA_DIR, 'criteo.kaggle2014.target.npy')
+
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'url_combined.bz2')
@@ -90,14 +112,20 @@ def load_url(md5_check=True):
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/url_combined.bz2'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
-    if md5_check:
-        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
-        if not h == '83673b8f4224c81968af2fb6022ee487':
-            print('MD5 hash do not coincide')
-            print('Removing file and re-downloading')
-            os.remove(file_path)
-            return load_url()
-    return datasets.load_svmlight_file(file_path)
+        if md5_check:
+            h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+            if not h == '83673b8f4224c81968af2fb6022ee487':
+                print('MD5 hash do not coincide')
+                print('Removing file and re-downloading')
+                os.remove(file_path)
+                return load_url()
+        X, y = datasets.load_svmlight_file(file_path)
+        np.save(data_path, X.data)
+        np.save(data_indices, X.indices)
+        np.save(data_indptr, X.indptr)
+        np.save(data_target, y)
+
+    return
 
 
 def load_covtype():
@@ -234,6 +262,10 @@ def load_criteo(md5_check=True):
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
+    data_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.data.npz')
+    data_indices = os.path.join(DATA_DIR, 'criteo.kaggle2014.indices.npy')
+    data_indptr = os.path.join(DATA_DIR, 'criteo.kaggle2014.indptr.npy')
+    data_target = os.path.join(DATA_DIR, 'criteo.kaggle2014.target.npy')
     if not os.path.exists(file_path):
         print('criteo dataset is not present in data folder. Downloading it ...')
         url = 'https://s3-us-west-2.amazonaws.com/criteo-public-svm-data/criteo.kaggle2014.svm.tar.gz'
@@ -242,13 +274,25 @@ def load_criteo(md5_check=True):
         tar = tarfile.open(file_path)
         tar.extractall(DATA_DIR)
         print('Finished downloading')
-    if md5_check:
-        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
-        if not h == 'd852b491d1b3afa26c1e7b49594ffc3e':
-            print('MD5 hash do not coincide')
-            print('Removing file and re-downloading')
-            os.remove(file_path)
-            return load_criteo()
-    return datasets.load_svmlight_file(os.path.join(DATA_DIR, 'criteo.kaggle2014.train.svm'))
+        if md5_check:
+            h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+            if not h == 'd852b491d1b3afa26c1e7b49594ffc3e':
+                print('MD5 hash do not coincide')
+                print('Removing file and re-downloading')
+                os.remove(file_path)
+                return load_criteo()
+        X, y = datasets.load_svmlight_file(os.path.join(DATA_DIR, 'criteo.kaggle2014.train.svm'))
+        np.save(data_path, X.data)
+        np.save(data_indices, X.indices)
+        np.save(data_indptr, X.indptr)
+        np.save(data_target, y)
+        # optionally delete files
+    else:
+        X_data = np.load(data_path)
+        X_indices = np.load(data_indices)
+        X_indptr = np.load(data_indptr)
+        X = sparse.csr_matrix((X_data, X_indices, X_indptr))
+        y = np.load(data_target)
+    return X, y
 
 
