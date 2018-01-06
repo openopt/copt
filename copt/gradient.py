@@ -380,7 +380,7 @@ def minimize_TOS(
 
 def minimize_PDHG(
         f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
-        max_iter=200, verbose=0, callback=None, step_size=1., step_size2=None,
+        max_iter=1000, verbose=0, callback=None, step_size=1., step_size2=None,
         line_search=True,
         max_iter_ls=20):
     """Condat-Vu primal-dual splitting method.
@@ -458,6 +458,8 @@ def minimize_PDHG(
     # .. main iteration ..
     theta = 1.
     delta = 0.99
+    if step_size2 is None:
+        step_size2 = 0.5 * step_size
     beta = step_size / step_size2
 
     pbar = trange(max_iter)

@@ -15,12 +15,12 @@ import copt as cp
 
 np.random.seed(0)
 
+# .. generate some data ..
+
 
 img = misc.face(gray=True).astype(np.float)
 img = misc.imresize(img, 0.1)
 
-# astro = img_as_float(data.astronaut())
-# img = astro[30:180, 150:300]
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 n_samples = n_features
