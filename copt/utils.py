@@ -2,9 +2,6 @@ import numpy as np
 from scipy import sparse, special, linalg
 from scipy.sparse import linalg as splinalg
 from numba import njit
-from sklearn.utils.extmath import row_norms
-from .tv_prox import prox_tv2d
-import warnings
 from datetime import datetime
 
 
@@ -24,17 +21,21 @@ class Trace:
         self._counter += 1
 
 
-def get_step_size(A, loss, alpha=0, method='PGD'):
-    if loss == 'log':
+def get_lipschitz(A, loss, alpha=0):
+    """Estimate Lipschitz constant for different loss functions
+
+    A : array-like
+
+    loss : {'logloss', 'square'}
+    """
+    if loss == 'logloss':
         s = splinalg.svds(A, k=1, return_singular_vectors=False,
                           tol=1e-2, maxiter=20)[0]
-        L = 0.25 * (s * s) / A.shape[0] + alpha
-        return 1/L
+        return 0.25 * (s * s) / A.shape[0] + alpha
     elif loss == 'square':
         s = splinalg.svds(A, k=1, return_singular_vectors=False,
                           tol=1e-2, maxiter=20)[0]
-        L = (s * s) / A.shape[0] + alpha
-        return 1/L
+        return (s * s) / A.shape[0] + alpha
     raise NotImplementedError
 
 
@@ -53,6 +54,20 @@ def logloss(A, b, alpha=0., intercept=False):
     logloss : callable
     """
     A = splinalg.aslinearoperator(A)
+
+    def _logloss(x):
+        if intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.
+        z = A.matvec(x_) + c
+        yz = b * z
+        idx = yz > 0
+        loss = np.zeros_like(yz)
+        loss[idx] = np.log(1 + np.exp(-yz[idx]))
+        loss[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
+        loss = loss.mean() + .5 * alpha * x_.dot(x_)
+        return loss
 
     def _logloss_grad(x, return_gradient=True):
         if intercept:
@@ -94,14 +109,55 @@ def ilogloss():
             return -p + np.log(exp_t), (phi - 1) * b
 
 
-def prox_L1(alpha):
-    def _prox_L1(x, step_size):
-        return np.fmax(x - alpha * step_size, 0) \
-               - np.fmax(- x - alpha * step_size, 0)
-    return _prox_L1
+class L1:
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+    def __call__(self, x):
+        return self.alpha * np.abs(x).sum()
+
+    def prox(self, x, step_size):
+        return np.fmax(x - self.alpha * step_size, 0) \
+                   - np.fmax(- x - self.alpha * step_size, 0)
 
 
-def squareloss(A, b, alpha=0.):
+class GroupL1:
+    def __init__(self, alpha, groups):
+        self.alpha = alpha
+        self.groups = groups
+
+    def __call__(self, x):
+        return np.sum([np.linalg.norm(x[g]) for g in self.groups])
+
+    def prox(self, x, step_size):
+        out = x.copy()
+        for g in self.groups:
+            tmp = x[g]
+            norm = np.linalg.norm(tmp)
+            scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
+            out[g] = scaling * tmp
+        return out
+
+
+class SquareLoss:
+    def __init__(self, A, b):
+        self.A = splinalg.aslinearoperator(A)
+        self.b = b
+
+    def __call__(self, x):
+        z = self.A.matvec(x) - self.b
+        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+
+    def func_grad(self, x, return_gradient=True):
+        z = self.A.matvec(x) - self.b
+        loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+        if not return_gradient:
+            return loss
+        grad = self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
+        return loss, grad
+
+
+def grad_squareloss(A, b, alpha=0.):
     """
 
     Parameters
@@ -117,6 +173,12 @@ def squareloss(A, b, alpha=0.):
     """
     A = splinalg.aslinearoperator(A)
 
+    def _squareloss_func(x):
+        z = A.matvec(x) - b
+        loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
+        return loss
+
+
     def _squareloss_grad(x, return_gradient=True):
         z = A.matvec(x) - b
         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
@@ -125,194 +187,6 @@ def squareloss(A, b, alpha=0.):
         grad = A.rmatvec(z) / A.shape[0] + alpha * x
         return loss, grad
     return _squareloss_grad
-
-
-
-# class LogisticLoss(_GeneralizedLinearModel):
-#     """Logistic regression loss function with L2 regularization
-#
-#     This loss function is very popular for binary classification tasks.
-#     Labels (b) are assumed to be 1 or -1.
-#
-#     References
-#     ----------
-#     Loss function and gradients for full gradient methods are computed
-#     as detailed in to
-#     http://fa.bianp.net/blog/2013/numerical-optimizers-for-logistic-regression/
-#     """
-#
-#     def __call__(self, x):
-#         if self.intercept:
-#             x_, c = x[:-1], x[-1]
-#         else:
-#             x_, c = x, 0.
-#         z = self.A.matvec(x_) + c
-#         yz = self.b * z
-#         idx = yz > 0
-#         out = np.zeros_like(yz)
-#         out[idx] = np.log(1 + np.exp(-yz[idx]))
-#         out[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
-#         out = out.mean() + .5 * self.alpha * x_.dot(x_)
-#         return out
-#
-#     def gradient(self, x):
-#         if self.intercept:
-#             x_, c = x[:-1], x[-1]
-#         else:
-#             x_, c = x, 0.
-#         z = self.A.matvec(x_) + c
-#         z = special.expit(self.b * z)
-#         z0 = (z - 1) * self.b
-#         grad_w = self.A.rmatvec(z0) / self.A.shape[0] + self.alpha * x_
-#         grad_c = z0.mean()
-#         if self.intercept:
-#             return np.concatenate((grad_w, [grad_c]))
-#         return grad_w
-#
-#     @staticmethod
-#     def partial_function_factory():
-#         @njit
-#         def partial_function(p, b):
-#             # compute p
-#             p *= b
-#             if p > 0:
-#                 return np.log(1 + np.exp(-p))
-#             else:
-#                 return -p + np.log(1 + np.exp(p))
-#
-#     @staticmethod
-#     def partial_gradient_factory():
-#         @njit
-#         def partial_gradient(p, b):
-#             # compute p
-#             p *= b
-#             if p > 0:
-#                 phi = 1. / (1 + np.exp(-p))
-#             else:
-#                 exp_t = np.exp(p)
-#                 phi = exp_t / (1. + exp_t)
-#             return (phi - 1) * b
-#         return partial_gradient
-#
-#     def lipschitz_constant(self, kind='full'):
-#         if kind == 'samples':
-#             return 0.25 * row_norms(self.A.A, True).max() + self.alpha * self.A.shape[0]
-#         elif kind == 'full':
-#             from scipy.sparse.linalg import svds
-#             s = svds(self.A, k=1, return_singular_vectors=False)[0]
-#             return 0.25 * s * s / self.A.shape[0] + self.alpha
-#         elif kind == 'features':
-#             return 0.25 * row_norms(self.A.A.T, True).max() / self.A.shape[0] + self.alpha
-#         else:
-#             raise NotImplementedError
-#
-#
-# class SquaredLoss(_GeneralizedLinearModel):
-#     """Least squares loss function with L2 regularization
-#
-#     Parameters
-#     ----------
-#     A: ndarray or LinearOperator
-#         Design matrix. If None, it is taken as the identity
-#         matrix.
-#
-#     b: ndarray
-#
-#     alpha: float
-#         Amount of L2 regularization
-#     """
-#
-#     def __call__(self, x):
-#         if self.intercept:
-#             x_, c = x[:-1], x[-1]
-#             z = self.A.matvec(x_) + c - self.b
-#         else:
-#             z = self.A.matvec(x) - self.b
-#
-#         return .5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
-#
-#     def gradient(self, x):
-#         if self.intercept:
-#             x_, c = x[:-1], x[-1]
-#         else:
-#             x_, c = x, 0.
-#         z = self.A.matvec(x) - self.b
-#         return self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
-#
-#     @staticmethod
-#     def partial_gradient_factory():
-#         @njit
-#         def partial_gradient(p, b):
-#             # compute p
-#             return - (b - p)
-#         return partial_gradient
-#
-#     def lipschitz_constant(self, kind='full'):
-#         if kind == 'samples':
-#             return row_norms(self.A.A, True).max() + self.alpha * self.A.shape[0]
-#         elif kind == 'full':
-#             while True:
-#                 try:
-#                     s = splinalg.svds(
-#                         self.A, k=1,
-#                         return_singular_vectors=False,
-#                         tol=1e-6, maxiter=100)[0]
-#                     break
-#                 except splinalg.ArpackError:
-#                     # should we do something like increasing
-#                     # ncv as the error message suggests?
-#                     # doing nothing seems to fix the issue ...
-#                     pass
-#             return s * s / self.A.shape[0] + self.alpha
-#         elif kind == 'features':
-#             return row_norms(self.A.A, True).max() / self.A.shape[0] + self.alpha
-#         else:
-#             raise NotImplementedError
-#
-#
-# class L1Norm:
-#     """L1 norm, i.e., the sum of absolute values"""
-#     is_separable = True
-#
-#     def __init__(self, alpha=1.):
-#         self.alpha = alpha
-#
-#     def __call__(self, x):
-#         return self.alpha * np.sum(np.abs(x))
-#
-#     def prox(self, x, step_size):
-#         out = np.fmax(x - self.alpha * step_size, 0) \
-#             - np.fmax(- x - self.alpha * step_size, 0)
-#         return out
-#
-#     def prox_factory(self):
-#         @njit
-#         def prox_L1(x, step_size):
-#             return np.fmax(x - self.alpha * step_size, 0) \
-#                    - np.fmax(- x - self.alpha * step_size, 0)
-#         return prox_L1
-#
-#
-# class L1Ball:
-#     """Projection onto the L1 ball"""
-#     is_separable = True
-#
-#     def __init__(self, alpha=1.):
-#         self.alpha = alpha
-#
-#     def __call__(self, x):
-#         if np.abs(x).sum() <= self.alpha:
-#             return 0
-#         else:
-#             return np.inf
-#
-#     def prox(self, x, step_size):
-#         out = euclidean_proj_l1ball(x, self.alpha)
-#         return out
-#
-#     def prox_factory(self):
-#         raise NotImplementedError
-
 
 
 def euclidean_proj_simplex(v, s=1.):

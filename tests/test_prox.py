@@ -1,4 +1,5 @@
 import numpy as np
+import copt as cp
 from copt import tv_prox
 from numpy import testing
 
@@ -60,3 +61,29 @@ def test_tv2d_linear_operator():
     x = np.random.randn(n_rows * n_cols)
     testing.assert_almost_equal(
         np.abs(L.dot(x)).sum(), TV(x))
+
+
+def test_three_inequality():
+    """Test the L1 prox using the three point inequality
+
+    The three-point inequality is described e.g., in Lemma 1.4
+    in "Gradient-Based Algorithms with Applications to Signal
+    Recovery Problems", Amir Beck and Marc Teboulle
+    """
+    n_features = 10
+
+    l1 = cp.utils.L1(1.)
+    groups = np.array_split(np.arange(n_features), 2)
+    gl1 = cp.utils.GroupL1(1., groups)
+
+    for loss in [l1, gl1]:
+        for _ in range(10):
+            z = np.random.randn(n_features)
+            u = np.random.randn(n_features)
+            xi = loss.prox(z, 1.)
+
+            lhs = 2 * (loss(xi) - loss(u))
+            rhs = np.linalg.norm(u - z) ** 2 - \
+                np.linalg.norm(u - xi) ** 2 - \
+                np.linalg.norm(xi - z) ** 2
+            assert lhs <= rhs

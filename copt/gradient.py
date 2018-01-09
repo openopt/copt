@@ -122,8 +122,7 @@ def minimize_PGD(
 def minimize_APGD(
         f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, line_search=True,
-        step_size=None, max_iter_backtracking=100, backtracking_factor=0.6,
-        trace=False):
+        step_size=None, max_iter_backtracking=100, backtracking_factor=0.6):
     """Accelerated proximal gradient descent.
 
     Solves problems of the form
@@ -319,9 +318,8 @@ def minimize_TOS(
     for it in pbar:
         x = h_prox(y, step_size)
         fk, grad_fk = f_grad(x)
-        z = g_prox(
-            x + rho * (x - y) - step_size * rho * grad_fk,
-            rho * step_size)
+        z = g_prox(x + rho * (x - y) - step_size * rho * grad_fk,
+                   rho * step_size)
         incr = z - x
         norm_incr = linalg.norm(incr)
         prox_grad_norm = norm_incr / (rho * step_size)
@@ -373,17 +371,15 @@ def minimize_TOS(
                 RuntimeWarning)
     pbar.close()
     return optimize.OptimizeResult(
-        x=z, success=success,
-        nit=it,
+        x=z, success=success, nit=it,
         certificate=prox_grad_norm)
 
 
 def minimize_PDHG(
         f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
-        max_iter=1000, verbose=0, callback=None, step_size=1., step_size2=None,
-        line_search=True,
-        max_iter_ls=20):
-    """Condat-Vu primal-dual splitting method.
+        max_iter=1000, callback=None, step_size=1., step_size2=None,
+        line_search=True, max_iter_ls=20):
+    """Primal-dual hybrid gradient splitting method.
 
     This method for optimization problems of the form
 
@@ -512,7 +508,6 @@ def minimize_PDHG(
     pbar.close()
     return optimize.OptimizeResult(
         x=y, success=success, nit=it, certificate=norm_incr)
-
 
 
 def minimize_PDHG2(

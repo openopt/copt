@@ -3,8 +3,6 @@ Total variation regularization
 ==============================
 
 Comparison of solvers with total variation regularization.
-
-TODO: split computational and plotting code
 """
 import numpy as np
 from scipy import misc
@@ -15,25 +13,23 @@ import copt as cp
 
 np.random.seed(0)
 
-
 img = misc.face(gray=True).astype(np.float)
-img = misc.imresize(img, 0.1)
+img /= img.max()
+img = misc.imresize(img, 0.2)
 
-# astro = img_as_float(data.astronaut())
-# img = astro[30:180, 150:300]
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 n_samples = n_features
 max_iter = 1000
 print('#features', n_features)
 
-kernel_width = 5
+kernel_width = 3
 A = splinalg.LinearOperator(
     matvec=lambda x: gf(x.reshape(img.shape), kernel_width),
     rmatvec=lambda x: gf(x.reshape(img.shape), kernel_width),
     dtype=np.float, shape=(n_features, n_features))
 
-b = A.matvec(img.ravel()) + np.random.randn(n_samples)
+b = A.matvec(img.ravel()) + 5 * np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
@@ -41,9 +37,10 @@ n_samples = n_features
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
-alpha = 0 / n_samples
-step_size = cp.utils.get_step_size(A, 'square', alpha)
-f_grad = cp.utils.squareloss(A, b, alpha)
+alpha = 0.01 / n_samples
+L = cp.utils.get_lipschitz(A, 'square', alpha)
+step_size = 1./L
+f_grad = cp.utils.grad_squareloss(A, b, alpha)
 
 
 def loss(x, beta):
@@ -55,7 +52,7 @@ def loss(x, beta):
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
-all_betas = [0, 1e-6, 1e-5, 1e-4]
+all_betas = [0, 1e-8, 1e-7, 1e-6]
 all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
@@ -88,7 +85,7 @@ for i, beta in enumerate(all_betas):
     tos = cp.minimize_TOS(
         f_grad, x0, g_prox, h_prox,
         step_size=step_size,
-        max_iter=int(1.5 * max_iter), tol=1e-14, verbose=1,
+        max_iter=max_iter, tol=1e-14, verbose=1,
         line_search=False, callback=cb_tos)
     trace_nols = np.array([loss(x, beta) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
@@ -99,7 +96,7 @@ for i, beta in enumerate(all_betas):
     cb_pdhg(x0)
     pdhg_nols = cp.gradient.minimize_PDHG(
         f_grad, x0, g_prox, h_prox,
-        callback=cb_pdhg, verbose=2, max_iter=max_iter,
+        callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
         step_size2=(1./step_size) / 2, tol=0, line_search=True)
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
