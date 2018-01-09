@@ -127,15 +127,16 @@ class GroupL1:
         self.groups = groups
 
     def __call__(self, x):
-        return np.sum([np.linalg.norm(x[g]) for g in self.groups])
+        return self.alpha * np.sum(
+            [np.linalg.norm(x[g]) for g in self.groups])
 
     def prox(self, x, step_size):
         out = x.copy()
         for g in self.groups:
-            tmp = x[g]
-            norm = np.linalg.norm(tmp)
-            scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
-            out[g] = scaling * tmp
+            norm = np.linalg.norm(x[g])
+            if norm > 0:
+                scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
+                out[g] *= scaling
         return out
 
 
