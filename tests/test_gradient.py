@@ -12,9 +12,9 @@ b = np.sign(A.dot(w) + np.random.randn(n_samples))
 
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
-    ['PDHG', cp.minimize_PDHG, 1e-3],
+    ['PDHG', cp.minimize_PDHG, 1e-2],
     # ['APGD', cp.minimize_APGD, 1e-4],
-    # ['DavisYin', cp.minimize_DavisYin, 1e-2],
+    ['DavisYin', cp.minimize_TOS, 1e-2],
     # ['BCD', cp.minimize_BCD, 1e-2],
     # ['SAGA', cp.minimize_SAGA, 1e-2]
 )
@@ -27,7 +27,7 @@ def test_gradient():
     A = np.random.randn(10, 10)
     b = np.sign(np.random.randn(10))
     for f_grad in (
-            cp.utils.logloss(A, b),
+            cp.utils.LogLoss(A, b).func_grad,
             cp.utils.SquareLoss(A, b).func_grad):
         f = lambda x: f_grad(x)[0]
         grad = lambda x: f_grad(x)[1]
@@ -41,7 +41,7 @@ def test_gradient():
 def test_optimize(name_solver, solver, tol, loss_grad, penalty):
     for alpha, beta in zip(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
-        f_grad = loss_grad(A, b, alpha)
+        f_grad = loss_grad(A, b, alpha).func_grad
         opt = solver(f_grad, np.zeros(n_features))
         assert opt.certificate < tol, name_solver
 
