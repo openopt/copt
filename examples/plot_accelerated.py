@@ -15,7 +15,7 @@ np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.sign(np.random.randn(n_samples))
 
-logloss = cp.utils.logloss(X, y)
+logloss = cp.utils.LogLoss(X, y).func_grad
 cb_pgd = cp.utils.Trace()
 cb_apgd = cp.utils.Trace()
 L = cp.utils.get_lipschitz(X, 'logloss')

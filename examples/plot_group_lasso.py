@@ -37,7 +37,7 @@ n_samples = n_features
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
 step_size = cp.utils.get_lipschitz(A, 'square')
-f_grad = cp.utils.grad_squareloss(A, b)
+f_grad = cp.utils.SquareLoss(A, b).func_grad
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
