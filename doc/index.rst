@@ -21,7 +21,8 @@ Optimization algorithms
 .. autosummary::
 
 
-    copt.minimize_SAGA
+ * :doc:`/gradient`
+ * Incremental methods
 
 
 
