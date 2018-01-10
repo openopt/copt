@@ -39,60 +39,59 @@ def get_lipschitz(A, loss, alpha=0):
     raise NotImplementedError
 
 
-def logloss(A, b, alpha=0., intercept=False):
-    """
 
-    Parameters
-    ----------
-    A
-    b
-    alpha
-    intercept
+class LogLoss:
+    def __init__(self, A, b, alpha=0.):
+        self.A = splinalg.aslinearoperator(A)
+        self.b = b
+        self.alpha = 0
+        self.intercept = False
 
-    Returns
-    -------
-    logloss : callable
-    """
-    A = splinalg.aslinearoperator(A)
+    def __call__(self, x):
+        return self.func_grad(x, return_gradient=False)
 
-    def _logloss(x):
-        if intercept:
+    def func_grad(self, x, return_gradient=True):
+        if self.intercept:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.
-        z = A.matvec(x_) + c
-        yz = b * z
+        z = self.A.matvec(x_) + c
+        yz = self.b * z
         idx = yz > 0
         loss = np.zeros_like(yz)
         loss[idx] = np.log(1 + np.exp(-yz[idx]))
         loss[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
-        loss = loss.mean() + .5 * alpha * x_.dot(x_)
-        return loss
-
-    def _logloss_grad(x, return_gradient=True):
-        if intercept:
-            x_, c = x[:-1], x[-1]
-        else:
-            x_, c = x, 0.
-        z = A.matvec(x_) + c
-        yz = b * z
-        idx = yz > 0
-        loss = np.zeros_like(yz)
-        loss[idx] = np.log(1 + np.exp(-yz[idx]))
-        loss[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
-        loss = loss.mean() + .5 * alpha * x_.dot(x_)
+        loss = loss.mean() + .5 * self.alpha * x_.dot(x_)
 
         if not return_gradient:
             return loss
-        z = special.expit(b * z)
-        z0 = (z - 1) * b
-        grad = A.rmatvec(z0) / A.shape[0] + alpha * x_
+        z = special.expit(self.b * z)
+        z0 = (z - 1) * self.b
+        grad = self.A.rmatvec(z0) / self.A.shape[0] + self.alpha * x_
         grad_c = z0.mean()
-        if intercept:
+        if self.intercept:
             return np.concatenate((grad, [grad_c]))
 
         return loss, grad
-    return _logloss_grad
+
+
+class SquareLoss:
+    def __init__(self, A, b, alpha=0):
+        self.A = splinalg.aslinearoperator(A)
+        self.b = b
+        self.alpha = alpha
+
+    def __call__(self, x):
+        z = self.A.matvec(x) - self.b
+        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+
+    def func_grad(self, x, return_gradient=True):
+        z = self.A.matvec(x) - self.b
+        loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+        if not return_gradient:
+            return loss
+        grad = self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
+        return loss, grad
 
 
 def ilogloss():
@@ -140,55 +139,39 @@ class GroupL1:
         return out
 
 
-class SquareLoss:
-    def __init__(self, A, b):
-        self.A = splinalg.aslinearoperator(A)
-        self.b = b
 
-    def __call__(self, x):
-        z = self.A.matvec(x) - self.b
-        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
-
-    def func_grad(self, x, return_gradient=True):
-        z = self.A.matvec(x) - self.b
-        loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
-        if not return_gradient:
-            return loss
-        grad = self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
-        return loss, grad
-
-
-def grad_squareloss(A, b, alpha=0.):
-    """
-
-    Parameters
-    ----------
-    A
-    b
-    alpha
-    intercept
-
-    Returns
-    -------
-    logloss : callable
-    """
-    A = splinalg.aslinearoperator(A)
-
-    def _squareloss_func(x):
-        z = A.matvec(x) - b
-        loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
-        return loss
-
-
-    def _squareloss_grad(x, return_gradient=True):
-        z = A.matvec(x) - b
-        loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
-        if not return_gradient:
-            return loss
-        grad = A.rmatvec(z) / A.shape[0] + alpha * x
-        return loss, grad
-    return _squareloss_grad
-
+#
+# def grad_squareloss(A, b, alpha=0.):
+#     """
+#
+#     Parameters
+#     ----------
+#     A
+#     b
+#     alpha
+#     intercept
+#
+#     Returns
+#     -------
+#     logloss : callable
+#     """
+#     A = splinalg.aslinearoperator(A)
+#
+#     def _squareloss_func(x):
+#         z = A.matvec(x) - b
+#         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
+#         return loss
+#
+#
+#     def _squareloss_grad(x, return_gradient=True):
+#         z = A.matvec(x) - b
+#         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
+#         if not return_gradient:
+#             return loss
+#         grad = A.rmatvec(z) / A.shape[0] + alpha * x
+#         return loss, grad
+#     return _squareloss_grad
+#
 
 def euclidean_proj_simplex(v, s=1.):
     """ Compute the Euclidean projection on a positive simplex

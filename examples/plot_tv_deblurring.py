@@ -5,7 +5,7 @@ Total variation regularization
 Comparison of solvers with total variation regularization.
 """
 import numpy as np
-from scipy import misc
+from scipy import misc, sparse
 from scipy.sparse import linalg as splinalg
 from scipy.ndimage import gaussian_filter as gf
 import pylab as plt
@@ -15,7 +15,7 @@ np.random.seed(0)
 
 img = misc.face(gray=True).astype(np.float)
 img /= img.max()
-img = misc.imresize(img, 0.2)
+img = misc.imresize(img, 0.15)
 
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
@@ -23,13 +23,9 @@ n_samples = n_features
 max_iter = 1000
 print('#features', n_features)
 
-kernel_width = 3
-A = splinalg.LinearOperator(
-    matvec=lambda x: gf(x.reshape(img.shape), kernel_width),
-    rmatvec=lambda x: gf(x.reshape(img.shape), kernel_width),
-    dtype=np.float, shape=(n_features, n_features))
-
-b = A.matvec(img.ravel()) + 5 * np.random.randn(n_samples)
+# .. compute blurred and noisy image ..
+A = sparse.load_npz('data/blur_matrix.npz')
+b = A.dot(img.ravel()) + np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
@@ -37,10 +33,9 @@ n_samples = n_features
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
-alpha = 0.01 / n_samples
-L = cp.utils.get_lipschitz(A, 'square', alpha)
+L = cp.utils.get_lipschitz(A, 'square')
 step_size = 1./L
-f_grad = cp.utils.grad_squareloss(A, b, alpha)
+f_grad = cp.utils.SquareLoss(A, b).func_grad
 
 
 def loss(x, beta):
@@ -52,7 +47,7 @@ def loss(x, beta):
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
-all_betas = [0, 1e-8, 1e-7, 1e-6]
+all_betas = [0, 5e-7, 1e-6, 5e-6]
 all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
