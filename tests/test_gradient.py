@@ -24,15 +24,16 @@ penalty_funcs = [None]
 
 
 def test_gradient():
-    A = np.random.randn(10, 10)
-    b = np.sign(np.random.randn(10))
-    for f_grad in (
-            cp.utils.LogLoss(A, b).func_grad,
-            cp.utils.SquareLoss(A, b).func_grad):
-        f = lambda x: f_grad(x)[0]
-        grad = lambda x: f_grad(x)[1]
-        eps = optimize.check_grad(f, grad, np.random.randn(10))
-        assert eps < 0.01
+    for _ in range(20):
+        A = np.random.randn(10, 5)
+        b = np.sign(np.random.randn(10))
+        for f_grad in (
+                cp.utils.LogLoss(A, b).func_grad,
+                cp.utils.SquareLoss(A, b).func_grad):
+            f = lambda x: f_grad(x)[0]
+            grad = lambda x: f_grad(x)[1]
+            eps = optimize.check_grad(f, grad, np.random.randn(5))
+            assert eps < 0.001
 
 
 @pytest.mark.parametrize("name_solver, solver, tol", all_solvers)

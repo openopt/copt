@@ -64,9 +64,9 @@ for i, beta in enumerate(all_betas):
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_tosls(x0)
-    tos_ls = cp.minimize_TOS(
+    tos_ls = cp.gradient.minimize_TOS2(
         f_grad, x0, g_prox, h_prox,
-        step_size=2 * step_size,
+        step_size=5 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tosls)
     trace_ls = np.array([loss(x, beta) for x in cb_tosls.trace_x])

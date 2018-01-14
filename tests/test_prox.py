@@ -72,7 +72,7 @@ def test_three_inequality():
     """
     n_features = 10
 
-    l1 = cp.utils.L1(1.)
+    l1 = cp.utils.L1Norm(1.)
     groups = np.array_split(np.arange(n_features), 2)
     gl1 = cp.utils.GroupL1(1., groups)
 

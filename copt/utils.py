@@ -39,7 +39,6 @@ def get_lipschitz(A, loss, alpha=0):
     raise NotImplementedError
 
 
-
 class LogLoss:
     def __init__(self, A, b, alpha=0.):
         self.A = splinalg.aslinearoperator(A)
@@ -108,7 +107,7 @@ def ilogloss():
             return -p + np.log(exp_t), (phi - 1) * b
 
 
-class L1:
+class L1Norm:
     def __init__(self, alpha):
         self.alpha = alpha
 
@@ -118,6 +117,37 @@ class L1:
     def prox(self, x, step_size):
         return np.fmax(x - self.alpha * step_size, 0) \
                    - np.fmax(- x - self.alpha * step_size, 0)
+
+
+class NuclearNorm:
+    def __init__(self, alpha, n_rows, n_cols):
+        self.alpha = alpha
+        self.shape = (n_rows, n_cols)
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        return self.alpha * np.sum(np.abs(s))
+
+    def prox(self, x, step_size):
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        s_threshold = L1Norm(self.alpha).prox(s, step_size)
+        return (U * s_threshold).dot(Vt).ravel()
+
+
+class L1Ball:
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+    def __call__(self, x):
+        if np.abs(x).sum() <= self.alpha:
+            return 0
+        else:
+            return np.infty
+
+    def prox(self, x, step_size):
+        return euclidean_proj_l1ball(x, self.alpha)
 
 
 class GroupL1:
@@ -132,10 +162,15 @@ class GroupL1:
     def prox(self, x, step_size):
         out = x.copy()
         for g in self.groups:
+
             norm = np.linalg.norm(x[g])
-            if norm > 0:
-                scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
-                out[g] *= scaling
+            if norm > self.alpha * step_size:
+                out[g] -= step_size * self.alpha * out[g] / norm
+            else:
+                out[g] = 0
+            # if norm > 0:
+            #     scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
+            #     out[g] *= scaling
         return out
 
 
@@ -217,7 +252,7 @@ def euclidean_proj_simplex(v, s=1.):
     return w
 
 
-def euclidean_proj_l1ball(v, s=1):
+def euclidean_proj_l1ball(v, s=1,):
     """ Compute the Euclidean projection on a L1-ball
     Solves the optimisation problem (using the algorithm from [1]):
         min_w 0.5 * || w - v ||_2^2 , s.t. || w ||_1 <= s
@@ -225,7 +260,7 @@ def euclidean_proj_l1ball(v, s=1):
     ----------
     v: (n,) numpy array,
        n-dimensional vector to project
-    s: int, optional, default: 1,
+    s: float, optional, default: 1,
        radius of the L1-ball
     Returns
     -------

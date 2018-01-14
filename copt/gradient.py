@@ -101,7 +101,7 @@ def minimize_PGD(
         grad_fk = grad_next
 
         pbar.set_description('Iteration %i' % it)
-        pbar.set_postfix(tol=certificate, iter=it)
+        pbar.set_postfix(tol=certificate, step_size=step_size, iter=it)
 
         if certificate < tol:
             if verbose:
@@ -237,8 +237,8 @@ def minimize_APGD(
 
 def minimize_TOS(
         f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
-        verbose=0, callback=None, line_search=True, restart=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.5):
+        verbose=0, callback=None, line_search=True, restart=False, step_size=None,
+        max_iter_backtracking=100, backtracking_factor=0.9):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -309,54 +309,44 @@ def minimize_TOS(
         step_size = 1.
 
     y = x0 - h_prox(np.zeros(x0.size), step_size)
+    u = (y - x0) / step_size
     LS_EPS = np.finfo(np.float).eps
-    sigma = step_size
+    z = x0.copy()
+
+    # conjugate of h_prox
+    def h_prox_conj(x, ss):
+        return x - ss * h_prox(x / ss, 1. / ss)
 
     pbar = trange(max_iter)
     for it in pbar:
-        if line_search and it % 100 == 0:
-            sigma *= 2
-        z = h_prox(y, step_size)
-        fk, grad_fk = f_grad(z)
-        x = g_prox(z - (sigma / step_size) * (y - z) - sigma * grad_fk,
-                   sigma)
-        incr = x - z
-        norm_incr = linalg.norm(incr)
-        prox_grad_norm = norm_incr / sigma
+
         if line_search:
-            # if restart and (rho > 10 or rho < 0.1):
-            #     # lets do a restart
-            #     y = z + rho * (y - z)
-            #     step_size = step_size * rho
-            #     rho = 1
-            #     continue
             for it_ls in range(max_iter_backtracking):
-                # if norm_incr < 1e-6:
-                #     print(1)
-                #     break
+                fk, grad_fk = f_grad(z)
+                x = g_prox(z - step_size * (u + grad_fk), step_size)
+                incr = x - z
+                norm_incr = np.linalg.norm(incr)
                 rhs = fk + grad_fk.dot(incr)
-                rhs += (norm_incr ** 2) / (2. * sigma)
+                rhs += (norm_incr ** 2) / (2 * step_size)
                 ls_tol = f_grad(x, return_gradient=False) - rhs
-                if ls_tol <= LS_EPS:
+                if ls_tol <= 0:
                     # step size found
                     break
                 else:
-                    sigma *= backtracking_factor
-                    # if sigma < 0.1:
-                    #     1/0
-                    x = g_prox(
-                        z - (sigma/step_size) * (y - z) - sigma * grad_fk,
-                        sigma)
-                    incr = x - z
-                    norm_incr = linalg.norm(incr)
-            else:
-                warnings.warn("Maximum number of line-search iterations reached")
-            # if it_ls == 0 and abs(ls_tol/fk) > LS_EPS:
-            #     sigma *= 1.07
-        # if prox_grad_norm < 1e-12:
-        #     backtracking = False
+                    step_size *= backtracking_factor
+        else:
+            fk, grad_fk = f_grad(z)
+            x = g_prox(z - step_size * (u + grad_fk), step_size)
+            incr = x - z
+            norm_incr = np.linalg.norm(incr)
+        u_old = u.copy()
+        u = h_prox_conj(u + x / step_size, 1./step_size)
+        z = x - step_size * (u - u_old)
+        incr = x - z
+        # norm_incr = linalg.norm(incr)
+        prox_grad_norm = norm_incr / step_size
         pbar.set_description('Iteration %i' % it)
-        pbar.set_postfix(tol=norm_incr / sigma, iter=it, step_size=sigma)
+        pbar.set_postfix(tol=norm_incr / step_size, iter=it, step_size=step_size)
 
         if callback is not None:
             if callback(x) is False:
@@ -364,7 +354,7 @@ def minimize_TOS(
 
         y += incr
 
-        if prox_grad_norm < tol:
+        if it > 0 and prox_grad_norm < tol:
             success = True
             if verbose:
                 pbar.write("Achieved relative tolerance at iteration %s" % it)
@@ -378,6 +368,7 @@ def minimize_TOS(
     return optimize.OptimizeResult(
         x=x, success=success, nit=it,
         certificate=prox_grad_norm)
+
 
 
 def minimize_PDHG(
