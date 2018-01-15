@@ -338,7 +338,6 @@ def minimize_TOS(
                     break
                 else:
                     step_size *= backtracking_factor
-                    print(it, step_size)
         else:
             fk, grad_fk = f_grad(z)
             x = g_prox(z - step_size * (u + grad_fk), step_size)
