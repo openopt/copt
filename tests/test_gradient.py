@@ -19,7 +19,7 @@ all_solvers = (
     # ['SAGA', cp.minimize_SAGA, 1e-2]
 )
 
-loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss]
+loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
 penalty_funcs = [None]
 
 
@@ -27,9 +27,8 @@ def test_gradient():
     for _ in range(20):
         A = np.random.randn(10, 5)
         b = np.sign(np.random.randn(10))
-        for f_grad in (
-                cp.utils.LogLoss(A, b).func_grad,
-                cp.utils.SquareLoss(A, b).func_grad):
+        for loss in loss_funcs:
+            f_grad = loss(A, b).func_grad
             f = lambda x: f_grad(x)[0]
             grad = lambda x: f_grad(x)[1]
             eps = optimize.check_grad(f, grad, np.random.randn(5))

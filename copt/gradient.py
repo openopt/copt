@@ -237,8 +237,8 @@ def minimize_APGD(
 
 def minimize_TOS(
         f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
-        verbose=0, callback=None, line_search=True, restart=False, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.9):
+        verbose=0, callback=None, line_search=True, step_size=None,
+        max_iter_backtracking=100, backtracking_factor=0.8):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -308,14 +308,19 @@ def minimize_TOS(
         line_search = True
         step_size = 1.
 
-    y = x0 - h_prox(np.zeros(x0.size), step_size)
-    u = (y - x0) / step_size
+    z = h_prox(x0, step_size)
+    # y = x0 - h_prox(np.zeros(x0.size), step_size)
+    # u = (y - x0) / step_size
     LS_EPS = np.finfo(np.float).eps
-    z = x0.copy()
+    # z = x0.copy()
 
     # conjugate of h_prox
     def h_prox_conj(x, ss):
         return x - ss * h_prox(x / ss, 1. / ss)
+
+    fk, grad_fk = f_grad(z)
+    x = g_prox(z - step_size * grad_fk, step_size)
+    u = h_prox_conj(x / step_size, 1. / step_size)
 
     pbar = trange(max_iter)
     for it in pbar:
@@ -326,19 +331,22 @@ def minimize_TOS(
                 x = g_prox(z - step_size * (u + grad_fk), step_size)
                 incr = x - z
                 norm_incr = np.linalg.norm(incr)
-                rhs = fk + grad_fk.dot(incr)
-                rhs += (norm_incr ** 2) / (2 * step_size)
+                rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
                 ls_tol = f_grad(x, return_gradient=False) - rhs
-                if ls_tol <= 0:
+                if ls_tol <= LS_EPS:
                     # step size found
                     break
                 else:
                     step_size *= backtracking_factor
+                    print(it, step_size)
         else:
             fk, grad_fk = f_grad(z)
             x = g_prox(z - step_size * (u + grad_fk), step_size)
             incr = x - z
             norm_incr = np.linalg.norm(incr)
+            rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
+            ls_tol = f_grad(x, return_gradient=False) - rhs
+
         u_old = u.copy()
         u = h_prox_conj(u + x / step_size, 1./step_size)
         z = x - step_size * (u - u_old)
@@ -352,7 +360,7 @@ def minimize_TOS(
             if callback(x) is False:
                 break
 
-        y += incr
+        # y += incr
 
         if it > 0 and prox_grad_norm < tol:
             success = True

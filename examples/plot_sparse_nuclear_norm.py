@@ -38,12 +38,17 @@ Sigma[np.abs(Sigma) >= threshold] = 1
 
 # .. generate some data ..
 
-max_iter = 1000
+max_iter = 5000
 
 n_features = np.multiply(*Sigma.shape)
 n_samples = n_features
 print('#features', n_features)
 A = np.random.randn(n_samples, n_features)
+p = 0.5
+for i in range(1, n_features):
+    A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
+A[:, 0] /= np.sqrt(1 - p ** 2)
+
 sigma = 1.
 b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
 
@@ -51,21 +56,18 @@ b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
 step_size = 1. / cp.utils.get_lipschitz(A, 'square')
-f = cp.utils.SquareLoss(A, b)
+f = cp.utils.HuberLoss(A, b)
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
-all_betas = [0, 1e-2, 1e-1, 5e-1]
+all_betas = [0, 1e-3, 1e-2, 1e-1]
 all_trace_ls, all_trace_nols, all_trace_pdhg_nols, all_trace_pdhg = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg_time = [], [], [], []
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
     G1 = cp.utils.NuclearNorm(beta, *Sigma.shape)
-    # G1 = cp.utils.L1Norm(beta)
     G2 = cp.utils.L1Norm(beta)
-    # G1 = cp.utils.L1(beta)
-    # G2 = cp.utils.L1(beta)
 
     def loss(x):
         return f(x) + G1(x) + G2(x)
@@ -73,8 +75,8 @@ for i, beta in enumerate(all_betas):
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_tosls(x0)
-    tos_ls = cp.gradient.minimize_TOS2(
-        f.func_grad, x0, G2.prox, G1.prox, step_size=10 * step_size,
+    tos_ls = cp.minimize_TOS(
+        f.func_grad, x0, G2.prox, G1.prox, step_size=5 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tosls)
     trace_ls = np.array([loss(x) for x in cb_tosls.trace_x])
@@ -112,10 +114,10 @@ for i, beta in enumerate(all_betas):
         lw=4, marker='o', markevery=100,
         markersize=10)
 
-    # plot_nols, = ax[1, i].plot(
-    #     (all_trace_nols[i] - fmin) / scale,
-    #     lw=4, marker='h', markevery=100,
-    #     markersize=10)
+    plot_nols, = ax[1, i].plot(
+        (all_trace_nols[i] - fmin) / scale,
+        lw=4, marker='h', markevery=100,
+        markersize=10)
 
     # plot_pdhg, = ax[1, i].plot(
     #     (all_trace_pdhg[i] - fmin) / scale,
@@ -129,7 +131,7 @@ for i, beta in enumerate(all_betas):
 
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')
-    # ax[1, i].set_ylim((1e-14, None))
+    ax[1, i].set_ylim((1e-15, None))
     ax[1, i].grid(True)
 
 

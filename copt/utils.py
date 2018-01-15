@@ -26,15 +26,15 @@ def get_lipschitz(A, loss, alpha=0):
 
     A : array-like
 
-    loss : {'logloss', 'square'}
+    loss : {'logloss', 'square', 'huber'}
     """
     if loss == 'logloss':
         s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                          tol=1e-2, maxiter=20)[0]
+                          maxiter=100)[0]
         return 0.25 * (s * s) / A.shape[0] + alpha
-    elif loss == 'square':
+    elif loss in ('huber', 'square'):
         s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                          tol=1e-2, maxiter=20)[0]
+                          maxiter=100)[0]
         return (s * s) / A.shape[0] + alpha
     raise NotImplementedError
 
@@ -42,6 +42,11 @@ def get_lipschitz(A, loss, alpha=0):
 class LogLoss:
     def __init__(self, A, b, alpha=0.):
         self.A = splinalg.aslinearoperator(A)
+        classes = np.sort(np.unique(b))
+        if len(classes) != 2 or classes[0] != -1 or classes[1] != 1:
+            raise ValueError('b should only contain values -1 and 1')
+        if not A.shape[0] == b.size:
+            raise ValueError('Dimensions of A and b do not coincide')
         self.b = b
         self.alpha = 0
         self.intercept = False
@@ -92,6 +97,28 @@ class SquareLoss:
         grad = self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
         return loss, grad
 
+
+class HuberLoss:
+    def __init__(self, A, b, alpha=0, delta=1):
+        self.delta = delta
+        self.A = A
+        self.b = b
+        self.alpha = alpha
+
+    def __call__(self, x):
+        return self.func_grad(x, return_gradient=False)
+
+    def func_grad(self, x, return_gradient=True):
+        z = self.A.dot(x) - self.b
+        idx = np.abs(z) < self.delta
+        loss = 0.5 * np.sum(z[idx] * z[idx])
+        loss += np.sum(self.delta * (np.abs(z[~idx]) - 0.5 * self.delta))
+        loss = loss / z.size + .5 * self.alpha * x.dot(x)
+        if not return_gradient:
+            return loss
+        grad = self.A[idx].T.dot(z[idx]) / self.A.shape[0] + self.alpha * x
+        grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
+        return loss, grad
 
 def ilogloss():
 
