@@ -11,7 +11,7 @@ class Trace:
         self.trace_time = []
         self.start = datetime.now()
         self._counter = 0
-        self.freq = freq
+        self.freq = int(freq)
 
     def __call__(self, x):
         if self._counter % self.freq == 0:

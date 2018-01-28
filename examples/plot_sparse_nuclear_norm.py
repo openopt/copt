@@ -1,8 +1,6 @@
 """
-Group lasso with overlap
-========================
-
-Comparison of solvers with total variation regularization.
+Estimating a sparse and low rank matrix
+=======================================
 
 """
 import numpy as np
@@ -16,7 +14,7 @@ np.random.seed(1)
 
 sigma_2 = 0.6
 N = 200
-d = 20
+d = 30
 blocks = np.array([2 * d /10,1 * d /10,1 * d /10,3 * d /10,3 * d / 10]).astype(np.int)
 epsilon = 10**(-15)
 
@@ -44,10 +42,10 @@ n_features = np.multiply(*Sigma.shape)
 n_samples = n_features
 print('#features', n_features)
 A = np.random.randn(n_samples, n_features)
-p = 0.5
-for i in range(1, n_features):
-    A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
-A[:, 0] /= np.sqrt(1 - p ** 2)
+# p = 0.5
+# for i in range(1, n_features):
+#     A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
+# A[:, 0] /= np.sqrt(1 - p ** 2)
 
 sigma = 1.
 b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
@@ -78,7 +76,7 @@ for i, beta in enumerate(all_betas):
     tos_ls = cp.minimize_TOS(
         f.func_grad, x0, G2.prox, G1.prox, step_size=5 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        callback=cb_tosls)
+        callback=cb_tosls, h_Lipschitz=beta)
     trace_ls = np.array([loss(x) for x in cb_tosls.trace_x])
     all_trace_ls.append(trace_ls)
     all_trace_ls_time.append(cb_tosls.trace_time)
@@ -136,12 +134,12 @@ for i, beta in enumerate(all_betas):
 
 
 plt.gcf().subplots_adjust(bottom=0.15)
-# plt.figlegend(
-#     (plot_tos, plot_nols, plot_pdhg, plot_pdhg_nols),
-#     ('TOS with line search', 'TOS without line search', 'PDHG LS', 'PDHG no LS'), ncol=5,
-#     scatterpoints=1,
-#     loc=(-0.00, -0.0), frameon=False,
-#     bbox_to_anchor=[0.05, 0.01])
+plt.figlegend(
+    (plot_tos, plot_nols),
+    ('TOS with line search', 'TOS without line search'), ncol=5,
+    scatterpoints=1,
+    loc=(-0.00, -0.0), frameon=False,
+    bbox_to_anchor=[0.05, 0.01])
 
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()

@@ -68,7 +68,7 @@ for i, beta in enumerate(all_betas):
         f_grad, x0, g_prox, h_prox,
         step_size=5 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        callback=cb_tosls)
+        callback=cb_tosls, h_Lipschitz=beta)
     trace_ls = np.array([loss(x, beta) for x in cb_tosls.trace_x])
     all_trace_ls.append(trace_ls)
     all_trace_ls_time.append(cb_tosls.trace_time)
@@ -93,7 +93,7 @@ for i, beta in enumerate(all_betas):
         f_grad, x0, g_prox, h_prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1./step_size) / 2, tol=0, line_search=True)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=True)
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)

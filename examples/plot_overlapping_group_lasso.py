@@ -2,11 +2,11 @@
 Group lasso with overlap
 ========================
 
-Comparison of solvers with total variation regularization.
+Comparison of solvers for a least squares with
+overlapping group lasso regularization.
 
 """
 import numpy as np
-from scipy import misc, sparse
 from scipy.sparse import linalg as splinalg
 import pylab as plt
 import copt as cp
@@ -14,8 +14,8 @@ import copt as cp
 np.random.seed(0)
 
 # .. generate some data ..
-n_samples, n_features = 500, 402
-groups = [np.arange(8 * i, 8 * i + 10) for i in range(50)]
+n_samples, n_features = 100, 102
+groups = [np.arange(8 * i, 8 * i + 10) for i in range(12)]
 
 # .. construct a ground truth vector in which ..
 # .. group 4 and 5 are nonzero ..
@@ -77,7 +77,7 @@ for i, beta in enumerate(all_betas):
         f.func_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        line_search=False, callback=cb_tos)
+        line_search=True, callback=cb_tos, h_Lipschitz=beta)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
@@ -90,7 +90,7 @@ for i, beta in enumerate(all_betas):
         f.func_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1./step_size) / 2, tol=0, line_search=False)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
     trace_pdhg = np.array([loss(x) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
@@ -102,7 +102,7 @@ for i, beta in enumerate(all_betas):
         f.func_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg_nols, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1./step_size) / 2, tol=0, line_search=False)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
     trace_pdhg_nols = np.array([loss(x) for x in cb_pdhg_nols.trace_x])
     all_trace_pdhg_nols.append(trace_pdhg_nols)
     all_trace_pdhg_nols_time.append(cb_pdhg_nols.trace_time)
