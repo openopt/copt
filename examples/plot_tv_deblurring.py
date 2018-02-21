@@ -20,7 +20,7 @@ img = misc.imresize(img, 0.15)
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 n_samples = n_features
-max_iter = 1000
+max_iter = 2000
 print('#features', n_features)
 
 # .. compute blurred and noisy image ..
@@ -97,6 +97,7 @@ for i, beta in enumerate(all_betas):
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
+    print(step_size)
 
 # .. plot the results ..
 f, ax = plt.subplots(2, 4, sharey=False)

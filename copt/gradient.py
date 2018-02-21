@@ -236,7 +236,7 @@ def minimize_APGD(
 def minimize_TOS(
         f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, line_search=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.5, h_Lipschitz=None):
+        max_iter_backtracking=100, backtracking_factor=0.7, h_Lipschitz=None):
     """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
@@ -315,6 +315,7 @@ def minimize_TOS(
     ls_tol_old = None
 
     pbar = trange(max_iter)
+    pbar.set_description('TOS')
     for it in pbar:
 
         if line_search:
@@ -344,21 +345,14 @@ def minimize_TOS(
 
         if line_search and h_Lipschitz is not None:
             if h_Lipschitz == 0:
-                step_size = np.sqrt(step_size ** 2 + step_size * (-ls_tol))
+                step_size = step_size * 1.02
             else:
-                step_size = np.sqrt(step_size ** 2 + (2 * step_size / (h_Lipschitz **2)) * (-ls_tol))
-                # if ls_tol_old is not None:
-                #     tt = ls_tol_old / ls_tol
-                #     if tt > 1.:
-                #         step_size = min(tmp_step_size, step_size * tt)
-                # else:
-                #     step_size = tmp_step_size
-                # ls_tol_old = ls_tol
-
-            # print((2 * step_size / h_Lipschitz) * (-ls_tol))
+                quot = h_Lipschitz ** 2
+                tmp = np.sqrt(
+                    step_size ** 2 + (2 * step_size / quot) * (-ls_tol))
+                step_size = min(tmp, step_size * 1.02)
         if it % 100 == 0:
-            pbar.set_description('TOS iter %i' % it)
-            pbar.set_postfix(tol="{0:.2f}".format(certificate), iter=it, step_size=step_size)
+            pbar.set_postfix(tol=certificate, iter=it, step_size=step_size)
 
         if callback is not None:
             if callback(x) is False:
@@ -464,44 +458,47 @@ def minimize_PDHG(
     tau = step_size2
     if tau is None:
         tau = 0.5 * sigma
-    beta = sigma / tau
+    ss_ratio = sigma / tau
 
     pbar = trange(max_iter)
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
+    x_next = x.copy()
 
     for it in pbar:
         y_next = h_prox_conj(y + tau * Ldot(x), tau)
-        if line_search and norm_incr > 1e-8:
+        if line_search:
             tau_next = tau * np.sqrt(1 + theta)
             while True:
                 theta = tau_next / tau
-                sigma = beta * tau_next
+                sigma = ss_ratio * tau_next
                 y_bar = y_next + theta * (y_next - y)
-                x_next = g_prox(x - sigma * (Ldot(y_bar) + grad_fk), sigma)
+                x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
                 incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
-                tmp = (sigma * tau_next) * incr_x ** 2
+                if incr_x <= 1e-10:
+                    break
 
                 f_next, f_grad_next = f_grad(x_next)
+                tmp = (sigma * tau_next) * (incr_x ** 2)
                 tmp += 2 * sigma * (f_next - fk - grad_fk.dot(x_next - x))
-                if tmp <= delta * incr_x ** 2:
+                if tmp <= delta * (incr_x ** 2) + np.finfo(np.float).eps:
                     tau = tau_next
                     break
                 else:
                     tau_next *= 0.5
         else:
             y_bar = 2 * y_next - y
-            x_next = g_prox(x - sigma * (Ldot(y_bar) + grad_fk), sigma)
+            x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
             f_next, f_grad_next = f_grad(x_next)
-
-        x[:] = x_next[:]
-        y[:] = y_next[:]
-        fk, grad_fk = f_next, f_grad_next
 
         if it % 100 == 0:
             norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
             pbar.set_description('PDHG iter %i' % it)
-            pbar.set_postfix(tol=norm_incr, iter=it, step_size=tau, step_size2=sigma)
+            pbar.set_postfix(tol=norm_incr, iter=it, step_size=sigma, step_size2=tau, quot=sigma * tau)
+
+        x[:] = x_next[:]
+        y[:] = y_next[:]
+        fk, grad_fk = f_next, f_grad_next
 
         if norm_incr < tol:
             success = True
@@ -518,116 +515,151 @@ def minimize_PDHG(
     pbar.close()
     return optimize.OptimizeResult(
         x=y, success=success, nit=it, certificate=norm_incr)
-#
-#
-# def minimize_PDHG2(
-#         f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
-#         max_iter=200, verbose=0, callback=None, step_size=1., step_size2=None,
-#         backtracking=True,
-#         max_iter_ls=20):
-#     """Condat-Vu primal-dual splitting method.
-#
-#     This method for optimization problems of the form
-#
-#             minimize_x f(x) + alpha * g(x) + beta * h(L x)
-#
-#     where f is a smooth function and g is a (possibly non-smooth)
-#     function for which the proximal operator is known.
-#
-#     Parameters
-#     ----------
-#     fun : callable
-#         f(x) returns the value of f at x.
-#
-#     f_grad : callable
-#         f_prime(x) returns the gradient of f.
-#
-#     g_prox : callable of the form g_prox(x, alpha)
-#         g_prox(x, alpha) returns the proximal operator of g at x
-#         with parameter alpha.
-#
-#     x0 : array-like
-#         Initial guess
-#
-#     L : ndarray or sparse matrix
-#         Linear operator inside the h term.
-#
-#     max_iter : int
-#         Maximum number of iterations.
-#
-#     verbose : int
-#         Verbosity level, from 0 (no output) to 2 (output on each iteration)
-#
-#     callback : callable
-#         callback function (optional).
-#
-#     Returns
-#     -------
-#     res : OptimizeResult
-#         The optimization result represented as a
-#         ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-#         ``x`` the solution array, ``success`` a Boolean flag indicating if
-#         the optimizer exited successfully and ``message`` which describes
-#         the cause of the termination. See `scipy.optimize.OptimizeResult`
-#         for a description of other attributes.
-#
-#     References
-#     ----------
-#     Condat, Laurent. "A primal-dual splitting method for convex optimization
-#     involving Lipschitzian, proximable and linear composite terms." Journal of
-#     Optimization Theory and Applications (2013).
-#
-#     Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
-#     first-order primal-dual algorithm." Mathematical Programming (2015)
-#     """
-#     x = np.array(x0, copy=True)
-#     n_features = x.size
-#     if L is None:
-#         L = sparse.eye(n_features, n_features, format='dia')
-#     y = L.dot(x)
-#     success = False
-#     if not max_iter_ls > 0:
-#         raise ValueError('Line search iterations need to be greater than 0')
-#
-#     if g_prox is None:
-#         def g_prox(x, step_size): return x
-#     if h_prox is None:
-#         def h_prox(x, step_size): return x
-#
-#     # conjugate of h_prox
-#     def h_prox_conj(x, ss):
-#         return x - ss * h_prox(x / ss, 1. / ss)
-#     # .. main iteration ..
-#     theta = 1.
-#     delta = 0.99
-#     beta = step_size2 / step_size
-#
-#     pbar = trange(max_iter)
-#     for it in pbar:
-#         fk, grad_fk = f_grad(x)
-#         x_next = g_prox(x - step_size * (grad_fk + L.T.dot(y)), step_size)
-#         x_bar = 2 * x_next - x
-#         y_next = h_prox_conj(y + step_size2 * L.dot(x_bar), step_size2)
-#
-#         norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
-#         y[:] = y_next[:]
-#         x[:] = x_next[:]
-#
-#         pbar.set_description('Iteration %i' % it)
-#         pbar.set_postfix(tol=norm_incr, iter=it)
-#
-#         if norm_incr < tol:
-#             success = True
-#             break
-#
-#         if callback is not None:
-#             if callback(x) is False:
-#                 break
-#
-#     if it >= max_iter:
-#         warnings.warn(
-#             "proximal_gradient did not reach the desired tolerance level", RuntimeWarning)
-#
-#     pbar.close()
-#     return optimize.OptimizeResult(
-#         x=x, success=success, nit=it, certificate=norm_incr)
+
+
+
+def minimize_PDHG2(
+        f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
+        max_iter=1000, callback=None, step_size=1., step_size2=None,
+        line_search=True, max_iter_ls=20):
+    """Primal-dual hybrid gradient splitting method.
+
+    This method for optimization problems of the form
+
+            minimize_x f(x) + alpha * g(x) + beta * h(L x)
+
+    where f is a smooth function and g is a (possibly non-smooth)
+    function for which the proximal operator is known.
+
+    Parameters
+    ----------
+    fun : callable
+        f(x) returns the value of f at x.
+
+    f_grad : callable
+        f_prime(x) returns the gradient of f.
+
+    g_prox : callable of the form g_prox(x, alpha)
+        g_prox(x, alpha) returns the proximal operator of g at x
+        with parameter alpha.
+
+    x0 : array-like
+        Initial guess
+
+    L : ndarray or sparse matrix
+        Linear operator inside the h term.
+
+    max_iter : int
+        Maximum number of iterations.
+
+    verbose : int
+        Verbosity level, from 0 (no output) to 2 (output on each iteration)
+
+    callback : callable
+        callback function (optional).
+
+    Returns
+    -------
+    res : OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
+
+    References
+    ----------
+    Condat, Laurent. "A primal-dual splitting method for convex optimization
+    involving Lipschitzian, proximable and linear composite terms." Journal of
+    Optimization Theory and Applications (2013).
+
+    Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
+    first-order primal-dual algorithm." Mathematical Programming (2015)
+    """
+    x = np.array(x0, copy=True)
+    n_features = x.size
+    if L is None:
+        L = sparse.eye(n_features, n_features, format='csr')
+        def Ldot(x): return x
+        Ltdot = Ldot
+    y = L.dot(x)
+    success = False
+    if not max_iter_ls > 0:
+        raise ValueError('Line search iterations need to be greater than 0')
+
+    if g_prox is None:
+        def g_prox(x, step_size): return x
+    if h_prox is None:
+        def h_prox(x, step_size): return x
+
+    # conjugate of h_prox
+    def h_prox_conj(x, ss):
+        return x - ss * h_prox(x / ss, 1. / ss)
+    # .. main iteration ..
+    theta = 1.
+    delta = 0.9
+    sigma = step_size
+    tau = step_size2
+    if tau is None:
+        tau = 0.5 * sigma
+    beta = sigma / tau
+
+    pbar = trange(max_iter)
+    fk, grad_fk = f_grad(x)
+    norm_incr = np.infty
+    x_next = x.copy()
+
+    for it in pbar:
+        if line_search:
+            z = h_prox(x + tau * y, tau)
+            y_next = y + (x - z) / tau
+            if np.linalg.norm(y_next - x_next) < 1e-6:
+                tau_next = tau
+            else:
+                tau_next = tau / np.sqrt(1 + theta)
+            while True:
+                theta = tau / tau_next
+                sigma = beta / tau_next
+                y_bar = y_next + theta * (y_next - y)
+                x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+                incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
+                tmp = (sigma / tau_next) * incr_x ** 2
+
+                f_next, f_grad_next = f_grad(x_next)
+                tmp += 2 * sigma * (f_next - fk - grad_fk.dot(x_next - x))
+                if tmp <= delta * incr_x ** 2 + np.finfo(np.float).eps:
+                    tau = tau_next
+                    break
+                else:
+                    tau_next /= 0.5
+        else:
+            y_next = h_prox_conj(y + tau * Ldot(x), tau)
+            y_bar = 2 * y_next - y
+            x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+            f_next, f_grad_next = f_grad(x_next)
+
+        if it % 100 == 0:
+            norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
+            pbar.set_description('PDHG iter %i' % it)
+            pbar.set_postfix(tol=norm_incr, iter=it, step_size=sigma, step_size2=tau)
+
+        x[:] = x_next[:]
+        y[:] = y_next[:]
+        fk, grad_fk = f_next, f_grad_next
+
+        if norm_incr < tol:
+            success = True
+            break
+
+        if callback is not None:
+            if callback(x_next) is False:
+                break
+
+    if it >= max_iter:
+        warnings.warn(
+            "proximal_gradient did not reach the desired tolerance level", RuntimeWarning)
+
+    pbar.close()
+    return optimize.OptimizeResult(
+        x=y, success=success, nit=it, certificate=norm_incr)
