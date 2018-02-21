@@ -201,7 +201,12 @@ class GroupL1:
         return out
 
 
+class SimplexConstraint:
+    def __init__(self, s=1):
+        self.s = s
 
+    def prox(self, x, step_size):
+        return euclidean_proj_simplex(x, self.s)
 #
 # def grad_squareloss(A, b, alpha=0.):
 #     """
