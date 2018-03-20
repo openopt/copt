@@ -13,7 +13,7 @@ Philosophy
    * Few dependencies, pure Python library for easy deployment.
 
 .. warning::
-    This library is a work in progress, expect some rough edges.
+    This library is a work in progress, not much to see yet.
 
 
 Optimization algorithms

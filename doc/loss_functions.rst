@@ -9,5 +9,5 @@ Smooth loss functions:
 .. autosummary::
    :toctree: generated/
 
-    copt.utils.logloss
-    copt.utils.squareloss
+    copt.utils.LogLoss
+    copt.utils.SquareLoss

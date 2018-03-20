@@ -20,7 +20,7 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
-def load_rcv1(md5_check=True, subset='all'):
+def load_rcv1(md5_check=True, subset='full'):
     """
     Download and return the RCV1 dataset.
 
@@ -157,7 +157,9 @@ def load_covtype():
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/covtype.libsvm.binary.scale.bz2'
         urllib.request.urlretrieve(url, file_name)
         print('Finished downloading')
-    return datasets.load_svmlight_file(file_name)
+    X, y = datasets.load_svmlight_file(file_name)
+    y-= 1  # original labels are [1, 2]
+    return X, y
 
 
 def load_kdd10(md5_check=True):

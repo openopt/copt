@@ -39,6 +39,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.napoleon',
     'sphinx.ext.ifconfig',
+    'sphinx.ext.mathjax',
     'sphinx.ext.linkcode',
     'sphinx_gallery.gen_gallery',
 ]
@@ -47,13 +48,6 @@ autosummary_generate = True
 autodoc_default_flags = ['members', 'inherited-members']
 
 
-# pngmath / imgmath compatibility layer for different sphinx versions
-import sphinx
-from distutils.version import LooseVersion
-if LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
-    extensions.append('sphinx.ext.pngmath')
-else:
-    extensions.append('sphinx.ext.imgmath')
 
 sphinx_gallery_conf = {
     # path to your examples scripts

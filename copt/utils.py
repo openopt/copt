@@ -40,15 +40,39 @@ def get_lipschitz(A, loss, alpha=0):
 
 
 class LogLoss:
+    """Logistic loss
+
+    .. math::
+        -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\sigma(a_i^T x)) + (1 - b_i) \\log(1 - \sigma(a_i^T x))
+
+    where :math:`\sigma` is the sigmoid function :math:`\sigma(t) = 1/(1 + e^{-t})`.
+
+    for a numerically stable computation of the logistic loss, we use the identities
+
+    .. math::
+        \log(\sigma(t)) = \\begin{cases} -\log(1 + e^{-t}) &\\text{ if $t \geq 0$}\\\\
+        t - \log(1 + e^t) &\\text{ otherwise}\end{cases}
+
+        \log(1 - \sigma(t)) = \\begin{cases} -t -\log(1 + e^{-t}) &\\text{ if $t \geq 0$}\\\\
+        - \log(1 + e^t) &\\text{ otherwise}\end{cases}
+
+
+    """
     def __init__(self, A, b, alpha=0.):
+        if A is None:
+            A = splinalg.LinearOperator(
+                shape=(b.size, b.size), matvec=lambda x: x,
+                rmatvec=lambda x: x)
         self.A = splinalg.aslinearoperator(A)
-        classes = np.sort(np.unique(b))
-        if len(classes) != 2 or classes[0] != -1 or classes[1] != 1:
-            raise ValueError('b should only contain values -1 and 1')
+        if np.max(b) > 1 or np.min(b) < 0:
+            raise ValueError('b can only contain values between 0 and 1 ')
+        # classes = np.sort(np.unique(b))
+        # if len(classes) != 2 or classes[0] != -1 or classes[1] != 1:
+        #     raise ValueError('b should only contain values -1 and 1')
         if not A.shape[0] == b.size:
             raise ValueError('Dimensions of A and b do not coincide')
         self.b = b
-        self.alpha = 0
+        self.alpha = alpha
         self.intercept = False
 
     def __call__(self, x):
@@ -60,17 +84,19 @@ class LogLoss:
         else:
             x_, c = x, 0.
         z = self.A.matvec(x_) + c
-        yz = self.b * z
-        idx = yz > 0
-        loss = np.zeros_like(yz)
-        loss[idx] = np.log(1 + np.exp(-yz[idx]))
-        loss[~idx] = (-yz[~idx] + np.log(1 + np.exp(yz[~idx])))
-        loss = loss.mean() + .5 * self.alpha * x_.dot(x_)
+        idx = z > 0
+        loss_vec = np.zeros_like(z)
+        loss_vec[idx] = np.log(1 + np.exp(-z[idx])) + (1 - self.b[idx]) * z[idx]
+        loss_vec[~idx] = np.log(1 + np.exp(z[~idx])) - self.b[~idx] * z[~idx]
+        loss = loss_vec.mean() + .5 * self.alpha * x_.dot(x_)
 
         if not return_gradient:
             return loss
-        z = special.expit(self.b * z)
-        z0 = (z - 1) * self.b
+        z0 = np.zeros_like(z)
+        tmp = np.exp(-z[idx])
+        z0[idx] = - tmp / (1 + tmp) + 1 - self.b[idx]
+        tmp = np.exp(z[~idx])
+        z0[~idx] = tmp / (1 + tmp) - self.b[~idx]
         grad = self.A.rmatvec(z0) / self.A.shape[0] + self.alpha * x_
         grad_c = z0.mean()
         if self.intercept:
@@ -81,6 +107,10 @@ class LogLoss:
 
 class SquareLoss:
     def __init__(self, A, b, alpha=0):
+        if A is None:
+            A = splinalg.LinearOperator(
+                shape=(b.size, b.size), matvec=lambda x: x,
+                rmatvec=lambda x: x)
         self.A = splinalg.aslinearoperator(A)
         self.b = b
         self.alpha = alpha
