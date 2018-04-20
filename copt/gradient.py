@@ -351,7 +351,7 @@ def minimize_TOS(
                 tmp = np.sqrt(
                     step_size ** 2 + (2 * step_size / quot) * (-ls_tol))
                 step_size = min(tmp, step_size * 1.02)
-        if it % 100 == 0:
+        if it % 10 == 0:
             pbar.set_postfix(tol=certificate, iter=it, step_size=step_size)
 
         if callback is not None:
@@ -515,7 +515,6 @@ def minimize_PDHG(
     pbar.close()
     return optimize.OptimizeResult(
         x=y, success=success, nit=it, certificate=norm_incr)
-
 
 
 def minimize_PDHG2(

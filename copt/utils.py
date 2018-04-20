@@ -1,8 +1,9 @@
 import numpy as np
-from scipy import sparse, special, linalg
+from scipy import sparse, linalg
 from scipy.sparse import linalg as splinalg
 from numba import njit
 from datetime import datetime
+from sklearn.utils.extmath import safe_sparse_dot
 
 
 class Trace:
@@ -60,15 +61,10 @@ class LogLoss:
     """
     def __init__(self, A, b, alpha=0.):
         if A is None:
-            A = splinalg.LinearOperator(
-                shape=(b.size, b.size), matvec=lambda x: x,
-                rmatvec=lambda x: x)
-        self.A = splinalg.aslinearoperator(A)
+            A = sparse.eye(b.size, b.size, format='csr')
+        self.A = A
         if np.max(b) > 1 or np.min(b) < 0:
             raise ValueError('b can only contain values between 0 and 1 ')
-        # classes = np.sort(np.unique(b))
-        # if len(classes) != 2 or classes[0] != -1 or classes[1] != 1:
-        #     raise ValueError('b should only contain values -1 and 1')
         if not A.shape[0] == b.size:
             raise ValueError('Dimensions of A and b do not coincide')
         self.b = b
@@ -83,12 +79,12 @@ class LogLoss:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.
-        z = self.A.matvec(x_) + c
+        z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
         idx = z > 0
         loss_vec = np.zeros_like(z)
         loss_vec[idx] = np.log(1 + np.exp(-z[idx])) + (1 - self.b[idx]) * z[idx]
         loss_vec[~idx] = np.log(1 + np.exp(z[~idx])) - self.b[~idx] * z[~idx]
-        loss = loss_vec.mean() + .5 * self.alpha * x_.dot(x_)
+        loss = loss_vec.mean() + .5 * self.alpha * safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
 
         if not return_gradient:
             return loss
@@ -97,7 +93,8 @@ class LogLoss:
         z0[idx] = - tmp / (1 + tmp) + 1 - self.b[idx]
         tmp = np.exp(z[~idx])
         z0[~idx] = tmp / (1 + tmp) - self.b[~idx]
-        grad = self.A.rmatvec(z0) / self.A.shape[0] + self.alpha * x_
+        grad = self.A.T.dot(z0) / self.A.shape[0] + self.alpha * x_.T
+        grad = np.asarray(grad).ravel()
         grad_c = z0.mean()
         if self.intercept:
             return np.concatenate((grad, [grad_c]))
@@ -108,10 +105,7 @@ class LogLoss:
 class SquareLoss:
     def __init__(self, A, b, alpha=0):
         if A is None:
-            A = splinalg.LinearOperator(
-                shape=(b.size, b.size), matvec=lambda x: x,
-                rmatvec=lambda x: x)
-        self.A = splinalg.aslinearoperator(A)
+            A = sparse.eye(b.size, b.size, format='csr')
         self.b = b
         self.alpha = alpha
 
@@ -268,7 +262,7 @@ class SimplexConstraint:
 #         grad = A.rmatvec(z) / A.shape[0] + alpha * x
 #         return loss, grad
 #     return _squareloss_grad
-#
+
 
 def euclidean_proj_simplex(v, s=1.):
     """ Compute the Euclidean projection on a positive simplex

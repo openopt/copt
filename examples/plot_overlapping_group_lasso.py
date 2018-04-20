@@ -8,39 +8,32 @@ overlapping group lasso regularization.
 """
 import numpy as np
 from scipy.sparse import linalg as splinalg
+from sklearn import datasets
 import pylab as plt
 import copt as cp
 
 np.random.seed(0)
 
 # .. generate some data ..
-n_samples, n_features = 100, 102
-groups = [np.arange(8 * i, 8 * i + 10) for i in range(12)]
+A, b = cp.datasets.load_rcv1()
+n_samples, n_features = A.shape
+groups = [np.arange(8 * i, 8 * i + 10) for i in range(n_features // 8)]
 
-# .. construct a ground truth vector in which ..
-# .. group 4 and 5 are nonzero ..
-ground_truth = np.zeros(n_features)
-ground_truth[groups[4]] = 1
-ground_truth[groups[5]] = 0.5
-
-max_iter = 5000
-print('#features', n_features)
-
-A = np.random.randn(n_samples, n_features)
-p = 0.5
-for i in range(1, n_features):
-    A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
-A[:, 0] /= np.sqrt(1 - p ** 2)
-sigma = 1.
-b = A.dot(ground_truth) + sigma * np.random.randn(n_samples)
+# A = np.random.randn(n_samples, n_features)
+# p = 0.5
+# for i in range(1, n_features):
+#     A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
+# A[:, 0] /= np.sqrt(1 - p ** 2)
+# sigma = 1.
+# b = A.dot(ground_truth) + sigma * np.random.randn(n_samples)
 
 
 # .. compute the step-size ..
-s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                  maxiter=max_iter)[0]
+max_iter = 5000
+s = splinalg.svds(A, k=1, return_singular_vectors=False)[0]
 step_size = 1. / cp.utils.get_lipschitz(A, 'logloss')
 print(step_size)
-f = cp.utils.LogLoss(A, np.sign(b))
+f = cp.utils.LogLoss(A, b)
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
@@ -53,8 +46,6 @@ for i, beta in enumerate(all_betas):
     groups1, groups2 = groups[::2], groups[1::2].copy()
     G1 = cp.utils.GroupL1(beta, groups1)
     G2 = cp.utils.GroupL1(beta, groups2)
-    # G1 = cp.utils.L1(beta)
-    # G2 = cp.utils.L1(beta)
 
     def loss(x):
         return f(x) + G1(x) + G2(x)
@@ -112,12 +103,12 @@ for i, beta in enumerate(all_betas):
 fig, ax = plt.subplots(2, 4, sharey=False)
 xlim = [0.02, 0.02, 0.1]
 for i, beta in enumerate(all_betas):
-    ax[0, i].set_title(r'$\lambda=%s$' % beta)
-    ax[0, i].set_title(r'$\lambda=%s$' % beta)
-    ax[0, i].plot(out_img[i])
-    ax[0, i].plot(ground_truth)
-    ax[0, i].set_xticks(())
-    ax[0, i].set_yticks(())
+    # ax[0, i].set_title(r'$\lambda=%s$' % beta)
+    # ax[0, i].set_title(r'$\lambda=%s$' % beta)
+    # ax[0, i].plot(out_img[i])
+    # ax[0, i].plot(ground_truth)
+    # ax[0, i].set_xticks(())
+    # ax[0, i].set_yticks(())
 
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
     scale = 1. # all_trace_ls[i][0] - fmin

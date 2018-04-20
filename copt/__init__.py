@@ -5,3 +5,4 @@ from .randomized import minimizelp_SAGA, minimize_BCD
 from . import datasets
 from . import tv_prox
 from . import utils
+from . import frank_wolfe

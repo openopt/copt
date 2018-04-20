@@ -20,6 +20,56 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
+def load_madelon(md5_check=True, subset='full'):
+    """
+    Download and return the RCV1 dataset.
+
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
+
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
+
+    Parameters
+    ----------
+    md5_check: bool
+        Whether to do an md5 check on the downloaded files.
+
+    Returns
+    -------
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 0 or 1.
+    """
+    import h5py
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    file_path = os.path.join(DATA_DIR, 'madelon.hdf5')
+    if not os.path.exists(file_path):
+        print('RCV1 dataset is not present in data folder. Downloading it ...')
+        url = 'https://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/madelon.hdf5'
+        urllib.request.urlretrieve(url, file_path)
+        print('Finished downloading')
+    f = h5py.File(file_path, 'r')
+    X_train = np.asarray(f['X_train'])
+    y_train = np.array(f['y_train'])
+
+    if subset == 'train':
+        return X_train, y_train
+
+    X_test = np.asarray(f['X_test'])
+    y_test = np.array(f['y_test'])
+
+    if subset == 'test':
+        return X_test, y_test
+    elif subset == 'full':
+        X = np.vstack((X_train, X_test))
+        y = np.concatenate((y_train, y_test))
+        return X, y
+    else:
+        raise ValueError("subset '%s' not implemented, must be one of ('train', 'test', 'full')." % subset)
+
+
+
 def load_rcv1(md5_check=True, subset='full'):
     """
     Download and return the RCV1 dataset.
@@ -38,7 +88,7 @@ def load_rcv1(md5_check=True, subset='full'):
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     import h5py
     if not os.path.exists(DATA_DIR):
@@ -54,6 +104,8 @@ def load_rcv1(md5_check=True, subset='full'):
     X_train_indices = np.array(f['X_train.indices'])
     X_train_indptr = np.array(f['X_train.indptr'])
     y_train = np.array(f['y_train'])
+    y_train = ((y_train + 1) // 2).astype(np.int)
+
     X_train = sparse.csr_matrix(
         (X_train_data, X_train_indices, X_train_indptr))
 
@@ -64,6 +116,8 @@ def load_rcv1(md5_check=True, subset='full'):
     X_test_indices = np.array(f['X_test.indices'])
     X_test_indptr = np.array(f['X_test.indptr'])
     y_test = np.array(f['y_test'])
+    y_test = ((y_test + 1) // 2).astype(np.int)
+
     X_test = sparse.csr_matrix(
         (X_test_data, X_test_indices, X_test_indptr))
 
@@ -95,7 +149,7 @@ def load_url(md5_check=True):
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
     file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
@@ -146,7 +200,7 @@ def load_covtype():
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
     if not os.path.exists(DATA_DIR):
@@ -180,7 +234,7 @@ def load_kdd10(md5_check=True):
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
     if not os.path.exists(DATA_DIR):
@@ -219,7 +273,7 @@ def load_kdd12(md5_check=True):
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
     if not os.path.exists(DATA_DIR):
@@ -258,7 +312,7 @@ def load_criteo(md5_check=True):
     -------
     X : scipy.sparse CSR matrix
     y: numpy array
-        Labels, only takes values 1 or -1.
+        Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
     if not os.path.exists(DATA_DIR):
@@ -296,5 +350,3 @@ def load_criteo(md5_check=True):
         X = sparse.csr_matrix((X_data, X_indices, X_indptr))
         y = np.load(data_target)
     return X, y
-
-
