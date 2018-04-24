@@ -12,7 +12,7 @@ b = A.dot(w) + np.random.randn(n_samples)
 
 # we will use a logistic loss, which can't have values
 # greater than 1
-b /= np.max(np.abs(b))
+b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
@@ -31,7 +31,7 @@ penalty_funcs = [None]
 def test_gradient():
     for _ in range(20):
         A = np.random.randn(10, 5)
-        b = np.random.randn(10)
+        b = np.random.rand(10)
         for loss in loss_funcs:
             f_grad = loss(A, b).func_grad
             f = lambda x: f_grad(x)[0]

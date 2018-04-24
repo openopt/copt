@@ -108,17 +108,18 @@ class SquareLoss:
             A = sparse.eye(b.size, b.size, format='csr')
         self.b = b
         self.alpha = alpha
+        self.A = A
 
     def __call__(self, x):
-        z = self.A.matvec(x) - self.b
+        z = self.A.dot(x) - self.b
         return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
 
     def func_grad(self, x, return_gradient=True):
-        z = self.A.matvec(x) - self.b
+        z = self.A.dot(x) - self.b
         loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
         if not return_gradient:
             return loss
-        grad = self.A.rmatvec(z) / self.A.shape[0] + self.alpha * x
+        grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x
         return loss, grad
 
 

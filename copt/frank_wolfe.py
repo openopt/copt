@@ -1,23 +1,25 @@
 import numpy as np
+from numba import njit
 from scipy import sparse
 from tqdm import trange
 
 
 def backtrack(
         f_t, f_grad, x_t, d_t, g_t, L_t,
-        gamma_max=1, ratio_increase=2., ratio_decrease=0.99,
+        gamma_max=1, ratio_increase=2., ratio_decrease=0.999,
         max_iter=100):
+    d2_t = d_t.T.dot(d_t)[0, 0]
     for i in range(max_iter):
-        d2_t = d_t.T.dot(d_t)[0, 0]
-        step_size = min(g_t / (d2_t * L_t), 1)
+        step_size = min(g_t / (d2_t * L_t), gamma_max)
         rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
-        if f_grad(x_t + step_size * d_t)[0] <= rhs:
+        f_next, grad_next = f_grad(x_t + step_size * d_t)
+        if f_next <= rhs:
             if i == 0:
                 L_t *= ratio_decrease
             break
     else:
         L_t *= ratio_increase
-    return min(g_t / (d_t.T.dot(d_t)[0, 0] * L_t), gamma_max), L_t
+    return step_size, L_t, f_next, grad_next
 
 
 # do line search by bysection
@@ -53,8 +55,8 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
     if callback is not None:
         callback(x_t)
     pbar = trange(max_iter)
+    f_t, grad = f_grad(x_t)
     for it in pbar:
-        f_t, grad = f_grad(x_t)
         idx_oracle = np.argmax(np.abs(grad))
         mag_oracle = alpha * np.sign(-grad[idx_oracle])
         d_t = - x_t.copy()
@@ -63,7 +65,7 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
-            step_size, L_t = backtrack(
+            step_size, L_t, f_next, grad_next = backtrack(
                 f_t, f_grad, x_t, d_t, g_t, L_t)
         elif ls_strategy == 'Lipschitz':
             step_size = min(g_t / (d_t.T.dot(d_t)[0, 0] * L_t), 1)
@@ -74,6 +76,7 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
         if it % 10 == 0:
             pbar.set_postfix(tol=g_t, iter=it, step_size=step_size)
 
+        f_t,  grad = f_next, grad_next
         if callback is not None:
             callback(x_t)
     return x_t
@@ -97,7 +100,7 @@ def minimize_FW_L1_precond(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
-            step_size, L_t = backtrack(
+            step_size, L_t, f_next, grad_next = backtrack(
                 f_t, f_grad, x_t, d_t, g_t, L_t)
         elif ls_strategy == 'Lipschitz':
             step_size = min(g_t / (d_t.T.dot(d_t)[0, 0] * L_t), 1)
@@ -112,7 +115,7 @@ def minimize_FW_L1_precond(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
             callback(x_t)
 
         # estimated diagonal of hessian
-        f_next, grad_next = f_grad(x_t)
+        # f_next, grad_next = f_grad(x_t)
         hess_i = np.abs((grad_next - grad)[idx_oracle] / (step_size * d_t[idx_oracle].toarray()))
         n = n_diag[idx_oracle]
         h_diag[idx_oracle] = (n/(n+1.)) * h_diag[idx_oracle] + (1./(n+1)) * hess_i
@@ -123,6 +126,17 @@ def minimize_FW_L1_precond(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
 
     return x_t
 
+@njit
+def max_active(grad, active_set):
+    max_grad_active = - np.inf
+    max_grad_active_idx = -1
+    for j in range(active_set.size):
+        if active_set[j]:
+            if np.abs(grad[j]) > max_grad_active:
+                max_grad_active = np.abs(grad[j])
+                max_grad_active_idx = j
+    return max_grad_active, max_grad_active_idx
+
 
 
 def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
@@ -132,22 +146,23 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         callback(x_t)
 
     n_features = x0.shape[0]
-    idx_support = np.zeros(n_features, dtype=np.bool)
+    active_set = np.zeros(n_features, dtype=np.bool)
 
     pbar = trange(max_iter)
+    f_t, grad = f_grad(x_t)
     for it in pbar:
-        f_t, grad = f_grad(x_t)
+        # f_t, grad = f_grad(x_t)
         idx_oracle = np.argmax(np.abs(grad))
         mag_oracle = alpha * np.sign(-grad[idx_oracle])
-        d_t = sparse.lil_matrix((n_features, 1))
+        d_t = sparse.dok_matrix((n_features, 1))
         d_t[idx_oracle, 0] += mag_oracle
 
         if it > 0:
-            grad_activeset = grad[idx_support]
-            idx_away = np.argmax(np.abs(grad_activeset))
-            mag_away = alpha * np.sign(-grad_activeset[idx_away])
-            gamma_max = np.abs(x_t[idx_support][idx_away][0, 0]) / alpha
-            d_t[idx_away, 0] -= mag_away
+            max_grad_active, max_grad_active_idx = max_active(
+                grad, active_set)
+            mag_away = alpha * np.sign(grad[max_grad_active_idx])
+            gamma_max = np.abs(x_t[max_grad_active_idx, 0]) / alpha
+            d_t[max_grad_active_idx, 0] -= mag_away
             if gamma_max == 0:
                 raise ValueError
         else:
@@ -155,10 +170,9 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
 
         g_t = - d_t.T.dot(grad).ravel()[0]
         if g_t <= tol:
-            1/0
             break
         if ls_strategy == 'adaptive':
-            step_size, L_t = backtrack(
+            step_size, L_t, f_next, grad_next = backtrack(
                 f_t, f_grad, x_t, d_t, g_t, L_t, gamma_max=gamma_max)
         elif ls_strategy == 'Lipschitz':
             step_size = min(g_t / (d_t.T.dot(d_t)[0, 0] * L_t), 1)
@@ -168,20 +182,27 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
 
         # was it a drop step?
         x_t[idx_oracle, 0] += step_size * mag_oracle
-        idx_support[idx_oracle] = (x_t[idx_oracle, 0] != 0)
+        if x_t[idx_oracle, 0] != 0:
+            active_set[idx_oracle] = True
 
         if it > 0:
-            x_t[idx_away, 0] -= step_size * mag_away
-            idx_support[idx_away] = (x_t[idx_away, 0] != 0)
+            x_t[max_grad_active_idx, 0] -= step_size * mag_away
+            if x_t[max_grad_active_idx, 0] != 0:
+                active_set[max_grad_active_idx] = True
+
+        f_t, grad = f_next, grad_next
 
         # x_t += step_size * d_t
         if it % 10 == 0:
-            pbar.set_postfix(tol=g_t, iter=it, step_size=step_size, gamma_max=gamma_max)
+            pbar.set_postfix(
+                tol=g_t, iter=it, Lipschitz=L_t)
 
         if callback is not None:
             callback(x_t)
-    1/0
+    pbar.close()
     return x_t
+
+
 
 
 def minimize_AFW_L1XXX(
