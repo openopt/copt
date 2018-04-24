@@ -4,17 +4,16 @@ Estimating a sparse and low rank matrix
 
 """
 import numpy as np
-from scipy import misc, sparse
 from scipy.sparse import linalg as splinalg
 import pylab as plt
 import copt as cp
 
-#### Generate synthetic data ####
+# .. Generate synthetic data ..
 np.random.seed(1)
 
 sigma_2 = 0.6
-N = 200
-d = 30
+N = 100
+d = 20
 blocks = np.array([2 * d /10,1 * d /10,1 * d /10,3 * d /10,3 * d / 10]).astype(np.int)
 epsilon = 10**(-15)
 
@@ -27,8 +26,7 @@ for k in range(len(blocks)):
     Sigma[blck:blck+blocks[k],blck:blck+blocks[k]] = np.dot(v, v.T)
     blck = blck + blocks[k]
 X = np.random.multivariate_normal(mu, Sigma + epsilon * np.eye(d) ,N) + sigma_2 * np.random.randn(N,d);
-Sigma_hat = np.cov(X.T);
-# Sigma_hat = Sigma + sigma_2 * np.random.randn(d,d);
+Sigma_hat = np.cov(X.T)
 
 threshold = 1e-5
 Sigma[np.abs(Sigma) < threshold] = 0
@@ -42,10 +40,6 @@ n_features = np.multiply(*Sigma.shape)
 n_samples = n_features
 print('#features', n_features)
 A = np.random.randn(n_samples, n_features)
-# p = 0.5
-# for i in range(1, n_features):
-#     A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
-# A[:, 0] /= np.sqrt(1 - p ** 2)
 
 sigma = 1.
 b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
@@ -117,19 +111,10 @@ for i, beta in enumerate(all_betas):
         lw=4, marker='h', markevery=100,
         markersize=10)
 
-    # plot_pdhg, = ax[1, i].plot(
-    #     (all_trace_pdhg[i] - fmin) / scale,
-    #     lw=4, marker='^', markevery=100,
-    #     markersize=10)
-    #
-    # plot_pdhg_nols, = ax[1, i].plot(
-    #     (all_trace_pdhg_nols[i] - fmin) / scale,
-    #     lw=4, marker='d', markevery=100,
-    #     markersize=10)
-
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')
     ax[1, i].set_ylim((1e-15, None))
+    ax[1, i].set_xlim((0, 2000))
     ax[1, i].grid(True)
 
 
