@@ -13,7 +13,7 @@ import copt as cp
 n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
-y = np.sign(np.random.randn(n_samples))
+y = np.random.rand(n_samples)
 
 logloss = cp.utils.LogLoss(X, y).func_grad
 cb_pgd = cp.utils.Trace()

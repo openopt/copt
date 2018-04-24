@@ -15,25 +15,31 @@ import copt as cp
 np.random.seed(0)
 
 # .. generate some data ..
-A, b = cp.datasets.load_rcv1()
-n_samples, n_features = A.shape
+
+n_samples, n_features = 100, 100
 groups = [np.arange(8 * i, 8 * i + 10) for i in range(n_features // 8)]
 
-# A = np.random.randn(n_samples, n_features)
-# p = 0.5
-# for i in range(1, n_features):
-#     A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
-# A[:, 0] /= np.sqrt(1 - p ** 2)
-# sigma = 1.
-# b = A.dot(ground_truth) + sigma * np.random.randn(n_samples)
+
+ground_truth = np.zeros(n_features)
+ground_truth[groups[4]] = 1
+ground_truth[groups[5]] = 0.5
+
+
+A = np.random.randn(n_samples, n_features)
+p = 0.5
+for i in range(1, n_features):
+    A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
+A[:, 0] /= np.sqrt(1 - p ** 2)
+sigma = 1.
+b = A.dot(ground_truth) + sigma * np.random.randn(n_samples)
 
 
 # .. compute the step-size ..
 max_iter = 5000
 s = splinalg.svds(A, k=1, return_singular_vectors=False)[0]
-step_size = 1. / cp.utils.get_lipschitz(A, 'logloss')
+step_size = 1. / cp.utils.get_lipschitz(A, 'square')
 print(step_size)
-f = cp.utils.LogLoss(A, b)
+f = cp.utils.SquareLoss(A, b)
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
