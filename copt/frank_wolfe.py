@@ -163,13 +163,16 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
             if gamma_max == 0:
                 raise ValueError
         else:
-            x_t[idx_oracle] = mag_oracle
+            g_t = np.abs(grad[idx_oracle] * mag_oracle)
+            d2_t = mag_oracle * mag_oracle
+            step_size = min(g_t / (d2_t * L_t), 1.)
+            x_t[idx_oracle] = step_size * mag_oracle
             f_t, grad = f_grad(x_t)
             active_set[idx_oracle] = True
             continue
 
         # TODO: avoid definition of d_t
-        g_t = - (-grad[max_grad_active_idx] * mag_away + grad[idx_oracle] * mag_oracle)
+        g_t = np.abs(grad[max_grad_active_idx] * mag_away) + np.abs(grad[idx_oracle] * mag_oracle)
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
@@ -187,18 +190,10 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
                 f_next, grad_next = f_grad(x_next)
                 if f_next <= rhs:
                     if i == 0:
-                        L_t *= 2
+                        L_t *= 0.999
                     break
             else:
-                L_t *= 0.999
-
-            # step_size, L_t, f_next, grad_next = backtrack(
-            #     f_t, f_grad, x_t, d_t, g_t, L_t, gamma_max=gamma_max)
-        elif ls_strategy == 'Lipschitz':
-            step_size = min(g_t / (d_t.T.dot(d_t)[0, 0] * L_t), 1)
-        elif ls_strategy == 'approx_ls':
-            step_size = approx_ls(
-                f_t, f_grad, x_t, d_t, g_t, L_t)
+                L_t *= 2
 
         # was it a drop step?
         x_t[idx_oracle] += step_size * mag_oracle
