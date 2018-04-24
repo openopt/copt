@@ -100,14 +100,13 @@ for i, beta in enumerate(all_betas):
     ax[0, i].set_yticks(())
 
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
-    scale = 1 #all_trace_ls[i][0] - fmin
     plot_tos, = ax[1, i].plot(
-        (all_trace_ls[i] - fmin) / scale,
+        all_trace_ls[i] - fmin,
         lw=4, marker='o', markevery=100,
         markersize=10)
 
     plot_nols, = ax[1, i].plot(
-        (all_trace_nols[i] - fmin) / scale,
+        all_trace_nols[i] - fmin,
         lw=4, marker='h', markevery=100,
         markersize=10)
 
