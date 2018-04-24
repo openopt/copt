@@ -3,6 +3,7 @@ Estimating a sparse and low rank matrix
 =======================================
 
 """
+
 import numpy as np
 from scipy.sparse import linalg as splinalg
 import pylab as plt

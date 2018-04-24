@@ -51,6 +51,7 @@ all_betas = [0, 5e-7, 1e-6, 5e-6]
 all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
+    print('Iteration %s, beta %s', (i, beta))
 
     def g_prox(x, step_size):
         return cp.tv_prox.prox_tv1d_cols(
