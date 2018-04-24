@@ -8,7 +8,7 @@ install:
 - python setup.py develop
 script:
 - NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
-- cd doc && make html && cd ..
+- cd doc && make html &> log.txt && cd ..
 after_success: coveralls
 cache:
   directories:

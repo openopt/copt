@@ -169,8 +169,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
             continue
 
         # TODO: avoid definition of d_t
-        g_t = - (grad[max_grad_active_idx] * mag_away + grad[idx_oracle] * mag_oracle)
-        print(g_t)
+        g_t = - (-grad[max_grad_active_idx] * mag_away + grad[idx_oracle] * mag_oracle)
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
@@ -184,7 +183,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
                 step_size = min(g_t / (d2_t * L_t), gamma_max)
                 rhs = f_t - step_size * g_t + 0.5 * (step_size ** 2) * L_t * d2_t
                 x_next[idx_oracle] = x_t[idx_oracle] + step_size * mag_oracle
-                x_next[max_grad_active_idx] = x_t[idx_oracle] - step_size * mag_away
+                x_next[max_grad_active_idx] = x_t[max_grad_active_idx] - step_size * mag_away
                 f_next, grad_next = f_grad(x_next)
                 if f_next <= rhs:
                     if i == 0:
