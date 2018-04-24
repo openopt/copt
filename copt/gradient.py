@@ -1,7 +1,9 @@
 import warnings
+import os
 import numpy as np
 from scipy import optimize, linalg, sparse
 from tqdm import trange
+DISABLE_TQDM = bool(os.environ.get('DISABLE_TQDM', False))
 
 
 def minimize_PGD(
@@ -71,7 +73,7 @@ def minimize_PGD(
     # .. allows for infinite or floating point max_iter ..
 
     fk, grad_fk = f_grad(x)
-    pbar = trange(max_iter)
+    pbar = trange(max_iter, disable=DISABLE_TQDM)
     for it in pbar:
         if callback is not None:
             callback(x)
@@ -314,7 +316,7 @@ def minimize_TOS(
     u = np.zeros_like(x)
     ls_tol_old = None
 
-    pbar = trange(max_iter)
+    pbar = trange(max_iter, disable=DISABLE_TQDM)
     pbar.set_description('TOS')
     for it in pbar:
 
@@ -460,7 +462,7 @@ def minimize_PDHG(
         tau = 0.5 * sigma
     ss_ratio = sigma / tau
 
-    pbar = trange(max_iter)
+    pbar = trange(max_iter, disable=DISABLE_TQDM)
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
     x_next = x.copy()
@@ -604,7 +606,7 @@ def minimize_PDHG2(
         tau = 0.5 * sigma
     beta = sigma / tau
 
-    pbar = trange(max_iter)
+    pbar = trange(max_iter, disable=DISABLE_TQDM)
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
     x_next = x.copy()
