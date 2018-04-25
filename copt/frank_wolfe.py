@@ -212,6 +212,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
 
         if it > 0:
             if max_grad_active_idx == 2 * n_features:
+                pass
             # x_t[max_grad_active_idx] -= step_size * mag_away
             if away_zero:
                 weight_zero -= step_size
