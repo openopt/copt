@@ -127,14 +127,22 @@ def minimize_FW_L1_precond(f_grad, x0, alpha, L_t=1, max_iter=100, tol=1e-12,
     return x_t
 
 @njit
-def max_active(grad, active_set):
+def max_active(grad, active_set, n_features):
     max_grad_active = - np.inf
     max_grad_active_idx = -1
-    for j in range(active_set.size):
+    for j in range(n_features):
         if active_set[j]:
-            if np.abs(grad[j]) > max_grad_active:
-                max_grad_active = np.abs(grad[j])
+            if grad[j] > max_grad_active:
+                max_grad_active = grad[j]
                 max_grad_active_idx = j
+    for j in range(n_features, 2 * n_features):
+        if active_set[j]:
+            if - grad[j] > max_grad_active:
+                max_grad_active = - grad[j]
+                max_grad_active_idx = j + n_features
+    if max_grad_active < 0:
+        max_grad_active = 0
+        max_grad_active_idx = 2 * n_features
     return max_grad_active, max_grad_active_idx
 
 
@@ -145,9 +153,9 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         callback(x_t)
 
     n_features = x0.shape[0]
-    active_set = np.zeros(n_features, dtype=np.bool)
-    weight_zero = 1.
-    away_zero = True
+    active_set = np.zeros(2 * n_features + 1, dtype=np.bool)
+    active_set_weights = np.zeros(2 * n_features + 1, dtype=np.float)
+    active_set_weights[-1] = 1.
     LS_EPS = np.finfo(np.float).eps
 
     pbar = trange(max_iter)
@@ -155,28 +163,22 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
     for it in pbar:
         # f_t, grad = f_grad(x_t)
         idx_oracle = np.argmax(np.abs(grad))
-        mag_oracle = alpha * np.sign(-grad[idx_oracle])
+        if grad[idx_oracle] < 0:
+            idx_oracle += n_features
 
         max_grad_active, max_grad_active_idx = max_active(
             grad, active_set)
-        if max_grad_active < 0:
-            print('Away is zero')
-            away_zero = True
-            mag_away = 0
-            max_grad_active_idx = 0
-            gamma_max = weight_zero
-        else:
-            mag_away = alpha * np.sign(grad[max_grad_active_idx])
-            gamma_max = x_t[max_grad_active_idx] / alpha
-            if gamma_max == 0:
-                raise ValueError
+        mag_away = alpha * np.sign(n_features - max_grad_active_idx)
+        gamma_max = x_t[max_grad_active_idx] / alpha
+        if gamma_max == 0:
+            raise ValueError
 
         g_t = grad[max_grad_active_idx] * mag_away - grad[idx_oracle] * mag_oracle
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
             if idx_oracle == max_grad_active_idx:
-                d2_t = (2 * alpha) ** 2
+                raise ValueError
             else:
                 d2_t = 2 * alpha ** 2
 
