@@ -154,26 +154,32 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
 
     n_features = x0.shape[0]
     active_set = np.zeros(2 * n_features + 1, dtype=np.bool)
-    active_set_weights = np.zeros(2 * n_features + 1, dtype=np.float)
-    active_set_weights[-1] = 1.
+    # active_set_weights = np.zeros(2 * n_features + 1, dtype=np.float)
+    # active_set_weights[-1] = 1.
     LS_EPS = np.finfo(np.float).eps
+    weight_zero = 1.
 
     pbar = trange(max_iter)
     f_t, grad = f_grad(x_t)
     for it in pbar:
         # f_t, grad = f_grad(x_t)
         idx_oracle = np.argmax(np.abs(grad))
+        if grad[idx_oracle] > 0:
+            idx_oracle += n_features
+        mag_oracle = alpha * np.sign(-grad[idx_oracle % n_features])
         if grad[idx_oracle] < 0:
             idx_oracle += n_features
 
         max_grad_active, max_grad_active_idx = max_active(
             grad, active_set)
         mag_away = alpha * np.sign(n_features - max_grad_active_idx)
+        XXX no sense for zero weight
         gamma_max = x_t[max_grad_active_idx] / alpha
         if gamma_max == 0:
             raise ValueError
 
-        g_t = grad[max_grad_active_idx] * mag_away - grad[idx_oracle] * mag_oracle
+        g_t = grad[max_grad_active_idx % n_features] * mag_away - \
+              grad[idx_oracle % n_features] * mag_oracle
         if g_t <= tol:
             break
         if ls_strategy == 'adaptive':
@@ -186,8 +192,8 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
             for i in range(100):
                 step_size = min(g_t / (d2_t * L_t), gamma_max)
                 rhs = f_t - step_size * g_t + 0.5 * (step_size ** 2) * L_t * d2_t
-                x_next[idx_oracle] = x_t[idx_oracle] + step_size * mag_oracle
-                x_next[max_grad_active_idx] = x_t[max_grad_active_idx] - step_size * mag_away
+                x_next[idx_oracle % n_features] = x_t[idx_oracle % n_features] + step_size * mag_oracle
+                x_next[max_grad_active_idx % n_features] = x_t[max_grad_active_idx % n_features] - step_size * mag_away
                 f_next, grad_next = f_grad(x_next)
                 if f_next <= rhs + LS_EPS:
                     if i == 0:
@@ -202,9 +208,10 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         # was it a drop step?
         # x_t[idx_oracle] += step_size * mag_oracle
         x_t = x_next
-        active_set[idx_oracle] = (x_t[idx_oracle] != 0)
+        active_set[idx_oracle] = (x_t[idx_oracle % n_features] != 0)
 
         if it > 0:
+            if max_grad_active_idx == 2 * n_features:
             # x_t[max_grad_active_idx] -= step_size * mag_away
             if away_zero:
                 weight_zero -= step_size
