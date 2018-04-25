@@ -9,7 +9,7 @@ install:
 script:
 - NUMBA_DISABLE_JIT=1 DISABLE_TQDM=1 py.test -v --cov=copt
 - cd doc
-- travis_wait DISABLE_TQDM=1 make SPHINXOPTS=-v html
+- DISABLE_TQDM=1 travis_wait make SPHINXOPTS=-v html
 - cd ..
 after_success: coveralls
 cache:

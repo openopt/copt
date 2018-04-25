@@ -173,7 +173,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         max_grad_active, max_grad_active_idx = max_active(
             grad, active_set)
         mag_away = alpha * np.sign(n_features - max_grad_active_idx)
-        XXX no sense for zero weight
+        # XXX no sense for zero weight
         gamma_max = x_t[max_grad_active_idx] / alpha
         if gamma_max == 0:
             raise ValueError
