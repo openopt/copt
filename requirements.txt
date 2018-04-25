@@ -1,5 +1,5 @@
 numpy
-numba
+numba==0.37.0
 scipy
 pytest
 pytest-cov
