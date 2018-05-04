@@ -294,6 +294,7 @@ def minimize_TOS(
     Davis, Damek, and Wotao Yin. "A three-operator splitting scheme and its optimization applications."
     arXiv preprint arXiv:1504.01032 (2015) https://arxiv.org/abs/1504.01032
 
+    Pedregosa, Fabian, and Gauthier Gidel. "Adaptive Three Operator Splitting." arXiv preprint arXiv:1804.02339 (2018).
     """
     success = False
     if not max_iter_backtracking > 0:

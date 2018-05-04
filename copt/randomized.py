@@ -277,3 +277,110 @@ def minimize_BCD(
     return optimize.OptimizeResult(
         x=xk, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
         certificate=certificate)
+
+
+
+def minimizelp_SAGATOS(
+        f_deriv, n_samples, x0, alpha=0, beta=0, step_size=None,
+        max_iter=500, tol=1e-6, verbose=False, callback=None):
+    """Stochastic average gradient augmented (SAGA) algorithm.
+
+    The SAGA algorithm can solve optimization problems of the form
+
+        argmin_{x \in R^p} \sum_{i}^n_samples f(A_i^T x, b_i) + alpha * ||x||_2^2 +
+                                            + beta * ||x||_1
+
+    Parameters
+    ----------
+    f, g
+        loss functions. g can be none
+
+    x0: np.ndarray or None, optional
+        Starting point for optimization.
+
+    step_size: float or None, optional
+        Step size for the optimization. If None is given, this will be
+        estimated from the function f.
+
+    n_jobs: int
+        Number of threads to use in the optimization. A number higher than 1
+        will use the Asynchronous SAGA optimization method described in
+        [Pedregosa et al., 2017]
+
+    max_iter: int
+        Maximum number of passes through the data in the optimization.
+
+    tol: float
+        Tolerance criterion. The algorithm will stop whenever the norm of the
+        gradient mapping (generalization of the gradient for nonsmooth optimization)
+        is below tol.
+
+    verbose: bool
+        Verbosity level. True might print some messages.
+
+    trace: bool
+        Whether to trace convergence of the function, useful for plotting and/or
+        debugging. If ye, the result will have extra members trace_func,
+        trace_time.
+
+    Returns
+    -------
+    opt: OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
+
+    References
+    ----------
+    The SAGA algorithm was originally described in
+
+        Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
+        incremental gradient method with support for non-strongly convex composite
+        objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
+        Information Processing Systems. 2014.
+
+    The implemented has some improvements with respect to the original version, such as
+    better support for sparse datasets and is described in
+
+        Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
+        Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
+        Neural Information Processing Systems (NIPS) 2017.
+    """
+    # convert any input to CSR sparse matrix representation. In the future we might want to
+    # implement also a version for dense data (numpy arrays) to better exploit data locality
+    x = np.ascontiguousarray(x0).copy()
+    n_features = x0.size
+
+    if step_size is None:
+        # then need to use line search
+        raise ValueError
+    # we encapsulate it inside an array so it can be passed by reference
+    # and modified inside the iteration loop
+    step_size = np.array([step_size])
+
+    epoch_iteration = _factory_SAGA_epoch(f_deriv, alpha, beta)
+
+    # .. initialize memory terms ..
+    memory_gradient = np.zeros(n_samples)
+    gradient_average = np.zeros(n_features)
+    idx = np.arange(n_samples)
+    success = False
+    nit = 0
+    for nit in range(max_iter):
+        x_old = x.copy()
+        np.random.shuffle(idx)
+        epoch_iteration(x, idx, memory_gradient, gradient_average, step_size)
+
+        if callback is not None:
+            callback(x)
+
+        if np.abs(x - x_old).sum() < tol:
+            success = True
+            break
+    message = ''
+    return optimize.OptimizeResult(
+        x=x, success=success, nit=nit,
+        message=message)
