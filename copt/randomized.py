@@ -8,9 +8,46 @@ from tqdm import tqdm
 # def njit(*args, **kwargs):
 #     return lambda x: x
 
-def minimizelp_SAGA(
-        f_deriv, n_samples, x0, alpha=0, beta=0, step_size=None,
-        max_iter=500, tol=1e-6, verbose=False, callback=None):
+@njit
+def f_squared(p, y):
+    # squared loss
+    return 0.5 * ((y - p) ** 2)
+
+
+@njit
+def deriv_squared(p, y):
+    # derivative of squared loss
+    return - (y - p)
+
+
+@njit
+def f_logistic(p, y):
+    # logistic loss
+    # same as in lightning
+    p *= y
+    if p > 0:
+        return np.log(1 + np.exp(-p))
+    else:
+        return -p + np.log(1 + np.exp(p))
+
+
+@njit
+def deriv_logistic(p, y):
+    # derivative of logistic loss
+    # same as in lightning (with minus sign)
+    p *= y
+    if p > 0:
+        phi = 1. / (1 + np.exp(-p))
+    else:
+        exp_t = np.exp(p)
+        phi = exp_t / (1. + exp_t)
+    return (phi - 1) * y
+
+
+
+def minimize_SAGALP_L1(
+        f_deriv, A, b, x0, alpha=0, beta=0, step_size=None,
+        max_iter=500, tol=1e-6, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
@@ -29,11 +66,6 @@ def minimizelp_SAGA(
     step_size: float or None, optional
         Step size for the optimization. If None is given, this will be
         estimated from the function f.
-
-    n_jobs: int
-        Number of threads to use in the optimization. A number higher than 1
-        will use the Asynchronous SAGA optimization method described in
-        [Pedregosa et al., 2017]
 
     max_iter: int
         Maximum number of passes through the data in the optimization.
@@ -63,15 +95,7 @@ def minimizelp_SAGA(
 
     References
     ----------
-    The SAGA algorithm was originally described in
-
-        Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
-        incremental gradient method with support for non-strongly convex composite
-        objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
-        Information Processing Systems. 2014.
-
-    The implemented has some improvements with respect to the original version, such as
-    better support for sparse datasets and is described in
+    This variant of the SAGA algorithm is described in
 
         Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
         Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
@@ -80,49 +104,58 @@ def minimizelp_SAGA(
     # convert any input to CSR sparse matrix representation. In the future we might want to
     # implement also a version for dense data (numpy arrays) to better exploit data locality
     x = np.ascontiguousarray(x0).copy()
-    n_features = x0.size
+    n_samples, n_features = A.shape
 
     if step_size is None:
         # then need to use line search
         raise ValueError
-    # we encapsulate it inside an array so it can be passed by reference
-    # and modified inside the iteration loop
-    step_size = np.array([step_size])
 
-    epoch_iteration = _factory_SAGA_epoch(f_deriv, alpha, beta)
+    # .. estimate diagonal elements of the reweighting matrix (D) ..
+    print('Computing D matrix')
+    tmp = A.copy()
+    tmp.data[:] = 1.
+    d = np.array(tmp.sum(0), dtype=np.float).ravel()
+    idx = (d != 0)
+    d[idx] = n_samples / d[idx]
+    d[~idx] = 0.
+    print('Done')
+
+    epoch_iteration = _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta)
 
     # .. initialize memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
     idx = np.arange(n_samples)
     success = False
-    nit = 0
+    if callback is not None:
+        callback(x)
     for nit in range(max_iter):
         x_old = x.copy()
         np.random.shuffle(idx)
-        epoch_iteration(x, idx, memory_gradient, gradient_average, step_size)
-
+        epoch_iteration(
+                x, idx, memory_gradient, gradient_average, step_size)
         if callback is not None:
             callback(x)
 
         if np.abs(x - x_old).sum() < tol:
             success = True
             break
+        print(nit, np.linalg.norm(x - x_old))
     message = ''
     return optimize.OptimizeResult(
         x=x, success=success, nit=nit,
         message=message)
 
 
-def _factory_SAGA_epoch(f_deriv, alpha, beta, line_search=False):
+def _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta):
 
     if beta > 0:
         @njit
-        def prox(x, step_size):
-            np.fmax(x - beta * step_size, 0) - np.fmax(- x - beta * step_size, 0)
+        def prox(x, ss):
+            return np.fmax(x - beta * ss, 0) - np.fmax(- x - beta * ss, 0)
     elif beta == 0:
         @njit
-        def prox(x, step_size):
+        def prox(x, ss):
             return x
     else:
         raise ValueError
@@ -134,48 +167,31 @@ def _factory_SAGA_epoch(f_deriv, alpha, beta, line_search=False):
 
     @njit(nogil=True)
     def _saga_algorithm(
-            x, memory_gradient, gradient_average, step_size, max_iter, tol,
-            trace, trace_x):
-
-        # .. SAGA estimate of the gradient ..
-        cert = np.inf
-        it = 0
-        trace_idx = 0
-        sample_indices = np.arange(n_samples)
+            x, idx, memory_gradient, gradient_average, step_size):
 
         # .. inner iteration ..
-        for it in range(max_iter):
-            np.random.shuffle(sample_indices)
+        for i in idx:
+            p = 0.
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                p += x[j_idx] * A_data[j]
 
-            for i in sample_indices:
-                p = 0.
-                for j in range(A_indptr[i], A_indptr[i+1]):
-                    j_idx = A_indices[j]
-                    p += x[j_idx] * A_data[j]
+            grad_i = f_deriv(p, b[i])
 
-                grad_i = partial_gradient(p, b[i])
-                old_grad = memory_gradient[i]
-                memory_gradient[i] = grad_i
+            # .. update coefficients ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                delta = (grad_i - memory_gradient[i]) * A_data[j]
+                incr = delta + d[j_idx] * (gradient_average[j_idx] + alpha * x[j_idx])
+                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
-                # do line-search
 
-                # .. update coefficients ..
-                for j in range(A_indptr[i], A_indptr[i+1]):
-                    j_idx = A_indices[j]
-                    delta = (grad_i - old_grad) * A_data[j]
-                    incr = delta + d[j_idx] * (gradient_average[j_idx] + f_alpha * x[j_idx])
-                    x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
-                    gradient_average[j_idx] += delta / n_samples
+            # .. update memory terms ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+            memory_gradient[i] = grad_i
 
-            tmp = trace_x[trace_idx] - x
-            incr = np.sqrt((tmp * tmp).sum())
-            if incr < tol:
-                break
-            if trace:
-                trace_idx = it
-        trace_x[trace_idx] = x
-
-        return it, cert
 
     return _saga_algorithm
 
@@ -280,8 +296,8 @@ def minimize_BCD(
 
 
 
-def minimizelp_SAGATOS(
-        f_deriv, n_samples, x0, alpha=0, beta=0, step_size=None,
+def minimize_SVRGLP_L1(
+        f_deriv, A, b, x0, alpha=0, beta=0, step_size=None,
         max_iter=500, tol=1e-6, verbose=False, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -352,35 +368,103 @@ def minimizelp_SAGATOS(
     # convert any input to CSR sparse matrix representation. In the future we might want to
     # implement also a version for dense data (numpy arrays) to better exploit data locality
     x = np.ascontiguousarray(x0).copy()
-    n_features = x0.size
+    n_samples, n_features = A.shape
 
     if step_size is None:
         # then need to use line search
         raise ValueError
-    # we encapsulate it inside an array so it can be passed by reference
-    # and modified inside the iteration loop
-    step_size = np.array([step_size])
 
-    epoch_iteration = _factory_SAGA_epoch(f_deriv, alpha, beta)
+    # .. estimate diagonal elements of the reweighting matrix (D) ..
+    tmp = A.copy()
+    tmp.data[:] = 1.
+    d = np.array(tmp.sum(0), dtype=np.float).ravel()
+    idx = (d != 0)
+    d[idx] = n_samples / d[idx]
+    d[~idx] = 0.
+
+    epoch_iteration, full_grad = _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta)
 
     # .. initialize memory terms ..
-    memory_gradient = np.zeros(n_samples)
-    gradient_average = np.zeros(n_features)
     idx = np.arange(n_samples)
     success = False
     nit = 0
+    if callback is not None:
+        callback(x)
     for nit in range(max_iter):
-        x_old = x.copy()
+        x_snapshot = x.copy()
+        gradient_average = full_grad(x_snapshot)
         np.random.shuffle(idx)
-        epoch_iteration(x, idx, memory_gradient, gradient_average, step_size)
-
+        # if callback is not None:
+        #     callback(x)
+        epoch_iteration(
+            x, x_snapshot, idx, gradient_average, step_size)
         if callback is not None:
             callback(x)
 
-        if np.abs(x - x_old).sum() < tol:
+        if np.abs(x - x_snapshot).sum() < tol:
             success = True
             break
+        print(nit, np.linalg.norm(x - x_snapshot))
     message = ''
     return optimize.OptimizeResult(
         x=x, success=success, nit=nit,
         message=message)
+
+
+def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
+
+    if beta > 0:
+        @njit
+        def prox(x, ss):
+            return np.fmax(x - beta * ss, 0) - np.fmax(- x - beta * ss, 0)
+    elif beta == 0:
+        @njit
+        def prox(x, ss):
+            return x
+    else:
+        raise ValueError
+
+    A_data = A.data
+    A_indices = A.indices
+    A_indptr = A.indptr
+    n_samples, n_features = A.shape
+
+    @njit
+    def full_grad(x):
+        grad = np.zeros(x.size)
+        for i in range(n_samples):
+            p = 0.
+            for j in range(A_indptr[i], A_indptr[i + 1]):
+                j_idx = A_indices[j]
+                p += x[j_idx] * A_data[j]
+            grad_i = f_deriv(p, b[i])
+            # .. gradient estimate (XXX difference) ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                grad[j_idx] += grad_i * A_data[j] / n_samples
+        return grad
+
+    @njit(nogil=True)
+    def _svrg_algorithm(
+            x, x_snapshot, idx, gradient_average, step_size):
+
+        # .. inner iteration ..
+        for i in idx:
+            p = 0.
+            p_old = 0.
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                p += x[j_idx] * A_data[j]
+                p_old += x_snapshot[j_idx] * A_data[j]
+
+            grad_i = f_deriv(p, b[i])
+            old_grad = f_deriv(p_old, b[i])
+
+            # .. update coefficients ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                delta = (grad_i - old_grad) * A_data[j]
+                incr = delta + d[j_idx] * (gradient_average[j_idx] + alpha * x[j_idx])
+                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+
+    return _svrg_algorithm, full_grad

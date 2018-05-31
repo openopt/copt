@@ -40,6 +40,25 @@ def get_lipschitz(A, loss, alpha=0):
     raise NotImplementedError
 
 
+def get_max_lipschitz(A, loss, alpha=0):
+    """Estimate the max Lipschitz constant (as appears in
+    many stochastic methods).
+
+    A : array-like
+
+    loss : {'logloss', 'square', 'huber'}
+    """
+    from sklearn.utils.extmath import row_norms
+    max_squared_sum = row_norms(A, squared=True).max()
+
+    if loss == 'logloss':
+        return 0.25 * max_squared_sum + alpha
+    elif loss in ('huber', 'square'):
+        raise NotImplementedError
+    raise NotImplementedError
+
+
+
 class LogLoss:
     """Logistic loss
 

@@ -178,8 +178,8 @@ def load_url(md5_check=True):
         np.save(data_indices, X.indices)
         np.save(data_indptr, X.indptr)
         np.save(data_target, y)
-
-    return
+    raise NotImplementedError
+    return X, y
 
 
 def load_covtype():
