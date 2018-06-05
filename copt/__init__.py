@@ -1,4 +1,4 @@
-__version__ = '0.4.0-dev'
+__version__ = '0.4.0'
 
 from .gradient import minimize_PGD, minimize_TOS, minimize_APGD, minimize_PDHG
 from .randomized import minimize_SAGALP_L1, minimize_BCD
