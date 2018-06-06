@@ -47,11 +47,11 @@ def loss(x, beta):
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
-all_betas = [0, 5e-7, 1e-6, 5e-6]
+all_betas = [0, 1e-6, 5e-6]
 all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
-    print('Iteration %s, beta %s', (i, beta))
+    print('Iteration %s, beta %s' % (i, beta))
 
     def g_prox(x, step_size):
         return cp.tv_prox.prox_tv1d_cols(
@@ -75,18 +75,6 @@ for i, beta in enumerate(all_betas):
     all_trace_ls_time.append(cb_tosls.trace_time)
     out_img.append(tos_ls.x.reshape(img.shape))
 
-    cb_tos = cp.utils.Trace()
-    x0 = np.zeros(n_features)
-    cb_tos(x0)
-    tos = cp.minimize_TOS(
-        f_grad, x0, g_prox, h_prox,
-        step_size=step_size,
-        max_iter=max_iter, tol=1e-14, verbose=1,
-        line_search=False, callback=cb_tos)
-    trace_nols = np.array([loss(x, beta) for x in cb_tos.trace_x])
-    all_trace_nols.append(trace_nols)
-    all_trace_nols_time.append(cb_tos.trace_time)
-
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg(x0)
@@ -94,14 +82,13 @@ for i, beta in enumerate(all_betas):
         f_grad, x0, g_prox, h_prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, line_search=True)
+        step_size2=(1. / step_size) / 2, tol=0)
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
-    print(step_size)
 
 # .. plot the results ..
-f, ax = plt.subplots(2, 4, sharey=False)
+f, ax = plt.subplots(2, 3, sharey=False)
 xlim = [0.02, 0.02, 0.1]
 for i, beta in enumerate(all_betas):
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
@@ -110,16 +97,11 @@ for i, beta in enumerate(all_betas):
     ax[0, i].set_xticks(())
     ax[0, i].set_yticks(())
 
-    fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
+    fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_pdhg[i]))
     scale = all_trace_ls[i][0] - fmin
     plot_tos, = ax[1, i].plot(
         (all_trace_ls[i] - fmin) / scale,
         lw=4, marker='o', markevery=100,
-        markersize=10)
-
-    plot_nols, = ax[1, i].plot(
-        (all_trace_nols[i] - fmin) / scale,
-        lw=4, marker='h', markevery=100,
         markersize=10)
 
     plot_pdhg, = ax[1, i].plot(
@@ -130,12 +112,13 @@ for i, beta in enumerate(all_betas):
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')
     ax[1, i].set_ylim((1e-14, None))
+    ax[1, i].set_xlim((0, 1500))
     ax[1, i].grid(True)
 
 
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(
-    (plot_tos, plot_nols, plot_pdhg),
+    (plot_tos, plot_pdhg),
     ('TOS with line search', 'TOS without line search', 'PDHG'), ncol=5,
     scatterpoints=1,
     loc=(-0.00, -0.0), frameon=False,
