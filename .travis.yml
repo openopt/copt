@@ -12,16 +12,3 @@ after_success: coveralls
 cache:
   directories:
     - $HOME/copt_data
-deploy:
-  provider: s3
-  access_key_id: "AKIAIRIF5Q2ZCELOKNSQ"
-  secret_access_key:
-    secure: lRzToohoQEaKOchajvJuHXV62Wdjs1VL4Xu1SOZ5EGCTxHXwVNQN+wAlYRJEacDuLv0HtMOdOUqKnbpaqafk3zdK/X7qzh1QAPwoc6qKLZapmbGW0r3v5HoCXYNy5Ke5M5bIGtUHOFhX7kwMfMnU11UCm6WzjeYALCzeYzboVkOfeGgrJqRKJ38b5v2WKKl3BZGs10necVhhk626guGQyPUwHGii19pixFGPrtA+qKDWqukHpIZvQISNmT0K+/E2oo1dyZkisBbzMmNOerEIWSou002V0QYCRkJjkPQSB55lJJ0dimqmTN6vaqkipF0MtEBAncaZluulF6siiLk4Rzytu/RAf5kcNBwRaJmLFzVYC5bXosA4LjDYPpRLGcUhx08akiiaXn9aiWU5MhKyZETR/IYLxmFfQfUyiyCaoZlyFnaVDmzffUQcYAwMMXNyemQfz6obq6Os2RdMTGHE/hwWuiSTDI4JtNqzVO5K4ty0WFnKy5bWcBuR71bMBQ124cloqeLS55qw+6BZzkCxQ21qRWOMsnqQ3e08ysFJflyLpj11QGTucnPeLZpihEmJeKVX7nI0FiLGkqS+dX10vrrpaJLrK4SaB2HTvDbQ246n3yCnrL899PlLTdv1gxucLYVaAWcHV1Fe4ksc9vj/cmitHmN1+GDXBGSv82VbW20=
-  bucket: copt.bianp.net
-  region: eu-west-1
-  skip_cleanup: true
-  acl: public_read
-  local_dir: doc/_build/html
-  on:
-    branch: master
-    condition: $TRAVIS_PYTHON_VERSION = "3.5"
