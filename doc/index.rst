@@ -12,17 +12,15 @@ Philosophy
    * State of the art performance, with emphasis on large-scale optimization.
    * Few dependencies, pure Python library for easy deployment.
 
-.. warning::
-    This library is a work in progress, not much to see yet.
-
 
 Optimization algorithms
 -----------------------
 .. autosummary::
 
+C-OPT contains implementations of different optimization methods. These are categorized as:
 
- * :doc:`/gradient`
- * Incremental methods
+ * :ref:`gradient_methods`: :meth:`proximal gradient descent <copt.minimize_PGD>` and its :meth:`accelerated variant <copt.minimize_APGD>`, :meth:`three operator splitting <copt.minimize_TOS>`
+ * :ref:`incremental_methods`: :meth:`SAGA <copt.minimize_SAGALP_L1>`
 
 
 
@@ -31,6 +29,11 @@ Optimization algorithms
     :glob:
 
     gradient.rst
+    incremental.rst
     loss_functions.rst
     datasets.rst
     auto_examples/index.rst
+
+
+.. warning::
+    This library is a work in progress, expect some rough edges.

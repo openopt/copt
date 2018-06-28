@@ -1,3 +1,5 @@
+.. _gradient_methods:
+
 Gradient-based methods
 ======================
 

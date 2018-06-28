@@ -2,9 +2,11 @@
 Group Lasso regularization
 ==========================
 
-Comparison of solvers with total variation regularization.
+Comparison of solvers for problems with a group lasso regularization.
 
-The group lasso penalty enters the optimization through its proximal operator, which is implemented in copt through the function prox of object :ref:`cp.utils.GroupL1`. 
+The group lasso regularization enters the optimization through
+its proximal operator, which is implemented in copt through the
+function prox of object :ref:`cp.utils.GroupL1`.
 
 """
 import numpy as np
