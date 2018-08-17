@@ -9,6 +9,7 @@ Philosophy
 ----------
 
    * Modular, general-purpose optimization library.
+   * API similar to that of scipy.optimize.
    * State of the art performance, with emphasis on large-scale optimization.
    * Few dependencies, pure Python library for easy deployment.
 
