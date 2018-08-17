@@ -250,11 +250,9 @@ def minimize_TOS(
 
     Parameters
     ----------
-    fun : callable
-        f(x) returns the value of f at x.
-
-    fun_deriv : callable or None
-        f_prime(x) returns the gradient of f.
+    f_grad: callable
+         Returns the function value and gradient of the objective function.
+         With return_gradient=False, returns only the function value.
 
     g_prox : callable or None
         g_prox(x, alpha, *args) returns the proximal operator of g at xa
