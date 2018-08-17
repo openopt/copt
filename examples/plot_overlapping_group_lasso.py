@@ -62,7 +62,7 @@ for i, beta in enumerate(all_betas):
     tos_ls = cp.minimize_TOS(
         f.func_grad, x0, G1.prox, G2.prox, step_size=3 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        callback=cb_tosls)
+        callback=cb_tosls, h_Lipschitz=beta)
     trace_ls = np.array([loss(x) for x in cb_tosls.trace_x])
     all_trace_ls.append(trace_ls)
     all_trace_ls_time.append(cb_tosls.trace_time)
@@ -74,7 +74,7 @@ for i, beta in enumerate(all_betas):
         f.func_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        line_search=True, callback=cb_tos, h_Lipschitz=beta)
+        line_search=True, callback=cb_tos)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
@@ -109,12 +109,12 @@ for i, beta in enumerate(all_betas):
 fig, ax = plt.subplots(2, 4, sharey=False)
 xlim = [0.02, 0.02, 0.1]
 for i, beta in enumerate(all_betas):
-    # ax[0, i].set_title(r'$\lambda=%s$' % beta)
-    # ax[0, i].set_title(r'$\lambda=%s$' % beta)
-    # ax[0, i].plot(out_img[i])
-    # ax[0, i].plot(ground_truth)
-    # ax[0, i].set_xticks(())
-    # ax[0, i].set_yticks(())
+    ax[0, i].set_title(r'$\lambda=%s$' % beta)
+    ax[0, i].set_title(r'$\lambda=%s$' % beta)
+    ax[0, i].plot(out_img[i])
+    ax[0, i].plot(ground_truth)
+    ax[0, i].set_xticks(())
+    ax[0, i].set_yticks(())
 
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
     scale = 1. # all_trace_ls[i][0] - fmin

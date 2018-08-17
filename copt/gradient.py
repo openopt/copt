@@ -73,7 +73,7 @@ def minimize_PGD(
     # .. allows for infinite or floating point max_iter ..
 
     fk, grad_fk = f_grad(x)
-    pbar = trange(max_iter, disable=DISABLE_TQDM)
+    pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         if callback is not None:
             callback(x)
@@ -112,7 +112,7 @@ def minimize_PGD(
             break
     else:
         warnings.warn(
-            "proximal_gradient did not reach the desired tolerance level",
+            "minimize_PGD did not reach the desired tolerance level",
             RuntimeWarning)
     pbar.close()
     return optimize.OptimizeResult(
@@ -226,7 +226,7 @@ def minimize_APGD(
         it += 1
     if it >= max_iter:
         warnings.warn(
-            "proximal_gradient did not reach the desired tolerance level",
+            "minimize_APGD did not reach the desired tolerance level",
             RuntimeWarning)
 
     return optimize.OptimizeResult(
@@ -291,9 +291,12 @@ def minimize_TOS(
 
     References
     ----------
-    * Davis, Damek, and Wotao Yin. "A three-operator splitting scheme and its optimization applications." Set-Valued and Variational Analysis, 2017. https://doi.org/10.1007/s11228-017-0421-z
+    * Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and its optimization
+      applications." <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued and Variational Analysis, 2017.
 
-    * Pedregosa, Fabian, and Gauthier Gidel. "Adaptive Three Operator Splitting." Proceedings of the 35th International Conference on Machine Learning, 2018. https://arxiv.org/abs/1804.02339
+    * Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator Splitting."
+      <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th International Conference
+      on Machine Learning, 2018.
     """
     success = False
     if not max_iter_backtracking > 0:
@@ -390,11 +393,9 @@ def minimize_PDHG(
 
     Parameters
     ----------
-    fun : callable
-        f(x) returns the value of f at x.
-
-    f_grad : callable
-        f_prime(x) returns the gradient of f.
+    f_grad: callable
+         Returns the function value and gradient of the objective function.
+         With return_gradient=False, returns only the function value.
 
     g_prox : callable of the form g_prox(x, alpha)
         g_prox(x, alpha) returns the proximal operator of g at x
@@ -534,11 +535,8 @@ def minimize_PDHG2(
 
     Parameters
     ----------
-    fun : callable
-        f(x) returns the value of f at x.
-
-    f_grad : callable
-        f_prime(x) returns the gradient of f.
+    f_grad: callable
+         Returns the function value and gradient of the objective function.
 
     g_prox : callable of the form g_prox(x, alpha)
         g_prox(x, alpha) returns the proximal operator of g at x

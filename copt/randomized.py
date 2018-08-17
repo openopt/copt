@@ -120,35 +120,6 @@ def minimize_SAGALP_L1(
     d[~idx] = 0.
     print('Done')
 
-    epoch_iteration = _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta)
-
-    # .. initialize memory terms ..
-    memory_gradient = np.zeros(n_samples)
-    gradient_average = np.zeros(n_features)
-    idx = np.arange(n_samples)
-    success = False
-    if callback is not None:
-        callback(x)
-    for nit in range(max_iter):
-        x_old = x.copy()
-        np.random.shuffle(idx)
-        epoch_iteration(
-                x, idx, memory_gradient, gradient_average, step_size)
-        if callback is not None:
-            callback(x)
-
-        if np.abs(x - x_old).sum() < tol:
-            success = True
-            break
-        print(nit, np.linalg.norm(x - x_old))
-    message = ''
-    return optimize.OptimizeResult(
-        x=x, success=success, nit=nit,
-        message=message)
-
-
-def _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta):
-
     if beta > 0:
         @njit
         def prox(x, ss):
@@ -166,10 +137,9 @@ def _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta):
     n_samples, n_features = A.shape
 
     @njit(nogil=True)
-    def _saga_algorithm(
+    def _saga_epoch(
             x, idx, memory_gradient, gradient_average, step_size):
-
-        # .. inner iteration ..
+        # .. inner iteration of the SAGA algorithm..
         for i in idx:
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
@@ -185,15 +155,37 @@ def _factory_SAGA_epoch(A, b, f_deriv, d, alpha, beta):
                 incr = delta + d[j_idx] * (gradient_average[j_idx] + alpha * x[j_idx])
                 x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
-
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
             memory_gradient[i] = grad_i
 
+    # .. initialize memory terms ..
+    memory_gradient = np.zeros(n_samples)
+    gradient_average = np.zeros(n_features)
+    idx = np.arange(n_samples)
+    success = False
+    if callback is not None:
+        callback(x)
+    for nit in range(max_iter):
+        x_old = x.copy()
+        np.random.shuffle(idx)
+        _saga_epoch(
+                x, idx, memory_gradient, gradient_average, step_size)
+        if callback is not None:
+            callback(x)
 
-    return _saga_algorithm
+        if np.abs(x - x_old).sum() < tol:
+            success = True
+            break
+        print(nit, np.linalg.norm(x - x_old))
+    message = ''
+    return optimize.OptimizeResult(
+        x=x, success=success, nit=nit,
+        message=message)
+
+
 
 
 def minimize_BCD(
