@@ -17,10 +17,7 @@ b = np.abs(b / np.max(np.abs(b)))
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
     ['PDHG', cp.minimize_PDHG, 1e-2],
-    # ['APGD', cp.minimize_APGD, 1e-4],
     ['DavisYin', cp.minimize_TOS, 1e-2],
-    # ['BCD', cp.minimize_BCD, 1e-2],
-    # ['SAGA', cp.minimize_SAGA, 1e-2]
 )
 
 loss_funcs = [

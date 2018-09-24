@@ -3,10 +3,8 @@ import numpy as np
 from scipy import sparse, optimize
 from numba import njit
 from copt import utils
-from tqdm import tqdm
+from tqdm import trange
 
-# def njit(*args, **kwargs):
-#     return lambda x: x
 
 @njit
 def f_squared(p, y):
@@ -23,32 +21,31 @@ def deriv_squared(p, y):
 @njit
 def f_logistic(p, y):
     # logistic loss
-    # same as in lightning
-    p *= y
     if p > 0:
-        return np.log(1 + np.exp(-p))
+        return np.log(1 + np.exp(-p)) + (1 - y) * p
     else:
-        return -p + np.log(1 + np.exp(p))
+        return np.log(1 + np.exp(p)) - p * y
 
 
 @njit
 def deriv_logistic(p, y):
     # derivative of logistic loss
     # same as in lightning (with minus sign)
-    p *= y
     if p > 0:
-        phi = 1. / (1 + np.exp(-p))
+        tmp = np.exp(-p)
+        phi = - tmp / (1. + tmp) + 1 - y
     else:
-        exp_t = np.exp(p)
-        phi = exp_t / (1. + exp_t)
-    return (phi - 1) * y
+        tmp = np.exp(p)
+        phi = tmp / (1. + tmp) - y
+    return phi
 
 
 
-def minimize_SAGALP_L1(
-        f_deriv, A, b, x0, alpha=0, beta=0, step_size=None,
-        max_iter=500, tol=1e-6, callback=None):
-    """Stochastic average gradient augmented (SAGA) algorithm.
+def minimize_SAGA_L1(
+        f_deriv, A, b, x0, step_size, alpha=0, beta=0,
+        max_iter=500, tol=1e-6, verbose=1, callback=None):
+    """Stochastic average gradient augmented (SAGA) algorithm for linearly-parametrized
+    loss functions.
 
     The SAGA algorithm can solve optimization problems of the form
 
@@ -112,6 +109,10 @@ def minimize_SAGALP_L1(
 
     # .. estimate diagonal elements of the reweighting matrix (D) ..
     print('Computing D matrix')
+    if sparse.issparse(A):
+        A = A.tocsr()
+    else:
+        A = sparse.csr_matrix(A)
     tmp = A.copy()
     tmp.data[:] = 1.
     d = np.array(tmp.sum(0), dtype=np.float).ravel()
@@ -168,7 +169,8 @@ def minimize_SAGALP_L1(
     success = False
     if callback is not None:
         callback(x)
-    for nit in range(max_iter):
+    pbar = trange(max_iter, disable=(verbose == 0))
+    for it in pbar:
         x_old = x.copy()
         np.random.shuffle(idx)
         _saga_epoch(
@@ -176,15 +178,212 @@ def minimize_SAGALP_L1(
         if callback is not None:
             callback(x)
 
-        if np.abs(x - x_old).sum() < tol:
+        diff_norm = np.abs(x - x_old).sum()
+        if diff_norm < tol:
             success = True
             break
-        print(nit, np.linalg.norm(x - x_old))
+        if it % 10 == 0:
+            pbar.set_description('SAGA iter %i' % it)
+            pbar.set_postfix(tol=diff_norm)
     message = ''
     return optimize.OptimizeResult(
-        x=x, success=success, nit=nit,
+        x=x, success=success, nit=it,
         message=message)
 
+
+def minimize_SAGATOS(
+        f_deriv, A, b, x0, g, h, g_blocks, h_blocks, step_size, alpha=0, beta=0,
+        max_iter=500, tol=1e-6, callback=None):
+    
+    n_samples, n_features = A.shape
+    success = False
+
+    y = x0.copy()
+    x = x0.copy()
+    z = x.copy()
+
+    assert A.shape[0] == b.size
+
+    if step_size < 0:
+        raise ValueError
+
+    A = sparse.csr_matrix(A)
+    if h_blocks is None:
+        h_blocks = np.zeros(n_features, dtype=np.int64)
+    epoch_iteration = _factory_sparse_PSSAGA(
+        fun, fun_deriv, g_prox, h_prox, h_blocks, A, b,
+        alpha, beta, gamma)
+
+    # .. memory terms ..
+    memory_gradient = np.zeros(n_samples)
+    gradient_average = np.zeros(n_features)
+
+    # warm up for the JIT
+    epoch_iteration(
+        y, x, z, memory_gradient, gradient_average, np.array([0]),
+        step_size)
+
+    trace_func = []
+    start_time = datetime.now()
+    trace_time = [0.]
+    trace_x = [x.copy()]
+    trace_certificate = [np.inf]
+
+    # .. iterate on epochs ..
+    for it in range(max_iter):
+        epoch_iteration(
+            y, x, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
+            step_size)
+
+        certificate = np.linalg.norm(x - z)
+        if callback is not None:
+            callback(x)
+        if trace:
+            trace_x.append(x.copy())
+            trace_certificate.append(certificate)
+            trace_time.append((datetime.now() - start_time).total_seconds())
+        if verbose:
+            print('Iteration: %s, certificate: %s, sparsity: %s' % (it, certificate, 1 - (np.abs(x) > 1e-10).mean()))
+        if certificate < tol:
+            success = True
+            break
+        if callback is not None:
+            callback(x)
+
+    return optimize.OptimizeResult(
+        x=x, y=y, z=z, success=success, nit=it, trace_x=trace_x,
+        certificate=certificate,
+        trace_func=trace_func, trace_certificate=np.array(trace_certificate),
+        trace_time=trace_time)
+
+
+
+@njit(nogil=True, cache=True)
+def _support_matrix(
+        A_indices, A_indptr, blocks, n_blocks):
+    """
+    Returns the parameters of a CSR matrix representing the extended support. The matrix is of shape (n_samples, n_features), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    """
+    if n_blocks == 1:
+        # FIXME do something smart
+        pass
+    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
+    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
+    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
+    BS_indptr[0] = 0
+    counter_indptr = 0
+    for i in range(A_indptr.size - 1):
+        low = A_indptr[i]
+        high = A_indptr[i + 1]
+        for j in range(low, high):
+            g_idx = blocks[A_indices[j]]
+            if seen_blocks[g_idx] == 0:
+                # if first time we encouter this block,
+                # add to the index and mark as seen
+                BS_indices[counter_indptr] = g_idx
+                seen_blocks[g_idx] = 1
+                counter_indptr += 1
+        BS_indptr[i + 1] = counter_indptr
+        # cleanup
+        for j in range(BS_indptr[i], counter_indptr):
+            seen_blocks[BS_indices[j]] = 0
+    BS_data = np.ones(counter_indptr)
+    return BS_data, BS_indices[:counter_indptr], BS_indptr
+
+
+def _factory_sparse_PSSAGA(
+        fun, f_prime, prox1, prox2, blocks1, blocks2, A, b, alpha,
+        beta, gamma):
+
+    A_data = A.data
+    A_indices = A.indices
+    A_indptr = A.indptr
+    n_samples, n_features = A.shape
+
+    # g_blocks is a map from n_features -> n_features
+    unique_blocks1 = np.unique(blocks1)
+    n_blocks1 = np.unique(blocks1).size
+    assert np.all(unique_blocks1 == np.arange(n_blocks1))
+
+    blocks1_data, blocks1_indices, blocks1_indptr = _support_matrix(
+        A_indices, A_indptr, blocks1, n_blocks1)
+    blocks1 = sparse.csr_matrix((blocks1_data, blocks1_indices, blocks1_indptr))
+
+    unique_blocks2 = np.unique(blocks2)
+    n_blocks2 = np.unique(blocks2).size
+    assert np.all(unique_blocks2 == np.arange(n_blocks2))
+
+    blocks2_data, blocks2_indices, blocks2_indptr = _support_matrix(
+        A_indices, A_indptr, blocks2, n_blocks2)
+    blocks2 = sparse.csr_matrix((blocks2_data, blocks2_indices, blocks2_indptr))
+
+    # .. diagonal reweighting ..
+    d1 = np.array(blocks1.sum(0), dtype=np.float).ravel()
+    idx = (d1 != 0)
+    d1[idx] = n_samples / d1[idx]
+    d1[~idx] = 1
+    
+    d2 = np.array(blocks2.sum(0), dtype=np.float).ravel()
+    idx = (d2 != 0)
+    d2[idx] = n_samples / d2[idx]
+    d2[~idx] = 1
+
+    # .. matrix of features that appear at least once
+    S = blocks1 + blocks2
+    S_indptr = S.indptr
+    S_indices = S.indices
+
+    @njit
+    def epoch_iteration_template(
+            Y, x, z, memory_gradient, gradient_average, sample_indices, step_size):
+
+        # .. SAGA estimate of the gradient ..
+        grad_est = np.zeros(n_features)
+        z = np.zeros(n_features)
+
+        # .. iterate on samples ..
+        for i in sample_indices:
+
+            for j in range(S_indptr[i], S_indptr[i+1]):
+                j_idx = S_indices[h_j]
+                z[j] = (d1[j] * Y[0, j] + d2[j] * Y[1, j]) / (d1[j] + d2[j])
+
+            p = 0.
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                p += x[j_idx] * A_data[j]
+
+            grad_i = f_prime(p, b[i])
+
+            # .. gradient estimate (XXX difference) ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                grad_est[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
+
+            # .. iterate on blocks ..
+            for h_j in range(blocks1_indptr[i], blocks1_indptr[i+1]):
+                h = blocks1_indices[h_j]
+
+                # .. iterate on features inside block ..
+                for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
+                    bias_term = d_h[h] * (gradient_average[b_j] + alpha * x[b_j])
+                    z[b_j] = 2 * x[b_j] - y[b_j] - step_size * (
+                        grad_est[b_j] + bias_term)
+
+                h_prox(d_h[h] * step_size * gamma, z, RB_h_indptr[h], RB_h_indptr[h+1])
+
+                # .. update y ..
+                for b_j in range(RB_h_indptr[h], RB_h_indptr[h+1]):
+                    y[b_j] -= x[b_j] - z[b_j]
+
+            # .. update memory terms ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                grad_est[j_idx] = 0
+            memory_gradient[i] = grad_i
+
+    return epoch_iteration_template
 
 
 

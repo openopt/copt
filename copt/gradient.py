@@ -3,7 +3,6 @@ import os
 import numpy as np
 from scipy import optimize, linalg, sparse
 from tqdm import trange
-DISABLE_TQDM = bool(os.environ.get('DISABLE_TQDM', False))
 
 
 def minimize_PGD(
@@ -317,7 +316,7 @@ def minimize_TOS(
     u = np.zeros_like(x)
     ls_tol_old = None
 
-    pbar = trange(max_iter, disable=DISABLE_TQDM)
+    pbar = trange(max_iter, disable=(verbose == 0))
     pbar.set_description('TOS')
     for it in pbar:
 
@@ -461,7 +460,7 @@ def minimize_PDHG(
         tau = 0.5 * sigma
     ss_ratio = sigma / tau
 
-    pbar = trange(max_iter, disable=DISABLE_TQDM)
+    pbar = trange(max_iter, disable=(verbose == 0))
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
     x_next = x.copy()

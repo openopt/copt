@@ -60,12 +60,14 @@ def get_max_lipschitz(A, loss, alpha=0):
 
 
 class LogLoss:
-    """Logistic loss
+    """A class evaluation and derivatives of the logistic loss. The logistic loss function is defined as
 
     .. math::
         -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\sigma(a_i^T x)) + (1 - b_i) \\log(1 - \sigma(a_i^T x))
 
     where :math:`\sigma` is the sigmoid function :math:`\sigma(t) = 1/(1 + e^{-t})`.
+    
+    When the input vector b comes from class labels, it is expected to have the values 0 or 1.
 
     for a numerically stable computation of the logistic loss, we use the identities
 
