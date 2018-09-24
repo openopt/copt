@@ -46,21 +46,3 @@ def test_optimize(name_solver, solver, tol, loss_grad, penalty):
         f_grad = loss_grad(A, b, alpha).func_grad
         opt = solver(f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
         assert opt.certificate < tol, name_solver
-
-#
-# def test_optimize():
-#
-#     def logloss(x):
-#         return logistic._logistic_loss(x, X, y, 1.)
-#
-#     def fprime_logloss(x):
-#         return logistic._logistic_loss_and_grad(x, X, y, 1.)
-#
-#     L = np.eye(n_features)
-#     opt = cp.minimize_PDHG(
-#         fprime_logloss, None, None, L, np.zeros(n_features))
-#     assert opt.success
-#     sol_scipy = optimize.fmin_l_bfgs_b(
-#         logloss, np.zeros(n_features),
-#         fprime=lambda x: fprime_logloss(x)[1])[0]
-#     np.testing.assert_allclose(sol_scipy, opt.x, rtol=1e-1)

@@ -378,7 +378,7 @@ def minimize_TOS(
 def minimize_PDHG(
         f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
         max_iter=1000, callback=None, step_size=1., step_size2=None,
-        line_search=True, max_iter_ls=20):
+        line_search=True, max_iter_ls=20, verbose=0):
     """Primal-dual hybrid gradient splitting method.
 
     This method for optimization problems of the form

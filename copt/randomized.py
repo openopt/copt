@@ -300,7 +300,6 @@ def _factory_sparse_PSSAGA(
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
-    # g_blocks is a map from n_features -> n_features
     unique_blocks1 = np.unique(blocks1)
     n_blocks1 = np.unique(blocks1).size
     assert np.all(unique_blocks1 == np.arange(n_blocks1))
@@ -328,6 +327,7 @@ def _factory_sparse_PSSAGA(
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
 
+    # XXX
     # .. matrix of features that appear at least once
     S = blocks1 + blocks2
     S_indptr = S.indptr
