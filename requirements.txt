@@ -5,3 +5,4 @@ pytest
 pytest-cov
 scikit-learn
 tqdm
+coverage >= 4.4
