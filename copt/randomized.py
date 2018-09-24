@@ -108,11 +108,7 @@ def minimize_SAGA_L1(
         raise ValueError
 
     # .. estimate diagonal elements of the reweighting matrix (D) ..
-    print('Computing D matrix')
-    if sparse.issparse(A):
-        A = A.tocsr()
-    else:
-        A = sparse.csr_matrix(A)
+    A = sparse.csr_matrix(A)
     tmp = A.copy()
     tmp.data[:] = 1.
     d = np.array(tmp.sum(0), dtype=np.float).ravel()
@@ -192,7 +188,7 @@ def minimize_SAGA_L1(
 
 
 def minimize_SAGATOS(
-        f_deriv, A, b, x0, g, h, g_blocks, h_blocks, step_size, alpha=0, beta=0,
+        f_deriv, A, b, x0, g_1, g_2, blocks_1, blocks_2, step_size, alpha=0, beta=0,
         max_iter=500, tol=1e-6, callback=None):
     
     n_samples, n_features = A.shape
@@ -207,6 +203,9 @@ def minimize_SAGATOS(
     if step_size < 0:
         raise ValueError
 
+    if np.any(np.diff(blocks) > 0):
+        raise ValueError('blocks cannot be discontinuous nor with decreasing id')
+            
     A = sparse.csr_matrix(A)
     if h_blocks is None:
         h_blocks = np.zeros(n_features, dtype=np.int64)
@@ -262,7 +261,18 @@ def minimize_SAGATOS(
 def _support_matrix(
         A_indices, A_indptr, blocks, n_blocks):
     """
-    Returns the parameters of a CSR matrix representing the extended support. The matrix is of shape (n_samples, n_features), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    Parameters
+    ----------
+    A_indices, A_indptr: numpy arrays representing the data matrix in CSR format.
+    
+    blocks: numy array of size n_features with integer values, where the value codes for the group to which the given feature belongs.
+    
+    n_blocks: number of unique blocks in array blocks.
+    
+    
+    Returns
+    -------
+    Parameters of a CSR matrix representing the extended support. The returned vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
     """
     if n_blocks == 1:
         # FIXME do something smart
@@ -289,6 +299,22 @@ def _support_matrix(
             seen_blocks[BS_indices[j]] = 0
     BS_data = np.ones(counter_indptr)
     return BS_data, BS_indices[:counter_indptr], BS_indptr
+
+
+@njit(nogil=True, cache=True)
+def _csr_blocks(blocks, n_blocks):
+    indices = np.arange(blocks.size)
+    indptr = np.zeros(n_blocks)
+    
+    largest_seen_block = 0
+    seen_blocks = 0
+    for i in range(blocks.size):
+        if blocks[i] > largest_seen_block:
+            # jump
+            indptr[seen_blocks] = i
+            pointer = blocks[i]
+            seen_blocks += 1
+    return indices, indptr
 
 
 def _factory_sparse_PSSAGA(
@@ -327,7 +353,17 @@ def _factory_sparse_PSSAGA(
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
 
-    # XXX
+    # .. estimate a mapping from blocks to features ..
+    reverse_blocks_h = sparse.dok_matrix((n_blocks1, n_features), dtype=np.bool)
+    # XXXX super slow
+    for j_ in range(n_features):
+        i_ = h_blocks[j_]
+        reverse_blocks1[i_, j_] = True
+    reverse_blocks1 = reverse_blocks1.tocsr()
+    reverse_blocks1 = reverse_blocks1.indptr
+    
+    blocks1_indices, blocks1_indptr = _csr_blocks(blocks1, n_blocks1)
+    csr_blocks1 = sparse.csr_matrix((blocks1, blocks1_indices, blocks1_indptr))
     # .. matrix of features that appear at least once
     S = blocks1 + blocks2
     S_indptr = S.indptr

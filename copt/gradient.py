@@ -392,7 +392,8 @@ def minimize_PDHG(
     ----------
     f_grad: callable
          Returns the function value and gradient of the objective function.
-         With return_gradient=False, returns only the function value.
+         It should accept the optional argument return_gradient, and when False
+         it should return only the function value.
 
     g_prox : callable of the form g_prox(x, alpha)
         g_prox(x, alpha) returns the proximal operator of g at x
