@@ -41,10 +41,20 @@ def deriv_logistic(p, y):
 
 def prox_l1(alpha):
     @njit
-    def prox_l1(x, ss):
+    def _prox_l1(x, ss):
         return np.fmax(x - alpha * ss, 0) - np.fmax(- x - alpha * ss, 0)
-    return prox_l1
+    return _prox_l1
 
+
+def prox_gl(alpha):
+    @njit
+    def _prox_gl(x, ss):
+        norm = np.linalg.norm(x)
+        if norm > alpha * step_size:
+            return (1 - alpha * ss / norm) * x
+        else:
+            return np.zeros_like(x)
+    return _prox_gl
 
 
 def minimize_SAGA_L1(
@@ -260,7 +270,6 @@ def minimize_VRTOS(
         if callback is not None:
             callback(x)
 
-        print(it,certificate)
         if it % 10 == 0:
             pbar.set_description('VRTOS iter %i' % it)
 

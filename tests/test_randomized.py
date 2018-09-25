@@ -56,27 +56,22 @@ def saga_l1():
 def test_vrtos_l1():
     alpha = 1./n_samples
     for beta in np.logspace(-3, 3, 3):
-        full_l1 = cp.utils.L1Norm(beta)
-        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+        for (full_prox, p_1) in [
+        (cp.utils.L1Norm(beta), cp.randomized.prox_l1(beta)),
+        ]:
+            L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
-        p_1 = cp.randomized.prox_l1(0.5 * beta)
-        opt = cp.minimize_VRTOS(
-            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=200, prox_1=p_1, prox_2=p_1)
+            opt_1 = cp.minimize_VRTOS(
+                randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+                alpha=alpha, max_iter=200, prox_1=p_1)
 
-        p_2 = cp.randomized.prox_l1(beta)
-        opt2 = cp.minimize_VRTOS(
-            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=200, prox_1=p_2)
+            opt_2 = cp.minimize_VRTOS(
+                randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+                alpha=alpha, max_iter=200, prox_2=p_1)
 
-        opt3 = cp.minimize_VRTOS(
-            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=200, prox_2=p_2)
-
-        grad = cp.utils.LogLoss(A, b, alpha).func_grad(opt.x)[1]
-        for x in [opt.x, opt2.x, opt3.x]:
-            x = opt.x
-            ss = 1./L
-            # check that the gradient mapping vanishes
-            grad_map = (x - full_l1.prox(x - ss*grad, ss))/ss
-            assert np.linalg.norm(grad_map) < 1e-6
+            for x in [opt_1.x, opt_2.x]:
+                grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
+                ss = 1./L
+                # check that the gradient mapping vanishes
+                grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
+                assert np.linalg.norm(grad_map) < 1e-6
