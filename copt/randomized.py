@@ -387,11 +387,6 @@ def _factory_sparse_VRTOS(
         # .. iterate on samples ..
         for i in sample_indices:
             
-            # Compute z
-            # do it naively for now, improve later
-            for j in range(n_features):
-                z[j] = (d1[blocks_1[j]] * X1[j] + d2[blocks_2[j]] * X2[j]) / (d1[blocks_1[j]] + d2[blocks_2[j]])
-
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
@@ -438,6 +433,22 @@ def _factory_sparse_VRTOS(
                 # .. update y ..
                 for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
                     Y[1, b_j] += X2[b_j] - z[b_j]
+
+
+            # XXX update Z
+            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
+                h = b1_indices[h_j]
+
+                # .. iterate on features inside block ..
+                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
+                    z[b_j] = (d1[blocks_1[b_j]] * X1[b_j] + d2[blocks_2[b_j]] * X2[b_j]) / (d1[blocks_1[b_j]] + d2[blocks_2[b_j]])
+
+            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
+                h = blocks_2_indices[h_j]
+
+                # .. iterate on features inside block ..
+                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
+                    z[b_j] = (d1[blocks_1[b_j]] * X1[b_j] + d2[blocks_2[b_j]] * X2[b_j]) / (d1[blocks_1[b_j]] + d2[blocks_2[b_j]])
 
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):

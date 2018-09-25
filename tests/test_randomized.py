@@ -39,7 +39,7 @@ def saga_l1():
         full_l1 = cp.utils.L1Norm(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
         p_1 = cp.randomized.prox_l1(beta)
-        
+
         for solver in [cp.minimize_SAGA_L1, cp.minimize_SVRG_L1]:
             opt = solver(
                 randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
