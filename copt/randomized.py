@@ -39,6 +39,12 @@ def deriv_logistic(p, y):
         phi = tmp / (1. + tmp) - y
     return phi
 
+def prox_l1(alpha):
+    @njit
+    def prox_l1(x, ss):
+        return np.fmax(x - alpha * ss, 0) - np.fmax(- x - alpha * ss, 0)
+    return prox_l1
+
 
 
 def minimize_SAGA_L1(
@@ -118,9 +124,7 @@ def minimize_SAGA_L1(
     print('Done')
 
     if beta > 0:
-        @njit
-        def prox(x, ss):
-            return np.fmax(x - beta * ss, 0) - np.fmax(- x - beta * ss, 0)
+        prox = prox_l1(beta)
     elif beta == 0:
         @njit
         def prox(x, ss):
@@ -231,11 +235,13 @@ def minimize_VRTOS(
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
     x1 = x0.copy()
+    grad_tmp = np.zeros(n_features)
+
 
     # warm up for the JIT
     epoch_iteration(
         Y, x0, x1, z, memory_gradient, gradient_average, np.array([0]),
-        step_size)
+        grad_tmp, step_size)
 
     trace_func = []
     start_time = datetime.now()
@@ -248,7 +254,7 @@ def minimize_VRTOS(
     for it in pbar:
         epoch_iteration(
             Y, x0, x1, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
-            step_size)
+            grad_tmp, step_size)
 
         certificate = np.linalg.norm(x0 - z)
         if callback is not None:
@@ -266,7 +272,6 @@ def minimize_VRTOS(
         certificate=certificate,
         trace_func=trace_func, trace_certificate=np.array(trace_certificate),
         trace_time=trace_time)
-
 
 
 @njit(nogil=True, cache=True)
@@ -376,11 +381,8 @@ def _factory_sparse_VRSAGA(
 
     #@njit
     def epoch_iteration_template(
-            Y, X1, X2, z, memory_gradient, gradient_average, sample_indices, step_size):
+            Y, X1, X2, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
 
-        # .. SAGA estimate of the gradient ..
-        grad_est = np.zeros(n_features)
-        z = np.zeros(n_features)
 
         # .. iterate on samples ..
         for i in sample_indices:
@@ -400,7 +402,7 @@ def _factory_sparse_VRSAGA(
             # .. gradient estimate (XXX difference) ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                grad_est[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
+                grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
 
             # .. iterate on blocks ..
             for h_j in range(b1_indptr[i], b1_indptr[i+1]):
@@ -410,7 +412,7 @@ def _factory_sparse_VRSAGA(
                 for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
                     bias_term = d1[h] * (gradient_average[b_j] + alpha * z[b_j])
                     X1[b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
-                        grad_est[b_j] + bias_term)
+                        grad_tmp[b_j] + bias_term)
 
                 ss = d1[h] * step_size * beta
                 X1[b1_indptr[h]:b1_indptr[h+1]] = prox_1(
@@ -428,7 +430,7 @@ def _factory_sparse_VRSAGA(
                 for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
                     bias_term = d2[h] * (gradient_average[b_j] + alpha * z[b_j])
                     X2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
-                        grad_est[b_j] + bias_term)
+                        grad_tmp[b_j] + bias_term)
 
                 ss = d2[h] * step_size * beta
                 X2[b2_indptr[h]:b2_indptr[h+1]] = prox_2(
@@ -443,7 +445,7 @@ def _factory_sparse_VRSAGA(
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
-                grad_est[j_idx] = 0
+                grad_tmp[j_idx] = 0
             memory_gradient[i] = grad_i
 
     return epoch_iteration_template
