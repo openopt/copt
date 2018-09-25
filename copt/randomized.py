@@ -191,7 +191,7 @@ def minimize_SAGA_L1(
 
 def minimize_VRTOS(
         f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, blocks_1=None,
-        blocks_2=None, alpha=0, beta=0, max_iter=500, tol=1e-6, callback=None,
+        blocks_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
         verbose=0):
     """
     TODO description
@@ -227,9 +227,9 @@ def minimize_VRTOS(
             raise ValueError('blocks cannot be discontinuous nor with decreasing id')
             
     A = sparse.csr_matrix(A)
-    epoch_iteration = _factory_sparse_VRSAGA(
+    epoch_iteration = _factory_sparse_VRTOS(
         f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
-        alpha, beta, step_size)
+        alpha, step_size)
 
     # .. memory terms ..
     memory_gradient = np.zeros(n_samples)
@@ -336,8 +336,8 @@ def _csr_blocks(blocks, n_blocks):
 
 
 
-def _factory_sparse_VRSAGA(
-        f_prime, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, beta, gamma):
+def _factory_sparse_VRTOS(
+        f_prime, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, gamma):
 
     A_data = A.data
     A_indices = A.indices
@@ -414,9 +414,8 @@ def _factory_sparse_VRSAGA(
                     X1[b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                ss = d1[h] * step_size * beta
                 X1[b1_indptr[h]:b1_indptr[h+1]] = prox_1(
-                    X1[b1_indptr[h]:b1_indptr[h+1]], ss)
+                    X1[b1_indptr[h]:b1_indptr[h+1]], d1[h] * step_size)
 
                 # .. update y ..
                 for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
@@ -432,10 +431,8 @@ def _factory_sparse_VRSAGA(
                     X2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                ss = d2[h] * step_size * beta
                 X2[b2_indptr[h]:b2_indptr[h+1]] = prox_2(
-                    X2[b2_indptr[h]:b2_indptr[h+1]], ss)
-
+                    X2[b2_indptr[h]:b2_indptr[h+1]], d2[h] * step_size)
 
                 # .. update y ..
                 for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):

@@ -32,17 +32,35 @@ def test_optimize(name_solver, solver, tol):
         assert np.linalg.norm(grad) < tol, name_solver
 
 
+def saga_l1():
+    alpha = 1./n_samples
+    for beta in np.logspace(-3, 3, 3):
+        full_l1 = cp.utils.L1Norm(beta)
+        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+        p_1 = cp.randomized.prox_l1(2 * beta)
+
+        opt = cp.minimize_SAGA_L1(
+            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+            alpha=alpha, max_iter=500, tol=1e-8, beta=beta)
+        grad = cp.utils.LogLoss(A, b, alpha).func_grad(opt.x)[1]
+        x = opt.x
+        ss = 1./L
+        # check that the gradient mapping vanishes
+        grad_map = (x - full_l1.prox(x - ss*grad, ss))/ss
+        assert np.linalg.norm(grad_map) < 1e-3
+    
+
+# 
 # def test_vrtos_l1():
-#     alpha = 10./n_samples
+#     alpha = 1./n_samples
 #     for beta in np.logspace(-3, 3, 3):
 #         full_l1 = cp.utils.L1Norm(beta)
 #         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
-#         p_1 = cp.randomized.prox_l1(beta)
-# 
+#         p_1 = cp.randomized.prox_l1(2 * beta)
 # 
 #         opt = cp.minimize_VRTOS(
 #             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-#             alpha=alpha, max_iter=10000, tol=1e-10, prox_1=p_1,
+#             alpha=alpha, max_iter=1000, tol=1e-10, prox_1=p_1, prox_2=p_1,
 #             blocks_1=np.arange(n_features))
 #         grad = cp.utils.LogLoss(A, b, alpha).func_grad(opt.x)[1]
 #         x = opt.x
