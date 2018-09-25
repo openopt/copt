@@ -549,9 +549,8 @@ def minimize_BCD(
         certificate=certificate)
 
 
-
-def minimize_SVRGLP_L1(
-        f_deriv, A, b, x0, alpha=0, beta=0, step_size=None,
+def minimize_SVRG_L1(
+        f_deriv, A, b, x0, step_size, alpha=0, beta=0, 
         max_iter=500, tol=1e-6, verbose=False, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -623,6 +622,7 @@ def minimize_SVRGLP_L1(
     # implement also a version for dense data (numpy arrays) to better exploit data locality
     x = np.ascontiguousarray(x0).copy()
     n_samples, n_features = A.shape
+    A = sparse.csr_matrix(A)
 
     if step_size is None:
         # then need to use line search

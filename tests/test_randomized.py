@@ -18,6 +18,7 @@ b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers_unconstrained = (
     ['SAGA', cp.minimize_SAGA_L1, 1e-3],
+    ['SVRG', cp.minimize_SVRG_L1, 1e-3],
     ['VRTOS', cp.minimize_VRTOS, 1e-3],
 )
 
@@ -38,16 +39,17 @@ def saga_l1():
         full_l1 = cp.utils.L1Norm(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
         p_1 = cp.randomized.prox_l1(beta)
-
-        opt = cp.minimize_SAGA_L1(
-            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=500, tol=1e-8, beta=beta)
-        grad = cp.utils.LogLoss(A, b, alpha).func_grad(opt.x)[1]
-        x = opt.x
-        ss = 1./L
-        # check that the gradient mapping vanishes
-        grad_map = (x - full_l1.prox(x - ss*grad, ss))/ss
-        assert np.linalg.norm(grad_map) < 1e-6
+        
+        for solver in [cp.minimize_SAGA_L1, cp.minimize_SVRG_L1]:
+            opt = solver(
+                randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+                alpha=alpha, max_iter=500, tol=1e-8, beta=beta)
+            grad = cp.utils.LogLoss(A, b, alpha).func_grad(opt.x)[1]
+            x = opt.x
+            ss = 1./L
+            # check that the gradient mapping vanishes
+            grad_map = (x - full_l1.prox(x - ss*grad, ss))/ss
+            assert np.linalg.norm(grad_map) < 1e-6
 
 
 
