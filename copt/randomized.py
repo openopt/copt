@@ -348,17 +348,17 @@ def _factory_sparse_VRTOS(
     n_blocks_1 = np.unique(blocks_1).size
     assert np.all(unique_blocks_1 == np.arange(n_blocks_1))
 
-    blocks_1_data, b1_indices, b1_indptr = _support_matrix(
+    b1_data, b1_indices, b1_indptr = _support_matrix(
         A_indices, A_indptr, blocks_1, n_blocks_1)
-    csr_blocks_1 = sparse.csr_matrix((blocks_1_data, b1_indices, b1_indptr))
+    csr_blocks_1 = sparse.csr_matrix((b1_data, b1_indices, b1_indptr))
 
     unique_blocks_2 = np.unique(blocks_2)
     n_blocks_2 = np.unique(blocks_2).size
     assert np.all(unique_blocks_2 == np.arange(n_blocks_2))
 
-    blocks_2_data, blocks_2_indices, b2_indptr = _support_matrix(
+    b2_data, blocks_2_indices, b2_indptr = _support_matrix(
         A_indices, A_indptr, blocks_2, n_blocks_2)
-    csr_blocks_2 = sparse.csr_matrix((blocks_2_data, blocks_2_indices, b2_indptr))
+    csr_blocks_2 = sparse.csr_matrix((b2_data, blocks_2_indices, b2_indptr))
 
     # .. diagonal reweighting ..
     d1 = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
@@ -414,8 +414,9 @@ def _factory_sparse_VRTOS(
                     X1[b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                X1[b1_indptr[h]:b1_indptr[h+1]] = prox_1(
-                    X1[b1_indptr[h]:b1_indptr[h+1]], d1[h] * step_size)
+                tmp = prox_1(X1[b1r_indptr[h]:b1r_indptr[h+1]], d1[h] * step_size)
+                X1[b1r_indptr[h]:b1r_indptr[h+1]] = tmp
+                # import pdb; pdb.set_trace()
 
                 # .. update y ..
                 for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
@@ -431,8 +432,8 @@ def _factory_sparse_VRTOS(
                     X2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                X2[b2_indptr[h]:b2_indptr[h+1]] = prox_2(
-                    X2[b2_indptr[h]:b2_indptr[h+1]], d2[h] * step_size)
+                X2[b2r_indptr[h]:b2r_indptr[h+1]] = prox_2(
+                    X2[b2r_indptr[h]:b2r_indptr[h+1]], d2[h] * step_size)
 
                 # .. update y ..
                 for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
