@@ -17,12 +17,13 @@ np.random.seed(0)
 # .. generate some data ..
 
 n_samples, n_features = 100, 100
-groups = [np.arange(8 * i, 8 * i + 10) for i in range(n_features // 8)]
+blocks_1 = np.arange(n_features) // 8
+blocks_2 = np.arange(n_features) // 12
 
 
 ground_truth = np.zeros(n_features)
-ground_truth[groups[4]] = 1
-ground_truth[groups[5]] = 0.5
+ground_truth[blocks_1==4] = 1
+ground_truth[blocks_2==3] = 0.5
 
 
 A = np.random.randn(n_samples, n_features)
@@ -49,9 +50,8 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
-    groups1, groups2 = groups[::2], groups[1::2].copy()
-    G1 = cp.utils.GroupL1(beta, groups1)
-    G2 = cp.utils.GroupL1(beta, groups2)
+    G1 = cp.utils.GroupL1(beta, blocks_1)
+    G2 = cp.utils.GroupL1(beta, blocks_2)
 
     def loss(x):
         return f(x) + G1(x) + G2(x)

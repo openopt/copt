@@ -19,13 +19,13 @@ np.random.seed(0)
 
 # .. generate some data ..
 n_samples, n_features = 100, 100
-groups = [np.arange(10 * i, 10 * i + 10) for i in range(10)]
+blocks = np.arange(n_features) // 10
 
 # .. construct a ground truth vector in which ..
 # .. group 4 and 5 are nonzero ..
 ground_truth = np.zeros(n_features)
-ground_truth[groups[4]] = 1
-ground_truth[groups[5]] = 0.5
+ground_truth[blocks == 4] = 1
+ground_truth[blocks == 5] = 0.5
 
 max_iter = 5000
 print('#features', n_features)
@@ -51,7 +51,7 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
-    G1 = cp.utils.GroupL1(beta, groups)
+    G1 = cp.utils.GroupL1(beta, blocks)
 
     def loss(x):
         return f_grad(x)[0] + G1(x)
@@ -104,16 +104,6 @@ for i, beta in enumerate(all_betas):
         (all_trace_nols[i] - fmin) / scale,
         lw=4, marker='h', markevery=100,
         markersize=10)
-
-    # plot_pdhg, = ax[1, i].plot(
-    #     (all_trace_pdhg[i] - fmin) / scale,
-    #     lw=4, marker='^', markevery=100,
-    #     markersize=10)
-    #
-    # plot_pdhg_nols, = ax[1, i].plot(
-    #     (all_trace_pdhg_nols[i] - fmin) / scale,
-    #     lw=4, marker='d', markevery=100,
-    #     markersize=10)
 
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')

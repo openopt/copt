@@ -224,15 +224,21 @@ class L1Ball:
 
 
 class GroupL1:
-    def __init__(self, alpha, groups):
+    """
+    XXX TODO define blocks
+    """
+    def __init__(self, alpha, blocks):
         self.alpha = alpha
-        self.groups = groups
+        self.n_features = len(blocks)
+        self.groups = [np.where(blocks == b)[0] for b in np.unique(blocks)]
 
     def __call__(self, x):
         return self.alpha * np.sum(
             [np.linalg.norm(x[g]) for g in self.groups])
 
     def prox(self, x, step_size):
+        if self.n_features != x.size:
+            raise ValueError('Dimensions of blocks and x do not match')
         out = x.copy()
         for g in self.groups:
 
