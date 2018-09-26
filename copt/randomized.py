@@ -283,7 +283,7 @@ def minimize_VRTOS(
         trace_time=trace_time)
 
 
-#@njit(nogil=True, cache=True)
+@njit(nogil=True)
 def _support_matrix(
         A_indices, A_indptr, blocks, n_blocks):
     """
@@ -324,10 +324,10 @@ def _support_matrix(
     return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-#@njit(nogil=True, cache=True)
+@njit(nogil=True)
 def _csr_blocks(blocks, n_blocks):
-    indices = np.arange(blocks.size, dtype=np.int)
-    indptr = np.zeros(n_blocks+1, dtype=np.int)
+    indices = np.arange(blocks.size)
+    indptr = np.zeros(n_blocks+1, dtype=np.int32)
     
     largest_seen_block = blocks[0]
     seen_blocks = 0
@@ -380,12 +380,10 @@ def _factory_sparse_VRTOS(
     # .. XXX TODO description ..
     # This overwrites 
     b1r_indices, b1r_indptr = _csr_blocks(blocks_1, n_blocks_1)
-    # csr_blocks_1 = sparse.csr_matrix((blocks_1, b1_indices, b1_indptr))
 
     b2r_indices, b2r_indptr = _csr_blocks(blocks_2, n_blocks_2)
-    # csr_blocks_2 = sparse.csr_matrix((blocks_2, b2r_indices, b2_indptr))
 
-    #@njit
+    @njit(nogil=True)
     def epoch_iteration_template(
             Y, X1, X2, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
 

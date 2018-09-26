@@ -147,27 +147,30 @@ def test_vrtos_gl():
             grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
             assert np.linalg.norm(grad_map) < 1e-6
 
-# 
-# def test_vrtos_ogl():
-#     """Test on overlapping group lasso"""
-#     alpha = 1./n_samples
-#     blocks_1 = np.arange(n_features)//2
-#     blocks_2 = np.arange(n_features)//3
-#     for beta in np.logspace(-3, 3, 3):
-#         p_1 = cp.randomized.prox_gl(beta)
-#         p_2 = cp.randomized.prox_gl(beta)
-#         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
-# 
-#         opt_1 = cp.minimize_VRTOS(
-#             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-#             alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks_1
-#             prox_2=p_1, blocks_2=blocks_2)
-# 
-#         for x in [opt_1.x, opt_2.x]:
-#             full_prox_1 = cp.utils.GroupL1(beta, blocks_1)
-#             grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
-#             ss = 1./L
-#             x = 
-#             # check that the gradient mapping vanishes
-#             grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
-#             assert np.linalg.norm(grad_map) < 1e-6
+
+def test_vrtos_ogl():
+    """Test on overlapping group lasso"""
+    alpha = 1./n_samples
+    blocks_1 = np.arange(n_features)//2
+    blocks_2 = np.arange(n_features)//3
+    for beta in np.logspace(-3, 3, 3):
+        p_1 = cp.randomized.prox_gl(beta)
+        p_2 = cp.randomized.prox_gl(beta)
+        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+
+        opt_vrtos = cp.minimize_VRTOS(
+            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+            alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks_1,
+            prox_2=p_1, blocks_2=blocks_2)
+
+        f_grad = cp.utils.LogLoss(A, b, alpha).func_grad
+        full_prox_1 = cp.utils.GroupL1(beta, blocks_1)
+        full_prox_2 = cp.utils.GroupL1(beta, blocks_2)
+        opt_tos = cp.minimize_TOS(
+            f_grad, np.zeros(n_features),
+            g_prox=full_prox_1.prox, h_prox=full_prox_2.prox)
+
+        norm = np.linalg.norm(opt_tos.x) 
+        if norm == 0:
+            norm = 1
+        assert np.linalg.norm(opt_vrtos.x - opt_tos.x)/norm < 1e-4
