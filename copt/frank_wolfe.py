@@ -100,6 +100,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strat
         idx_oracle += n_features
     mag_oracle = alpha * np.sign(-grad[idx_oracle % n_features])
     x_t = np.zeros(x0.size)
+    step_size =  min(np.abs(mag_oracle) / (alpha * alpha * L_t), 1)
     x_t[idx_oracle % n_features] = mag_oracle
     active_set[idx_oracle] = 1.
     f_t, grad = f_grad(x_t)

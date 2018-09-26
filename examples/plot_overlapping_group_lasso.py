@@ -60,7 +60,7 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_tosls(x0)
     tos_ls = cp.minimize_TOS(
-        f.func_grad, x0, G1.prox, G2.prox, step_size=3 * step_size,
+        f.f_grad, x0, G1.prox, G2.prox, step_size=3 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tosls, h_Lipschitz=beta)
     trace_ls = np.array([loss(x) for x in cb_tosls.trace_x])
@@ -71,10 +71,10 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_tos(x0)
     tos = cp.minimize_TOS(
-        f.func_grad, x0, G1.prox, G2.prox,
+        f.f_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        line_search=True, callback=cb_tos)
+        backtracking=True, callback=cb_tos)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
@@ -84,10 +84,10 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_pdhg(x0)
     pdhg = cp.gradient.minimize_PDHG(
-        f.func_grad, x0, G1.prox, G2.prox,
+        f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
+        step_size2=(1. / step_size) / 2, tol=0, backtracking=False)
     trace_pdhg = np.array([loss(x) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
@@ -96,10 +96,10 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_pdhg_nols(x0)
     pdhg_nols = cp.gradient.minimize_PDHG(
-        f.func_grad, x0, G1.prox, G2.prox,
+        f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg_nols, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
+        step_size2=(1. / step_size) / 2, tol=0, backtracking=False)
     trace_pdhg_nols = np.array([loss(x) for x in cb_pdhg_nols.trace_x])
     all_trace_pdhg_nols.append(trace_pdhg_nols)
     all_trace_pdhg_nols_time.append(cb_pdhg_nols.trace_time)

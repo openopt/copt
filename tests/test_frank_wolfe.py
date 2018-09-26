@@ -21,7 +21,7 @@ all_solvers = (
 )
 loss_funcs = [
     cp.utils.LogLoss, 
-    cp.utils.SquareLoss, 
+    cp.utils.SquareLoss,
     ]
 
 

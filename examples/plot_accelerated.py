@@ -15,17 +15,17 @@ np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
 
-logloss = cp.utils.LogLoss(X, y).func_grad
+logloss = cp.utils.LogLoss(X, y).f_grad
 cb_pgd = cp.utils.Trace()
 cb_apgd = cp.utils.Trace()
 L = cp.utils.get_lipschitz(X, 'logloss')
 step_size = 1. / L
 result_pgd = cp.minimize_PGD(
     logloss, np.zeros(n_features), step_size=step_size,
-    callback=cb_pgd, tol=0, line_search=False)
+    callback=cb_pgd, tol=0, backtracking=False)
 result_apgd = cp.minimize_APGD(
     logloss, np.zeros(n_features), step_size=step_size,
-    callback=cb_apgd, tol=0, line_search=False)
+    callback=cb_apgd, tol=0, backtracking=False)
 
 trace_func_pgd = np.array([logloss(x)[0] for x in cb_pgd.trace_x])
 trace_func_apgd = np.array([logloss(x)[0] for x in cb_apgd.trace_x])
