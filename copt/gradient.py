@@ -7,7 +7,7 @@ from tqdm import trange
 
 def minimize_PGD(
         f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
-        callback=None, line_search=True, step_size=None,
+        callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=1000, backtracking_factor=0.6,
         ):
     """Proximal gradient descent.
@@ -18,41 +18,44 @@ def minimize_PGD(
 
     where we have access to the gradient of f and to the proximal operator of g.
 
-    Arguments:
-        f_grad: callable
-             Returns the function value and gradient of the objective function.
+    Parameters
+    ----------
+    f_grad: callable
+         Returns the function value and gradient of the objective function.
 
-        g : penalty term (proximal)
+    g : penalty term (proximal)
 
-        x0 : array-like, optional
-            Initial guess
+    x0 : array-like, optional
+        Initial guess
 
-        line_search : boolean
-            Whether to perform backtracking (i.e. line-search) or not.
+    backtracking : boolean
+        Whether to perform backtracking (i.e. line-search) or not.
 
-        max_iter : int
-            Maximum number of iterations.
+    max_iter : int
+        Maximum number of iterations.
 
-        verbose : int
-            Verbosity level, from 0 (no output) to 2 (output on each iteration)
+    verbose : int
+        Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-        step_size : float
-            Starting value for the line-search procedure. XXX
+    step_size : float
+        Starting value for the line-search procedure. XXX
 
-        callback : callable
-            callback function (optional).
+    callback : callable
+        callback function (optional).
 
-    Returns:
-        res : The optimization result represented as a
-            ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-            ``x`` the solution array, ``success`` a Boolean flag indicating if
-            the optimizer exited successfully and ``message`` which describes
-            the cause of the termination. See `scipy.optimize.OptimizeResult`
-            for a description of other attributes.
+    Returns
+    -------
+    res : The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
 
-    References:
-        Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
-        recovery." Convex optimization in signal processing and communications (2009)
+    References
+    ----------
+    Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
+    recovery." Convex optimization in signal processing and communications (2009)
     """
     x = x0
     if not max_iter_backtracking > 0:
@@ -80,7 +83,7 @@ def minimize_PGD(
         # TODO: could compute loss and grad in the same function call
         x_next = g_prox(x - step_size * grad_fk, step_size)
         incr = x_next - x
-        if line_search:
+        if backtracking:
             step_size *= 1.1
             for _ in range(max_iter_backtracking):
                 f_next, grad_next = f_grad(x_next)
@@ -122,7 +125,7 @@ def minimize_PGD(
 
 def minimize_APGD(
         f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
-        callback=None, line_search=True,
+        callback=None, backtracking=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6):
     """Accelerated proximal gradient descent.
 
@@ -132,43 +135,46 @@ def minimize_APGD(
 
     where we have access to the gradient of f and to the proximal operator of g.
 
-    Arguments:
-        f_grad : loss function, differentiable
+    Parameters
+    ----------
+    f_grad : loss function, differentiable
 
-        g_prox : penalty, proximable
+    g_prox : penalty, proximable
 
-        g_prox : g_prox(x, alpha) returns the proximal operator of g at x
-            with parameter alpha.
+    g_prox : g_prox(x, alpha) returns the proximal operator of g at x
+        with parameter alpha.
 
-        x0 : array-like
-            Initial guess
+    x0 : array-like
+        Initial guess
 
-        line_search : boolean
-            Whether to perform backtracking (i.e. line-search) or not.
+    backtracking : boolean
+        Whether to perform backtracking (i.e. line-search) or not.
 
-        max_iter : int
-            Maximum number of iterations.
+    max_iter : int
+        Maximum number of iterations.
 
-        verbose : int
-            Verbosity level, from 0 (no output) to 2 (output on each iteration)
+    verbose : int
+        Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-        step_size : float
-            Starting value for the line-search procedure. XXX
+    step_size : float
+        Starting value for the line-search procedure. XXX
 
-        callback : callable
-            callback function (optional).
+    callback : callable
+        callback function (optional).
 
-    Returns:
-        res : The optimization result represented as a
-            ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-            ``x`` the solution array, ``success`` a Boolean flag indicating if
-            the optimizer exited successfully and ``message`` which describes
-            the cause of the termination. See `scipy.optimize.OptimizeResult`
-            for a description of other attributes.
+    Returns
+    -------
+    res : The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
 
-    References:
-        Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications to signal
-        recovery." Convex optimization in signal processing and communications (2009)
+    References
+    ----------
+    Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications to signal
+    recovery." Convex optimization in signal processing and communications (2009)
     """
     x = x0
     if not max_iter_backtracking > 0:
@@ -193,7 +199,7 @@ def minimize_APGD(
         current_step_size = step_size
         grad_fk = f_grad(yk)[1]
         x = g_prox(yk - current_step_size * grad_fk, current_step_size)
-        if line_search:
+        if backtracking:
             for _ in range(max_iter_backtracking):
                 incr = x - yk
                 if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * current_step_size):
@@ -236,7 +242,7 @@ def minimize_APGD(
 
 def minimize_TOS(
         f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
-        verbose=0, callback=None, line_search=True, step_size=None,
+        verbose=0, callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.7, h_Lipschitz=None):
     """Davis-Yin three operator splitting method.
 
@@ -260,7 +266,7 @@ def minimize_TOS(
     y0 : array-like
         Initial guess
 
-    line_search : boolean
+    backtracking : boolean
         Whether to perform backtracking (i.e. line-search) to estimate
         the step size.
 
@@ -305,7 +311,7 @@ def minimize_TOS(
         h_prox = lambda x, s: x
 
     if step_size is None:
-        line_search = True
+        backtracking = True
         step_size = 1.
 
     z = h_prox(x0, step_size)
@@ -320,7 +326,7 @@ def minimize_TOS(
     pbar.set_description('TOS')
     for it in pbar:
 
-        if line_search:
+        if backtracking:
             for it_ls in range(max_iter_backtracking):
                 fk, grad_fk = f_grad(z)
                 x = g_prox(z - step_size * (u + grad_fk), step_size)
@@ -345,7 +351,7 @@ def minimize_TOS(
         u += (x - z) / step_size
         certificate = norm_incr / step_size
 
-        if line_search and h_Lipschitz is not None:
+        if backtracking and h_Lipschitz is not None:
             if h_Lipschitz == 0:
                 step_size = step_size * 1.02
             else:
@@ -378,7 +384,7 @@ def minimize_TOS(
 def minimize_PDHG(
         f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
         max_iter=1000, callback=None, step_size=1., step_size2=None,
-        line_search=True, max_iter_ls=20, verbose=0):
+        backtracking=True, max_iter_ls=20, verbose=0):
     """Primal-dual hybrid gradient splitting method.
 
     This method for optimization problems of the form
@@ -468,7 +474,7 @@ def minimize_PDHG(
 
     for it in pbar:
         y_next = h_prox_conj(y + tau * Ldot(x), tau)
-        if line_search:
+        if backtracking:
             tau_next = tau * np.sqrt(1 + theta)
             while True:
                 theta = tau_next / tau

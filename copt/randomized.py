@@ -199,371 +199,6 @@ def minimize_SAGA_L1(
         x=x, success=success, nit=it)
 
 
-def minimize_VRTOS(
-        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, blocks_1=None,
-        blocks_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
-        verbose=0):
-    """
-    TODO description
-    """
-    
-    n_samples, n_features = A.shape
-    success = False
-
-    Y = np.zeros((2, x0.size))
-    x = x0.copy()
-    z = x.copy()
-
-    assert A.shape[0] == b.size
-
-    if step_size < 0:
-        raise ValueError
-    
-    if prox_1 is None:
-        @njit
-        def prox_1(x, step_size):
-            return x
-    if prox_2 is None:
-        @njit
-        def prox_2(x, step_size):
-            return x
-
-    if blocks_1 is None:
-        blocks_1 = np.arange(x.size)
-    if blocks_2 is None:
-        blocks_2 = np.arange(x.size)        
-    for blocks in [blocks_1, blocks_2]:
-        if np.any(np.diff(blocks) < 0):
-            raise ValueError('blocks cannot be discontinuous nor with decreasing id')
-            
-    A = sparse.csr_matrix(A)
-    epoch_iteration = _factory_sparse_VRTOS(
-        f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
-        alpha, step_size)
-
-    # .. memory terms ..
-    memory_gradient = np.zeros(n_samples)
-    gradient_average = np.zeros(n_features)
-    x1 = x0.copy()
-    grad_tmp = np.zeros(n_features)
-
-
-    # warm up for the JIT
-    epoch_iteration(
-        Y, x0, x1, z, memory_gradient, gradient_average, np.array([0]),
-        grad_tmp, step_size)
-
-    trace_func = []
-    start_time = datetime.now()
-    trace_time = [0.]
-    trace_x = [x.copy()]
-    trace_certificate = [np.inf]
-
-    # .. iterate on epochs ..
-    pbar = trange(max_iter, disable=(verbose == 0))
-    for it in pbar:
-        epoch_iteration(
-            Y, x0, x1, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
-            grad_tmp, step_size)
-
-        certificate = np.linalg.norm(x0 - z)
-        if callback is not None:
-            callback(x)
-
-        if it % 10 == 0:
-            pbar.set_description('VRTOS iter %i' % it)
-
-        if callback is not None:
-            callback(x)
-
-    return optimize.OptimizeResult(
-        x=z, success=success, nit=it, trace_x=trace_x,
-        certificate=certificate,
-        trace_func=trace_func, trace_certificate=np.array(trace_certificate),
-        trace_time=trace_time)
-
-
-@njit(nogil=True)
-def _support_matrix(
-        A_indices, A_indptr, blocks, n_blocks):
-    """
-    Parameters
-    ----------
-    A_indices, A_indptr: numpy arrays representing the data matrix in CSR format.
-    
-    blocks: numy array of size n_features with integer values, where the value codes for the group to which the given feature belongs.
-    
-    n_blocks: number of unique blocks in array blocks.
-    
-    
-    Returns
-    -------
-    Parameters of a CSR matrix representing the extended support. The returned vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
-    """
-    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
-    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
-    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
-    BS_indptr[0] = 0
-    counter_indptr = 0
-    for i in range(A_indptr.size - 1):
-        low = A_indptr[i]
-        high = A_indptr[i + 1]
-        for j in range(low, high):
-            g_idx = blocks[A_indices[j]]
-            if seen_blocks[g_idx] == 0:
-                # if first time we encouter this block,
-                # add to the index and mark as seen
-                BS_indices[counter_indptr] = g_idx
-                seen_blocks[g_idx] = 1
-                counter_indptr += 1
-        BS_indptr[i + 1] = counter_indptr
-        # cleanup
-        for j in range(BS_indptr[i], counter_indptr):
-            seen_blocks[BS_indices[j]] = 0
-    BS_data = np.ones(counter_indptr)
-    return BS_data, BS_indices[:counter_indptr], BS_indptr
-
-
-@njit(nogil=True)
-def _csr_blocks(blocks, n_blocks):
-    indices = np.arange(blocks.size)
-    indptr = np.zeros(n_blocks+1, dtype=np.int32)
-    
-    largest_seen_block = blocks[0]
-    seen_blocks = 0
-    for i in range(blocks.size):
-        if blocks[i] > largest_seen_block:
-            # jump
-            indptr[seen_blocks + 1] = i
-            largest_seen_block = blocks[i]
-            seen_blocks += 1
-    indptr[n_blocks] = i+1
-    return indices, indptr
-
-
-
-def _factory_sparse_VRTOS(
-        f_prime, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, gamma):
-
-    A_data = A.data
-    A_indices = A.indices
-    A_indptr = A.indptr
-    n_samples, n_features = A.shape
-
-    unique_blocks_1 = np.unique(blocks_1)
-    n_blocks_1 = np.unique(blocks_1).size
-    assert np.all(unique_blocks_1 == np.arange(n_blocks_1))
-
-    b1_data, b1_indices, b1_indptr = _support_matrix(
-        A_indices, A_indptr, blocks_1, n_blocks_1)
-    csr_blocks_1 = sparse.csr_matrix((b1_data, b1_indices, b1_indptr))
-
-    unique_blocks_2 = np.unique(blocks_2)
-    n_blocks_2 = np.unique(blocks_2).size
-    assert np.all(unique_blocks_2 == np.arange(n_blocks_2))
-
-    b2_data, b2_indices, b2_indptr = _support_matrix(
-        A_indices, A_indptr, blocks_2, n_blocks_2)
-    csr_blocks_2 = sparse.csr_matrix((b2_data, b2_indices, b2_indptr))
-
-    # .. diagonal reweighting ..
-    d1 = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
-    idx = (d1 != 0)
-    d1[idx] = n_samples / d1[idx]
-    d1[~idx] = 1
-    
-    d2 = np.array(csr_blocks_2.sum(0), dtype=np.float).ravel()
-    idx = (d2 != 0)
-    d2[idx] = n_samples / d2[idx]
-    d2[~idx] = 1
-
-    # .. XXX TODO description ..
-    # This overwrites 
-    b1r_indices, b1r_indptr = _csr_blocks(blocks_1, n_blocks_1)
-
-    b2r_indices, b2r_indptr = _csr_blocks(blocks_2, n_blocks_2)
-
-    @njit(nogil=True)
-    def epoch_iteration_template(
-            Y, X1, X2, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
-
-        # .. iterate on samples ..
-        for i in sample_indices:
-            
-            p = 0.
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                p += z[j_idx] * A_data[j]
-
-            grad_i = f_prime(p, b[i])
-
-            # .. gradient estimate (XXX difference) ..
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
-
-            # .. iterate on blocks ..
-            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
-                h = b1_indices[h_j]
-
-                # .. iterate on features inside block ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    bias_term = d1[h] * (gradient_average[b_j] + alpha * z[b_j])
-                    X1[b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
-                        grad_tmp[b_j] + bias_term)
-
-                tmp = prox_1(X1[b1r_indptr[h]:b1r_indptr[h+1]], d1[h] * step_size)
-                X1[b1r_indptr[h]:b1r_indptr[h+1]] = tmp
-
-                # .. update y ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    Y[0, b_j] += X1[b_j] - z[b_j]
-
-
-            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
-                h = b2_indices[h_j]
-
-                # .. iterate on features inside block ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
-                    bias_term = d2[h] * (gradient_average[b_j] + alpha * z[b_j])
-                    X2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
-                        grad_tmp[b_j] + bias_term)
-
-                tmp = prox_2(
-                    X2[b2r_indptr[h]:b2r_indptr[h+1]], d2[h] * step_size)
-                X2[b2r_indptr[h]:b2r_indptr[h+1]] = tmp
-
-                # .. update y ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
-                    Y[1, b_j] += X2[b_j] - z[b_j]
-                
-            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
-                h = b1_indices[h_j]
-            
-                # .. iterate on features inside block ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    da = 1./d1[blocks_1[b_j]]
-                    db = 1./d2[blocks_2[b_j]] 
-                    z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
-            
-            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
-                h = b2_indices[h_j]
-            
-                # .. iterate on features inside block ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
-                    da = 1./d1[blocks_1[b_j]]
-                    db = 1./d2[blocks_2[b_j]] 
-                    z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
-
-            # .. update memory terms ..
-            for j in range(A_indptr[i], A_indptr[i+1]):
-                j_idx = A_indices[j]
-                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
-                grad_tmp[j_idx] = 0
-            memory_gradient[i] = grad_i
-
-    return epoch_iteration_template
-
-
-
-def minimize_BCD(
-        f, g=None, x0=None, step_size=None, max_iter=300, trace=False, verbose=False,
-        tol=1e-3):
-    """Block Coordinate Descent
-
-    Parameters
-    ----------
-    f
-    g
-    x0
-
-    Returns
-    -------
-
-    """
-
-    if x0 is None:
-        xk = np.zeros(f.n_features)
-    else:
-        xk = np.array(x0, copy=True)
-    if g is None:
-        g = utils.ZeroLoss()
-    if step_size is None:
-        step_size = 1. / f.lipschitz_constant('features')
-
-    Ax = f.A.dot(xk)
-    f_alpha = f.alpha
-    n_samples, n_features = f.A.shape
-    success = False
-
-    partial_gradient = f.partial_gradient_factory()
-    prox = g.prox_factory()
-
-    if trace:
-        trace_x = np.zeros((max_iter, n_features))
-    else:
-        trace_x = np.zeros((0, 0))
-
-    @njit(nogil=True)
-    def _bcd_algorithm(
-            x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
-            A_csc_indices, A_csc_indptr, b, trace_x, tol):
-        it = 0
-        feature_indices = np.arange(n_features)
-        for it in range(1, max_iter):
-            np.random.shuffle(feature_indices)
-            for j in feature_indices:
-                grad_j = 0.
-                for i_indptr in range(A_csc_indptr[j], A_csc_indptr[j+1]):
-                    # get the current sample
-                    i_idx = A_csc_indices[i_indptr]
-                    grad_j += partial_gradient(Ax[i_idx], b[i_idx]) * A_csc_data[i_indptr] / n_samples
-                x_new = prox(x[j] - step_size * (grad_j + f_alpha * x[j]), step_size)
-
-                # .. update Ax ..
-                for i_indptr in range(A_csc_indptr[j], A_csc_indptr[j+1]):
-                    i_idx = A_csc_indices[i_indptr]
-                    Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
-                x[j] = x_new
-                if j == 0:
-                    # .. recompute Ax TODO: do only in async ..
-                    for i in range(n_samples):
-                        p = 0.
-                        for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
-                            j_idx = A_csr_indices[j]
-                            p += x[j_idx] * A_csr_data[j]
-                        # .. copy back to shared memory ..
-                        Ax[i] = p
-
-        return it, None
-
-    X_csc = sparse.csc_matrix(f.A.A)
-    X_csr = sparse.csr_matrix(f.A.A)
-
-    trace_func = []
-    start = datetime.now()
-    trace_time = [(start - datetime.now()).total_seconds()]
-
-
-    start_time = datetime.now()
-    n_iter, certificate = _bcd_algorithm(
-                xk, Ax, X_csr.data, X_csr.indices, X_csr.indptr, X_csc.data,
-                X_csc.indices, X_csc.indptr, f.b, trace_x, tol)
-    delta = (datetime.now() - start_time).total_seconds()
-
-    if trace:
-        trace_time = np.linspace(0, delta, n_iter)
-        if verbose:
-            print('Computing trace')
-        # .. compute function values ..
-        trace_func = []
-        for i in range(n_iter):
-            # TODO: could be parallelized
-            trace_func.append(f(trace_x[i]) + g(trace_x[i]))
-    return optimize.OptimizeResult(
-        x=xk, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
-        certificate=certificate)
-
 
 def minimize_SVRG_L1(
         f_deriv, A, b, x0, step_size, alpha=0, beta=0, 
@@ -577,8 +212,8 @@ def minimize_SVRG_L1(
 
     Parameters
     ----------
-    f, g
-        loss functions. g can be none
+    f_deriv
+        derivative of f
 
     x0: np.ndarray or None, optional
         Starting point for optimization.
@@ -738,3 +373,415 @@ def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
                 x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
 
     return _svrg_algorithm, full_grad
+
+
+
+def minimize_VRTOS(
+        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, blocks_1=None,
+        blocks_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
+        verbose=0):
+    """Variance-reduced three operator splitting (VRTOS) algorithm.
+
+    The VRTOS algorithm can solve optimization problems of the form
+
+        argmin_{x \in R^p} \sum_{i}^n_samples f(A_i^T x, b_i) + alpha * ||x||_2^2 +
+                                            + pen1(x) + pen2(x)
+
+    Parameters
+    ----------
+    f_deriv
+        derivative of f
+
+    x0: np.ndarray or None, optional
+        Starting point for optimization.
+
+    step_size: float or None, optional
+        Step size for the optimization. If None is given, this will be
+        estimated from the function f.
+
+    n_jobs: int
+        Number of threads to use in the optimization. A number higher than 1
+        will use the Asynchronous SAGA optimization method described in
+        [Pedregosa et al., 2017]
+
+    max_iter: int
+        Maximum number of passes through the data in the optimization.
+
+    tol: float
+        Tolerance criterion. The algorithm will stop whenever the norm of the
+        gradient mapping (generalization of the gradient for nonsmooth optimization)
+        is below tol.
+
+    verbose: bool
+        Verbosity level. True might print some messages.
+
+    trace: bool
+        Whether to trace convergence of the function, useful for plotting and/or
+        debugging. If ye, the result will have extra members trace_func,
+        trace_time.
+
+    Returns
+    -------
+    opt: OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
+
+    References
+    ----------
+    Pedregosa, Fabian, Kilian Fatras, and Mattia Casotto. "Variance Reduced Three Operator Splitting." arXiv preprint arXiv:1806.07294 (2018).
+    """
+    
+    n_samples, n_features = A.shape
+    success = False
+
+    Y = np.zeros((2, x0.size))
+    z = x0.copy()
+
+    assert A.shape[0] == b.size
+
+    if step_size < 0:
+        raise ValueError
+    
+    if prox_1 is None:
+        @njit
+        def prox_1(x, step_size):
+            return x
+    if prox_2 is None:
+        @njit
+        def prox_2(x, step_size):
+            return x
+
+    if blocks_1 is None:
+        blocks_1 = np.arange(x0.size)
+    if blocks_2 is None:
+        blocks_2 = np.arange(x0.size)        
+    for blocks in [blocks_1, blocks_2]:
+        if np.any(np.diff(blocks) < 0):
+            raise ValueError('blocks cannot be discontinuous nor with decreasing id')
+            
+    A = sparse.csr_matrix(A)
+    epoch_iteration = _factory_sparse_VRTOS(
+        f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
+        alpha, step_size)
+
+    # .. memory terms ..
+    memory_gradient = np.zeros(n_samples)
+    gradient_average = np.zeros(n_features)
+    x1 = x0.copy()
+    grad_tmp = np.zeros(n_features)
+    X = np.vstack((x0, x1))
+
+
+    # warm up for the JIT
+    epoch_iteration(
+        Y, X, z, memory_gradient, gradient_average, np.array([0]),
+        grad_tmp, step_size)
+
+    start_time = datetime.now()
+
+    # .. iterate on epochs ..
+    if callback is not None:
+        callback(z)
+    pbar = trange(max_iter, disable=(verbose == 0))
+    for it in pbar:
+        epoch_iteration(
+            Y, X, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
+            grad_tmp, step_size)
+
+        certificate = np.linalg.norm(x0 - z)
+        if callback is not None:
+            callback(z)
+
+        pbar.set_description('VRTOS iter %i' % it)
+
+    return optimize.OptimizeResult(
+        x=z, success=success, nit=it,
+        certificate=certificate)
+
+
+@njit(nogil=True)
+def _support_matrix(
+        A_indices, A_indptr, blocks, n_blocks):
+    """
+    Parameters
+    ----------
+    A_indices, A_indptr: numpy arrays representing the data matrix in CSR format.
+    
+    blocks: numy array of size n_features with integer values, where the value codes for the group to which the given feature belongs.
+    
+    n_blocks: number of unique blocks in array blocks.
+    
+    
+    Returns
+    -------
+    Parameters of a CSR matrix representing the extended support. The returned vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    """
+    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
+    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
+    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
+    BS_indptr[0] = 0
+    counter_indptr = 0
+    for i in range(A_indptr.size - 1):
+        low = A_indptr[i]
+        high = A_indptr[i + 1]
+        for j in range(low, high):
+            g_idx = blocks[A_indices[j]]
+            if seen_blocks[g_idx] == 0:
+                # if first time we encouter this block,
+                # add to the index and mark as seen
+                BS_indices[counter_indptr] = g_idx
+                seen_blocks[g_idx] = 1
+                counter_indptr += 1
+        BS_indptr[i + 1] = counter_indptr
+        # cleanup
+        for j in range(BS_indptr[i], counter_indptr):
+            seen_blocks[BS_indices[j]] = 0
+    BS_data = np.ones(counter_indptr)
+    return BS_data, BS_indices[:counter_indptr], BS_indptr
+
+
+@njit(nogil=True)
+def _csr_blocks(blocks, n_blocks):
+    indices = np.arange(blocks.size)
+    indptr = np.zeros(n_blocks+1, dtype=np.int32)
+    
+    largest_seen_block = blocks[0]
+    seen_blocks = 0
+    for i in range(blocks.size):
+        if blocks[i] > largest_seen_block:
+            # jump
+            indptr[seen_blocks + 1] = i
+            largest_seen_block = blocks[i]
+            seen_blocks += 1
+    indptr[n_blocks] = i+1
+    return indices, indptr
+
+
+
+def _factory_sparse_VRTOS(
+        f_prime, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, gamma):
+
+    A_data = A.data
+    A_indices = A.indices
+    A_indptr = A.indptr
+    n_samples, n_features = A.shape
+
+    unique_blocks_1 = np.unique(blocks_1)
+    n_blocks_1 = np.unique(blocks_1).size
+    assert np.all(unique_blocks_1 == np.arange(n_blocks_1))
+
+    b1_data, b1_indices, b1_indptr = _support_matrix(
+        A_indices, A_indptr, blocks_1, n_blocks_1)
+    csr_blocks_1 = sparse.csr_matrix((b1_data, b1_indices, b1_indptr))
+
+    unique_blocks_2 = np.unique(blocks_2)
+    n_blocks_2 = np.unique(blocks_2).size
+    assert np.all(unique_blocks_2 == np.arange(n_blocks_2))
+
+    b2_data, b2_indices, b2_indptr = _support_matrix(
+        A_indices, A_indptr, blocks_2, n_blocks_2)
+    csr_blocks_2 = sparse.csr_matrix((b2_data, b2_indices, b2_indptr))
+
+    # .. diagonal reweighting ..
+    d1 = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    idx = (d1 != 0)
+    d1[idx] = n_samples / d1[idx]
+    d1[~idx] = 1
+    
+    d2 = np.array(csr_blocks_2.sum(0), dtype=np.float).ravel()
+    idx = (d2 != 0)
+    d2[idx] = n_samples / d2[idx]
+    d2[~idx] = 1
+
+    # .. XXX TODO description ..
+    # This overwrites 
+    b1r_indices, b1r_indptr = _csr_blocks(blocks_1, n_blocks_1)
+
+    b2r_indices, b2r_indptr = _csr_blocks(blocks_2, n_blocks_2)
+
+    @njit(nogil=True)
+    def epoch_iteration_template(
+            Y, X, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
+
+        # .. iterate on samples ..
+        for i in sample_indices:
+            
+            p = 0.
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                p += z[j_idx] * A_data[j]
+
+            grad_i = f_prime(p, b[i])
+
+            # .. gradient estimate (XXX difference) ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
+
+            # .. iterate on blocks ..
+            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
+                h = b1_indices[h_j]
+
+                # .. iterate on features inside block ..
+                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
+                    bias_term = d1[h] * (gradient_average[b_j] + alpha * z[b_j])
+                    X[0, b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
+                        grad_tmp[b_j] + bias_term)
+
+                tmp = prox_1(
+                    X[0, b1r_indptr[h]:b1r_indptr[h+1]], d1[h] * step_size)
+                X[0, b1r_indptr[h]:b1r_indptr[h+1]] = tmp
+
+                # .. update y ..
+                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
+                    Y[0, b_j] += X[0, b_j] - z[b_j]
+
+
+            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
+                h = b2_indices[h_j]
+
+                # .. iterate on features inside block ..
+                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
+                    bias_term = d2[h] * (gradient_average[b_j] + alpha * z[b_j])
+                    X[1, b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
+                        grad_tmp[b_j] + bias_term)
+
+                tmp = prox_2(
+                    X[1, b2r_indptr[h]:b2r_indptr[h+1]], d2[h] * step_size)
+                X[1, b2r_indptr[h]:b2r_indptr[h+1]] = tmp
+
+                # .. update y ..
+                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
+                    Y[1, b_j] += X[1, b_j] - z[b_j]
+            
+            # .. update z ..
+            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
+                h = b1_indices[h_j]
+            
+                # .. iterate on features inside block ..
+                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
+                    da = 1./d1[blocks_1[b_j]]
+                    db = 1./d2[blocks_2[b_j]] 
+                    z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
+
+            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
+                h = b2_indices[h_j]
+            
+                # .. iterate on features inside block ..
+                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
+                    da = 1./d1[blocks_1[b_j]]
+                    db = 1./d2[blocks_2[b_j]] 
+                    z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
+
+            # .. update memory terms ..
+            for j in range(A_indptr[i], A_indptr[i+1]):
+                j_idx = A_indices[j]
+                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                grad_tmp[j_idx] = 0
+            memory_gradient[i] = grad_i
+
+    return epoch_iteration_template
+
+
+
+def minimize_BCD(
+        f, g=None, x0=None, step_size=None, max_iter=300, trace=False, verbose=False,
+        tol=1e-3):
+    """Block Coordinate Descent
+
+    Parameters
+    ----------
+    f
+    g
+    x0
+
+    Returns
+    -------
+
+    """
+
+    if x0 is None:
+        xk = np.zeros(f.n_features)
+    else:
+        xk = np.array(x0, copy=True)
+    if g is None:
+        g = utils.ZeroLoss()
+    if step_size is None:
+        step_size = 1. / f.lipschitz_constant('features')
+
+    Ax = f.A.dot(xk)
+    f_alpha = f.alpha
+    n_samples, n_features = f.A.shape
+    success = False
+
+    partial_gradient = f.partial_gradient_factory()
+    prox = g.prox_factory()
+
+    if trace:
+        trace_x = np.zeros((max_iter, n_features))
+    else:
+        trace_x = np.zeros((0, 0))
+
+    @njit(nogil=True)
+    def _bcd_algorithm(
+            x, Ax, A_csr_data, A_csr_indices, A_csr_indptr, A_csc_data,
+            A_csc_indices, A_csc_indptr, b, trace_x, tol):
+        it = 0
+        feature_indices = np.arange(n_features)
+        for it in range(1, max_iter):
+            np.random.shuffle(feature_indices)
+            for j in feature_indices:
+                grad_j = 0.
+                for i_indptr in range(A_csc_indptr[j], A_csc_indptr[j+1]):
+                    # get the current sample
+                    i_idx = A_csc_indices[i_indptr]
+                    grad_j += partial_gradient(Ax[i_idx], b[i_idx]) * A_csc_data[i_indptr] / n_samples
+                x_new = prox(x[j] - step_size * (grad_j + f_alpha * x[j]), step_size)
+
+                # .. update Ax ..
+                for i_indptr in range(A_csc_indptr[j], A_csc_indptr[j+1]):
+                    i_idx = A_csc_indices[i_indptr]
+                    Ax[i_idx] += A_csc_data[i_indptr] * (x_new - x[j])
+                x[j] = x_new
+                if j == 0:
+                    # .. recompute Ax TODO: do only in async ..
+                    for i in range(n_samples):
+                        p = 0.
+                        for j in range(A_csr_indptr[i], A_csr_indptr[i+1]):
+                            j_idx = A_csr_indices[j]
+                            p += x[j_idx] * A_csr_data[j]
+                        # .. copy back to shared memory ..
+                        Ax[i] = p
+
+        return it, None
+
+    X_csc = sparse.csc_matrix(f.A.A)
+    X_csr = sparse.csr_matrix(f.A.A)
+
+    trace_func = []
+    start = datetime.now()
+    trace_time = [(start - datetime.now()).total_seconds()]
+
+
+    start_time = datetime.now()
+    n_iter, certificate = _bcd_algorithm(
+                xk, Ax, X_csr.data, X_csr.indices, X_csr.indptr, X_csc.data,
+                X_csc.indices, X_csc.indptr, f.b, trace_x, tol)
+    delta = (datetime.now() - start_time).total_seconds()
+
+    if trace:
+        trace_time = np.linspace(0, delta, n_iter)
+        if verbose:
+            print('Computing trace')
+        # .. compute function values ..
+        trace_func = []
+        for i in range(n_iter):
+            # TODO: could be parallelized
+            trace_func.append(f(trace_x[i]) + g(trace_x[i]))
+    return optimize.OptimizeResult(
+        x=xk, success=success, nit=n_iter, trace_func=trace_func, trace_time=trace_time,
+        certificate=certificate)

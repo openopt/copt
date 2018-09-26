@@ -93,9 +93,9 @@ class LogLoss:
         self.intercept = False
 
     def __call__(self, x):
-        return self.func_grad(x, return_gradient=False)
+        return self.f_grad(x, return_gradient=False)
 
-    def func_grad(self, x, return_gradient=True):
+    def f_grad(self, x, return_gradient=True):
         if self.intercept:
             x_, c = x[:-1], x[-1]
         else:
@@ -135,7 +135,7 @@ class SquareLoss:
         z = self.A.dot(x) - self.b
         return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
 
-    def func_grad(self, x, return_gradient=True):
+    def f_grad(self, x, return_gradient=True):
         z = self.A.dot(x) - self.b
         loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
         if not return_gradient:
@@ -152,9 +152,9 @@ class HuberLoss:
         self.alpha = alpha
 
     def __call__(self, x):
-        return self.func_grad(x, return_gradient=False)
+        return self.f_grad(x, return_gradient=False)
 
-    def func_grad(self, x, return_gradient=True):
+    def f_grad(self, x, return_gradient=True):
         z = self.A.dot(x) - self.b
         idx = np.abs(z) < self.delta
         loss = 0.5 * np.sum(z[idx] * z[idx])
@@ -169,7 +169,7 @@ class HuberLoss:
 def ilogloss():
 
     @njit
-    def partial_func_grad(p, b):
+    def partial_f_grad(p, b):
         p *= b
         if p > 0:
             tmp = 1 + np.exp(-p)

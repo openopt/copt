@@ -30,7 +30,7 @@ def test_gradient():
         A = np.random.randn(10, 5)
         b = np.random.rand(10)
         for loss in loss_funcs:
-            f_grad = loss(A, b).func_grad
+            f_grad = loss(A, b).f_grad
             f = lambda x: f_grad(x)[0]
             grad = lambda x: f_grad(x)[1]
             eps = optimize.check_grad(f, grad, np.random.randn(5))
@@ -43,6 +43,6 @@ def test_gradient():
 def test_optimize(name_solver, solver, tol, loss_grad, penalty):
     for alpha, beta in zip(
             np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
-        f_grad = loss_grad(A, b, alpha).func_grad
+        f_grad = loss_grad(A, b, alpha).f_grad
         opt = solver(f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
         assert opt.certificate < tol, name_solver
