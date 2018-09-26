@@ -6,7 +6,7 @@ from copt import randomized
 import pytest
 
 np.random.seed(0)
-n_samples, n_features = 50, 20
+n_samples, n_features = 20, 10
 density = 0.5
 A = sparse.random(n_samples, n_features, density=density)
 w = np.random.randn(n_features)
@@ -77,7 +77,6 @@ def test_vrtos():
 def test_vrtos_l1():
     alpha = 1./n_samples
     for beta in np.logspace(-3, 3, 3):
-        full_prox = cp.utils.L1Norm(beta)
         p_1 = cp.randomized.prox_l1(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
@@ -86,13 +85,14 @@ def test_vrtos_l1():
         # blocks = np.arange(n_features)
         opt_1 = cp.minimize_VRTOS(
             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=1000, prox_1=p_1, blocks_1=blocks)
+            alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks)
 
         opt_2 = cp.minimize_VRTOS(
             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=1000, prox_2=p_1)
+            alpha=alpha, max_iter=200, prox_2=p_1)
 
         for x in [opt_1.x, opt_2.x]:
+            full_prox = cp.utils.L1Norm(beta)
             grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
             ss = 1./L
             # check that the gradient mapping vanishes
@@ -104,21 +104,70 @@ def test_vrtos_gl():
     alpha = 1./n_samples
     blocks = np.arange(n_features)//2
     for beta in np.logspace(-3, 3, 3):
-        full_prox = cp.utils.GroupL1(beta, blocks)
         p_1 = cp.randomized.prox_gl(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
         opt_1 = cp.minimize_VRTOS(
             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=1000, prox_1=p_1, blocks_1=blocks)
+            alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks)
 
         opt_2 = cp.minimize_VRTOS(
             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=1000, prox_2=p_1, blocks_2=blocks)
+            alpha=alpha, max_iter=200, prox_2=p_1, blocks_2=blocks)
 
         for x in [opt_1.x, opt_2.x]:
+            full_prox = cp.utils.GroupL1(beta, blocks)
             grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
             ss = 1./L
             # check that the gradient mapping vanishes
             grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
             assert np.linalg.norm(grad_map) < 1e-6
+
+
+def test_vrtos_gl():
+    alpha = 1./n_samples
+    blocks = np.arange(n_features)//2
+    for beta in np.logspace(-3, 3, 3):
+        p_1 = cp.randomized.prox_gl(beta)
+        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+
+        opt_1 = cp.minimize_VRTOS(
+            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+            alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks)
+
+        opt_2 = cp.minimize_VRTOS(
+            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+            alpha=alpha, max_iter=200, prox_2=p_1, blocks_2=blocks)
+
+        for x in [opt_1.x, opt_2.x]:
+            full_prox = cp.utils.GroupL1(beta, blocks)
+            grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
+            ss = 1./L
+            # check that the gradient mapping vanishes
+            grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
+            assert np.linalg.norm(grad_map) < 1e-6
+
+# 
+# def test_vrtos_ogl():
+#     """Test on overlapping group lasso"""
+#     alpha = 1./n_samples
+#     blocks_1 = np.arange(n_features)//2
+#     blocks_2 = np.arange(n_features)//3
+#     for beta in np.logspace(-3, 3, 3):
+#         p_1 = cp.randomized.prox_gl(beta)
+#         p_2 = cp.randomized.prox_gl(beta)
+#         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+# 
+#         opt_1 = cp.minimize_VRTOS(
+#             randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
+#             alpha=alpha, max_iter=200, prox_1=p_1, blocks_1=blocks_1
+#             prox_2=p_1, blocks_2=blocks_2)
+# 
+#         for x in [opt_1.x, opt_2.x]:
+#             full_prox_1 = cp.utils.GroupL1(beta, blocks_1)
+#             grad = cp.utils.LogLoss(A, b, alpha).func_grad(x)[1]
+#             ss = 1./L
+#             x = 
+#             # check that the gradient mapping vanishes
+#             grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
+#             assert np.linalg.norm(grad_map) < 1e-6
