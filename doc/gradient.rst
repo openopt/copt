@@ -9,3 +9,4 @@ Gradient-based methods
     copt.minimize_PGD
     copt.minimize_APGD
     copt.minimize_TOS
+    copt.minimize_FW_L1
