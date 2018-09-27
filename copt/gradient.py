@@ -120,7 +120,7 @@ def minimize_PGD(
     return optimize.OptimizeResult(
         x=x, success=success,
         certificate=certificate,
-        nit=it)
+        nit=it, step_size=step_size)
 
 
 def minimize_APGD(
@@ -237,7 +237,7 @@ def minimize_APGD(
     return optimize.OptimizeResult(
         x=yk, success=success,
         certificate=certificate,
-        nit=it)
+        nit=it, step_size=step_size)
 
 
 def minimize_TOS(
@@ -378,7 +378,7 @@ def minimize_TOS(
     pbar.close()
     return optimize.OptimizeResult(
         x=x, success=success, nit=it,
-        certificate=certificate)
+        certificate=certificate, step_size=step_size)
 
 
 def minimize_PDHG(

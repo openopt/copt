@@ -173,6 +173,7 @@ class HuberLoss:
         grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
         return loss, grad
 
+
 def ilogloss():
 
     @njit

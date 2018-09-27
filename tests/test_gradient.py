@@ -5,7 +5,7 @@ import copt as cp
 import pytest
 
 np.random.seed(0)
-n_samples, n_features = 50, 20
+n_samples, n_features = 20, 10
 A = np.random.randn(n_samples, n_features)
 w = np.random.randn(n_features)
 b = A.dot(w) + np.random.randn(n_samples)
@@ -17,7 +17,7 @@ b = np.abs(b / np.max(np.abs(b)))
 all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
     ['APGD', cp.minimize_APGD, 1e-3],
-    ['PDHG', cp.minimize_PDHG, 1e-2],
+    ['PDHG', cp.minimize_PDHG, 0.3],
     ['DavisYin', cp.minimize_TOS, 1e-2],
 )
 
@@ -42,13 +42,15 @@ def test_gradient():
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
 def test_optimize(name_solver, solver, tol, loss, penalty):
-    for alpha, beta in zip(
-            np.logspace(-3, 3, 5), np.logspace(-3, 3, 5)):
+    for alpha in np.logspace(-1, 3, 5):
         l = loss(A, b, alpha)
         opt = solver(
             l.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
-            
+        certificate = np.linalg.norm(l.f_grad(opt.x)[1])
+        assert certificate < tol, name_solver
+
         L = cp.utils.get_lipschitz(A, l, alpha)
         opt_2 = solver(
             l.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10, backtracking=False, step_size=1/L)
-        assert opt.certificate < tol, name_solver
+        certificate = np.linalg.norm(l.f_grad(opt_2.x)[1])
+        assert certificate < tol, name_solver
