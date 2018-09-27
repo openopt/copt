@@ -404,8 +404,10 @@ class TraceBall:
         raise NotImplementedError
     
     def lmo(self, x):
+        x = x.reshape(self.shape)
         u, s, vt = splinalg.svds(x, k=1, maxiter=1000)
-        return alpha * u.dot(vt)
+        tmp = self.alpha * u.dot(vt).ravel()
+        return sparse.csr_matrix(tmp).T
 
 
 class TotalVariation2D:

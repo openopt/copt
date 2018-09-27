@@ -4,6 +4,7 @@ from scipy import sparse, optimize
 from tqdm import trange
 from scipy.sparse import linalg as splinalg
 from scipy.stats import hmean
+from sklearn.utils.extmath import safe_sparse_dot
 
 
 def _backtrack(
@@ -44,7 +45,11 @@ def minimize_FW(f_grad, lmo, x0, L_t=1, max_iter=1000, tol=1e-12,
         s_t = lmo(-grad)
         d_t = s_t - x_t
 
-        g_t = - d_t.T.dot(grad)[0]
+        g_t = - safe_sparse_dot(d_t.T, grad)
+        if sparse.issparse(g_t):
+            g_t = g_t[0, 0]
+        else:
+            g_t = g_t[0]
         if g_t <= tol:
             break
         if backtracking:
