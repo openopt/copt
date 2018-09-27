@@ -177,19 +177,6 @@ class HuberLoss:
         return loss, grad
 
 
-def ilogloss():
-
-    @njit
-    def partial_f_grad(p, b):
-        p *= b
-        if p > 0:
-            tmp = 1 + np.exp(-p)
-            return np.log(tmp), 1. / tmp
-        else:
-            exp_t = np.exp(p)
-            phi = exp_t / (1. + exp_t)
-            return -p + np.log(exp_t), (phi - 1) * b
-
 
 class L1Norm:
     """L1 norm, that is, the sum of absolute values"""
