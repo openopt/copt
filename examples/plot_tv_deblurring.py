@@ -35,7 +35,7 @@ s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
 L = cp.utils.get_lipschitz(A, 'square')
 step_size = 1./L
-f_grad = cp.utils.SquareLoss(A, b).func_grad
+f_grad = cp.utils.SquareLoss(A, b).f_grad
 
 
 def loss(x, beta):

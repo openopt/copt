@@ -8,3 +8,4 @@ Incremental methods
 
     copt.minimize_SAGA_L1
     copt.minimize_SVRG_L1
+    copt.minimize_VRTOS

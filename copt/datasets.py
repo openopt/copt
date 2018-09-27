@@ -152,15 +152,15 @@ def load_url(md5_check=True):
         Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
-    file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
-    data_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.data.npz')
-    data_indices = os.path.join(DATA_DIR, 'criteo.kaggle2014.indices.npy')
-    data_indptr = os.path.join(DATA_DIR, 'criteo.kaggle2014.indptr.npy')
-    data_target = os.path.join(DATA_DIR, 'criteo.kaggle2014.target.npy')
+    import bz2
+    file_path = os.path.join(DATA_DIR, 'url_combined.bz2')
+    data_path = os.path.join(DATA_DIR, 'url_combined.data.npy')
+    data_indices = os.path.join(DATA_DIR, 'url_combined.indices.npy')
+    data_indptr = os.path.join(DATA_DIR, 'url_combined.indptr.npy')
+    data_target = os.path.join(DATA_DIR, 'url_combined.target.npy')
 
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    file_path = os.path.join(DATA_DIR, 'url_combined.bz2')
     if not os.path.exists(file_path):
         print('URL dataset is not present in data folder. Downloading it ...')
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/url_combined.bz2'
@@ -173,12 +173,20 @@ def load_url(md5_check=True):
                 print('Removing file and re-downloading')
                 os.remove(file_path)
                 return load_url()
-        X, y = datasets.load_svmlight_file(file_path)
+        zipfile = bz2.BZ2File(file_path)
+        data = zipfile.read()
+        newfilepath = file_path[:-4]
+        open(newfilepath, 'wb').write(data)
+        X, y = datasets.load_svmlight_file(newfilepath)
         np.save(data_path, X.data)
         np.save(data_indices, X.indices)
         np.save(data_indptr, X.indptr)
         np.save(data_target, y)
-    raise NotImplementedError
+    X_data = np.load(data_path)
+    X_indices = np.load(data_indices)
+    X_indptr = np.load(data_indptr)
+    X = sparse.csr_matrix((X_data, X_indices, X_indptr))
+    y = np.load(data_target)
     return X, y
 
 

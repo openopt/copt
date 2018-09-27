@@ -21,7 +21,7 @@ Optimization algorithms
 C-OPT contains implementations of different optimization methods. These are categorized as:
 
  * :ref:`gradient_methods`: :meth:`proximal gradient descent <copt.minimize_PGD>` and its :meth:`accelerated variant <copt.minimize_APGD>`, :meth:`three operator splitting <copt.minimize_TOS>`
- * :ref:`incremental_methods`: :meth:`SAGA <copt.minimize_SAGALP_L1>`
+ * :ref:`incremental_methods`: :meth:`SAGA <copt.minimize_SAGA_L1>`, :meth:`SVRG <copt.minimize_SVRG_L1>`
 
 
 

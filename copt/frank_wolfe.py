@@ -25,7 +25,7 @@ def backtrack(
 
 
 def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
-          ls_strategy='adaptive', callback=None, verbose=0):
+          backtracking=True, callback=None, verbose=0):
     if tol < 0:
         raise ValueError('Tol must be non-negative')
     x_t = x0.copy()
@@ -42,10 +42,10 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         g_t = - d_t.T.dot(grad)
         if g_t <= tol:
             break
-        if ls_strategy == 'adaptive':
+        if backtracking:
             step_size, L_t, f_next, grad_next = backtrack(
                 f_t, f_grad, x_t, d_t, g_t, L_t)
-        elif ls_strategy == 'Lipschitz':
+        else:
             d2_t = d_t.dot(d_t)
             step_size = min(g_t / (d2_t * L_t), 1)
             f_next, grad_next = f_grad(x_t + step_size * d_t)

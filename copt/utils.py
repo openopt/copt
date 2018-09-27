@@ -29,6 +29,10 @@ def get_lipschitz(A, loss, alpha=0):
 
     loss : {'logloss', 'square', 'huber'}
     """
+
+    if hasattr(loss, 'name'):
+        loss = loss.name
+
     if loss == 'logloss':
         s = splinalg.svds(A, k=1, return_singular_vectors=False,
                           maxiter=100)[0]
@@ -91,6 +95,7 @@ class LogLoss:
         self.b = b
         self.alpha = alpha
         self.intercept = False
+        self.name = 'logloss'
 
     def __call__(self, x):
         return self.f_grad(x, return_gradient=False)
@@ -130,6 +135,7 @@ class SquareLoss:
         self.b = b
         self.alpha = alpha
         self.A = A
+        self.name = 'square'
 
     def __call__(self, x):
         z = self.A.dot(x) - self.b
@@ -150,6 +156,7 @@ class HuberLoss:
         self.A = A
         self.b = b
         self.alpha = alpha
+        self.name = 'huber'
 
     def __call__(self, x):
         return self.f_grad(x, return_gradient=False)
@@ -225,6 +232,9 @@ class L1Ball:
 
 class GroupL1:
     """
+    Group Lasso penalty
+    
+    
     XXX TODO define blocks
     """
     def __init__(self, alpha, blocks):
@@ -371,61 +381,61 @@ def euclidean_proj_l1ball(v, s=1,):
     # compute the solution to the original problem on v
     w *= np.sign(v)
     return w
-#
-#
-# class TraceNorm:
-#     """Trace (aka nuclear) norm, sum of singular values"""
-#     is_separable = False
-#
-#     def __init__(self, shape, alpha=1.):
-#         assert len(shape) == 2
-#         self.shape = shape
-#         self.alpha = alpha
-#
-#     def __call__(self, x):
-#         X = x.reshape(self.shape)
-#         return self.alpha * linalg.svdvals(X).sum()
-#
-#     def prox(self, x, step_size):
-#         X = x.reshape(self.shape)
-#         U, s, Vt = linalg.svd(X, full_matrices=False)
-#         s_threshold = np.fmax(s - self.alpha * step_size, 0) \
-#             - np.fmax(- s - self.alpha * step_size, 0)
-#         return (U * s_threshold).dot(Vt).ravel()
-#
-#     def prox_factory(self):
-#         raise NotImplementedError
-#
-#
-# class TraceBall:
-#     """Projection onto the trace (aka nuclear) norm, sum of singular values"""
-#     is_separable = False
-#
-#     def __init__(self, shape, alpha=1.):
-#         assert len(shape) == 2
-#         self.shape = shape
-#         self.alpha = alpha
-#
-#     def __call__(self, x):
-#         X = x.reshape(self.shape)
-#         if linalg.svdvals(X).sum() <= self.alpha:
-#             return 0
-#         else:
-#             return np.inf
-#
-#     def prox(self, x, step_size):
-#         try:
-#             X = x.reshape(self.shape)
-#             U, s, Vt = linalg.svd(X, full_matrices=False)
-#             s_threshold = euclidean_proj_l1ball(s, self.alpha)
-#             return (U * s_threshold).dot(Vt).ravel()
-#         except linalg.LinAlgError:
-#             # SVD did not converge
-#             warnings.warn('SVD failed')
-#             return x
-#
-#     def prox_factory(self):
-#         raise NotImplementedError
+
+
+class TraceNorm:
+    """Trace (aka nuclear) norm, sum of singular values"""
+    is_separable = False
+
+    def __init__(self, alpha, shape):
+        assert len(shape) == 2
+        self.shape = shape
+        self.alpha = alpha
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        return self.alpha * linalg.svdvals(X).sum()
+
+    def prox(self, x, step_size):
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        s_threshold = np.fmax(s - self.alpha * step_size, 0) \
+            - np.fmax(- s - self.alpha * step_size, 0)
+        return (U * s_threshold).dot(Vt).ravel()
+
+    def prox_factory(self):
+        raise NotImplementedError
+
+
+class TraceBall:
+    """Projection onto the trace (aka nuclear) norm, sum of singular values"""
+    is_separable = False
+
+    def __init__(self, shape, alpha):
+        assert len(shape) == 2
+        self.shape = shape
+        self.alpha = alpha
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        if linalg.svdvals(X).sum() <= self.alpha:
+            return 0
+        else:
+            return np.inf
+
+    def prox(self, x, step_size):
+        try:
+            X = x.reshape(self.shape)
+            U, s, Vt = linalg.svd(X, full_matrices=False)
+            s_threshold = euclidean_proj_l1ball(s, self.alpha)
+            return (U * s_threshold).dot(Vt).ravel()
+        except linalg.LinAlgError:
+            # SVD did not converge
+            warnings.warn('SVD failed')
+            return x
+
+    def prox_factory(self):
+        raise NotImplementedError
 #
 #
 # class TotalVariation2D:

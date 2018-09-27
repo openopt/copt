@@ -2,7 +2,7 @@ import numpy as np
 import copt as cp
 from copt import tv_prox
 from numpy import testing
-
+import pytest
 
 def test_tv1_prox():
     """
@@ -62,28 +62,29 @@ def test_tv2d_linear_operator():
     testing.assert_almost_equal(
         np.abs(L.dot(x)).sum(), TV(x))
 
+proximal = [
+    cp.utils.L1Norm(1.),
+    cp.utils.GroupL1(1., np.arange(16) // 2),
+    cp.utils.TraceNorm(1., (4, 4))
+]
 
-def test_three_inequality():
+@pytest.mark.parametrize("loss", proximal)
+def test_three_inequality(loss):
     """Test the L1 prox using the three point inequality
 
     The three-point inequality is described e.g., in Lemma 1.4
     in "Gradient-Based Algorithms with Applications to Signal
     Recovery Problems", Amir Beck and Marc Teboulle
     """
-    n_features = 10
+    n_features = 16    
 
-    l1 = cp.utils.L1Norm(1.)
-    blocks = np.arange(n_features) // 2
-    gl1 = cp.utils.GroupL1(1., blocks)
+    for _ in range(10):
+        z = np.random.randn(n_features)
+        u = np.random.randn(n_features)
+        xi = loss.prox(z, 1.)
 
-    for loss in [l1, gl1]:
-        for _ in range(10):
-            z = np.random.randn(n_features)
-            u = np.random.randn(n_features)
-            xi = loss.prox(z, 1.)
-
-            lhs = 2 * (loss(xi) - loss(u))
-            rhs = np.linalg.norm(u - z) ** 2 - \
-                np.linalg.norm(u - xi) ** 2 - \
-                np.linalg.norm(xi - z) ** 2
-            assert lhs <= rhs
+        lhs = 2 * (loss(xi) - loss(u))
+        rhs = np.linalg.norm(u - z) ** 2 - \
+            np.linalg.norm(u - xi) ** 2 - \
+            np.linalg.norm(xi - z) ** 2
+        assert lhs <= rhs
