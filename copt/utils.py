@@ -402,6 +402,10 @@ class TraceBall:
 
     def prox_factory(self):
         raise NotImplementedError
+    
+    def lmo(self, x):
+        u, s, vt = splinalg.svds(x, k=1, maxiter=1000)
+        return alpha * u.dot(vt)
 
 
 class TotalVariation2D:

@@ -20,7 +20,6 @@ loss_funcs = [
     ]
 
 
-
 @pytest.mark.parametrize("loss_grad", loss_funcs)
 def test_FW(loss_grad):
     f_grad = loss_grad(A, b, 1./n_samples).f_grad

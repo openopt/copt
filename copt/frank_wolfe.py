@@ -10,6 +10,7 @@ def _backtrack(
         f_t, f_grad, x_t, d_t, g_t, L_t,
         gamma_max=1, ratio_increase=2., ratio_decrease=0.999,
         max_iter=100):
+    # could be included inside minimize_FW
     d2_t = splinalg.norm(d_t) ** 2
     for i in range(max_iter):
         step_size = min(g_t / (d2_t * L_t), gamma_max)
@@ -42,7 +43,6 @@ def minimize_FW(f_grad, lmo, x0, L_t=1, max_iter=1000, tol=1e-12,
     for it in pbar:
         s_t = lmo(-grad)
         d_t = s_t - x_t
-        # import pdb; pdb.set_trace()
 
         g_t = - d_t.T.dot(grad)[0]
         if g_t <= tol:
