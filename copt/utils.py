@@ -5,6 +5,7 @@ from numba import njit
 from datetime import datetime
 from sklearn.utils.extmath import safe_sparse_dot
 
+from . import tv_prox
 
 class Trace:
     def __init__(self, freq=1):
@@ -412,52 +413,45 @@ class TraceBall:
     """Projection onto the trace (aka nuclear) norm, sum of singular values"""
     is_separable = False
 
-    def __init__(self, shape, alpha):
+    def __init__(self, alpha, shape):
         assert len(shape) == 2
         self.shape = shape
         self.alpha = alpha
 
     def __call__(self, x):
         X = x.reshape(self.shape)
-        if linalg.svdvals(X).sum() <= self.alpha:
+        if linalg.svdvals(X).sum() <= self.alpha + np.finfo(np.float32).eps:
             return 0
         else:
             return np.inf
 
     def prox(self, x, step_size):
-        try:
-            X = x.reshape(self.shape)
-            U, s, Vt = linalg.svd(X, full_matrices=False)
-            s_threshold = euclidean_proj_l1ball(s, self.alpha)
-            return (U * s_threshold).dot(Vt).ravel()
-        except linalg.LinAlgError:
-            # SVD did not converge
-            warnings.warn('SVD failed')
-            return x
+        X = x.reshape(self.shape)
+        U, s, Vt = linalg.svd(X, full_matrices=False)
+        s_threshold = euclidean_proj_l1ball(s, self.alpha)
+        return (U * s_threshold).dot(Vt).ravel()
 
     def prox_factory(self):
         raise NotImplementedError
-#
-#
-# class TotalVariation2D:
-#     """2-dimensional Total Variation pseudo-norm"""
-#
-#     def __init__(self, alpha, n_rows, n_cols, max_iter=100, tol=1e-6):
-#         self.alpha = alpha
-#         self.n_rows = n_rows
-#         self.n_cols = n_cols
-#         self.max_iter = max_iter
-#         self.tol = tol
-#
-#     def __call__(self, x):
-#         img = x.reshape((self.n_rows, self.n_cols))
-#         tmp1 = np.abs(np.diff(img, axis=0))
-#         tmp2 = np.abs(np.diff(img, axis=1))
-#         return self.alpha * (tmp1.sum() + tmp2.sum())
-#
-#     def prox(self, x, step_size):
-#         return prox_tv2d(
-#             step_size * self.alpha, x, self.n_rows, self.n_cols,
-#             max_iter=self.max_iter, tol=self.tol)
-#
-#
+
+
+class TotalVariation2D:
+    """2-dimensional Total Variation pseudo-norm"""
+
+    def __init__(self, alpha, shape, max_iter=100, tol=1e-6):
+        self.alpha = alpha
+        self.n_rows = shape[0]
+        self.n_cols = shape[1]
+        self.max_iter = max_iter
+        self.tol = tol
+
+    def __call__(self, x):
+        img = x.reshape((self.n_rows, self.n_cols))
+        tmp1 = np.abs(np.diff(img, axis=0))
+        tmp2 = np.abs(np.diff(img, axis=1))
+        return self.alpha * (tmp1.sum() + tmp2.sum())
+
+    def prox(self, x, step_size):
+        return tv_prox.prox_tv2d(
+            step_size * self.alpha, x, self.n_rows, self.n_cols,
+            max_iter=self.max_iter, tol=self.tol)

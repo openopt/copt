@@ -65,7 +65,9 @@ def test_tv2d_linear_operator():
 proximal = [
     cp.utils.L1Norm(1.),
     cp.utils.GroupL1(1., np.arange(16) // 2),
-    cp.utils.TraceNorm(1., (4, 4))
+    cp.utils.TraceNorm(1., (4, 4)),
+    cp.utils.TraceBall(1., (4, 4)),
+    cp.utils.TotalVariation2D(1., (4, 4))
 ]
 
 @pytest.mark.parametrize("loss", proximal)
@@ -87,4 +89,4 @@ def test_three_inequality(loss):
         rhs = np.linalg.norm(u - z) ** 2 - \
             np.linalg.norm(u - xi) ** 2 - \
             np.linalg.norm(xi - z) ** 2
-        assert lhs <= rhs
+        assert lhs <= rhs, loss
