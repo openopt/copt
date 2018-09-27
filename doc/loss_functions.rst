@@ -11,3 +11,15 @@ Smooth loss functions:
 
     copt.utils.LogLoss
     copt.utils.SquareLoss
+    copt.utils.HuberLoss
+
+Non-smooth terms accessed through their proximal operator
+
+.. autosummary::
+   :toctree: generated/
+
+    copt.utils.L1Norm
+    copt.utils.L1Ball
+    copt.utils.GroupL1
+    copt.utils.TraceNorm
+    copt.utils.TraceBall
