@@ -192,6 +192,7 @@ def ilogloss():
 
 
 class L1Norm:
+    """L1 norm, that is, the sum of absolute values"""
     def __init__(self, alpha):
         self.alpha = alpha
 
@@ -203,24 +204,13 @@ class L1Norm:
                    - np.fmax(- x - self.alpha * step_size, 0)
 
 
-class NuclearNorm:
-    def __init__(self, alpha, n_rows, n_cols):
-        self.alpha = alpha
-        self.shape = (n_rows, n_cols)
-
-    def __call__(self, x):
-        X = x.reshape(self.shape)
-        U, s, Vt = linalg.svd(X, full_matrices=False)
-        return self.alpha * np.sum(np.abs(s))
-
-    def prox(self, x, step_size):
-        X = x.reshape(self.shape)
-        U, s, Vt = linalg.svd(X, full_matrices=False)
-        s_threshold = L1Norm(self.alpha).prox(s, step_size)
-        return (U * s_threshold).dot(Vt).ravel()
-
 
 class L1Ball:
+    """Indicator function over the L1 ball
+    
+    This function is 0 if the sum of absolute values is less than or equal to
+    alpha, and infinity otherwise.
+    """
     def __init__(self, alpha):
         self.alpha = alpha
 
@@ -272,9 +262,6 @@ class GroupL1:
                 out[g] -= step_size * self.alpha * out[g] / norm
             else:
                 out[g] = 0
-            # if norm > 0:
-            #     scaling = np.fmax(1 - self.alpha * step_size / norm, 0)
-            #     out[g] *= scaling
         return out
 
 
@@ -284,37 +271,6 @@ class SimplexConstraint:
 
     def prox(self, x, step_size):
         return euclidean_proj_simplex(x, self.s)
-#
-# def grad_squareloss(A, b, alpha=0.):
-#     """
-#
-#     Parameters
-#     ----------
-#     A
-#     b
-#     alpha
-#     intercept
-#
-#     Returns
-#     -------
-#     logloss : callable
-#     """
-#     A = splinalg.aslinearoperator(A)
-#
-#     def _squareloss_func(x):
-#         z = A.matvec(x) - b
-#         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
-#         return loss
-#
-#
-#     def _squareloss_grad(x, return_gradient=True):
-#         z = A.matvec(x) - b
-#         loss = 0.5 * (z * z).mean() + .5 * alpha * x.dot(x)
-#         if not return_gradient:
-#             return loss
-#         grad = A.rmatvec(z) / A.shape[0] + alpha * x
-#         return loss, grad
-#     return _squareloss_grad
 
 
 def euclidean_proj_simplex(v, s=1.):
