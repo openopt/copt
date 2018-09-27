@@ -139,19 +139,20 @@ class SquareLoss:
         self.name = 'square'
 
     def __call__(self, x):
-        z = self.A.dot(x) - self.b
-        return 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
+        return 0.5 * (z * z).mean() + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
 
     def f_grad(self, x, return_gradient=True):
-        z = self.A.dot(x) - self.b
-        loss = 0.5 * (z * z).mean() + .5 * self.alpha * x.dot(x)
+        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
+        loss = 0.5 * (z * z).mean() + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
         if not return_gradient:
             return loss
-        grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x
-        return loss, grad
+        grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x.T
+        return loss, np.asarray(grad).ravel()
 
 
 class HuberLoss:
+    """Huber loss"""
     def __init__(self, A, b, alpha=0, delta=1):
         self.delta = delta
         self.A = A
@@ -163,14 +164,15 @@ class HuberLoss:
         return self.f_grad(x, return_gradient=False)
 
     def f_grad(self, x, return_gradient=True):
-        z = self.A.dot(x) - self.b
+        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
         idx = np.abs(z) < self.delta
         loss = 0.5 * np.sum(z[idx] * z[idx])
         loss += np.sum(self.delta * (np.abs(z[~idx]) - 0.5 * self.delta))
-        loss = loss / z.size + .5 * self.alpha * x.dot(x)
+        loss = loss / z.size + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
         if not return_gradient:
             return loss
-        grad = self.A[idx].T.dot(z[idx]) / self.A.shape[0] + self.alpha * x
+        grad = self.A[idx].T.dot(z[idx]) / self.A.shape[0] + self.alpha * x.T
+        grad = np.asarray(grad)
         grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
         return loss, grad
 
@@ -230,6 +232,17 @@ class L1Ball:
 
     def prox(self, x, step_size):
         return euclidean_proj_l1ball(x, self.alpha)
+
+    def lmo(self, u):
+        """Solve the linear problem
+        min_{||s||_1 <= alpha} <u, s>
+        """
+        idx = np.argmax(np.abs(u))
+        mag = self.alpha * np.sign(u[idx])
+        s_data = np.array([mag])
+        s_indices = np.array([idx], dtype=np.int32)
+        s_indptr = np.array([0, 1], dtype=np.int32)
+        return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
 class GroupL1:

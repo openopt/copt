@@ -6,6 +6,7 @@ It is possible to your own functions. However, for convenience, the following ar
 
 Smooth loss functions:
 
+
 .. autosummary::
    :toctree: generated/
 
@@ -23,3 +24,4 @@ Non-smooth terms accessed through their proximal operator
     copt.utils.GroupL1
     copt.utils.TraceNorm
     copt.utils.TraceBall
+    copt.utils.TotalVariation2D

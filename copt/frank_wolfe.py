@@ -5,11 +5,12 @@ from tqdm import trange
 from scipy.sparse import linalg as splinalg
 from scipy.stats import hmean
 
-def backtrack(
+
+def _backtrack(
         f_t, f_grad, x_t, d_t, g_t, L_t,
         gamma_max=1, ratio_increase=2., ratio_decrease=0.999,
         max_iter=100):
-    d2_t = d_t.T.dot(d_t)
+    d2_t = splinalg.norm(d_t) ** 2
     for i in range(max_iter):
         step_size = min(g_t / (d2_t * L_t), gamma_max)
         rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
@@ -24,8 +25,12 @@ def backtrack(
 
 
 
-def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
+def minimize_FW(f_grad, lmo, x0, L_t=1, max_iter=1000, tol=1e-12,
           backtracking=True, callback=None, verbose=0):
+    """Frank-Wolfe algorithm with L1 ball constraint.
+    
+    """
+    x0 = sparse.csr_matrix(x0).T
     if tol < 0:
         raise ValueError('Tol must be non-negative')
     x_t = x0.copy()
@@ -35,18 +40,18 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
     f_t, grad = f_grad(x_t)
     L_average = 0.
     for it in pbar:
-        idx_oracle = np.argmax(np.abs(grad))
-        mag_oracle = alpha * np.sign(-grad[idx_oracle])
-        d_t = - x_t.copy()
-        d_t[idx_oracle] += mag_oracle
-        g_t = - d_t.T.dot(grad)
+        s_t = lmo(-grad)
+        d_t = s_t - x_t
+        # import pdb; pdb.set_trace()
+
+        g_t = - d_t.T.dot(grad)[0]
         if g_t <= tol:
             break
         if backtracking:
-            step_size, L_t, f_next, grad_next = backtrack(
+            step_size, L_t, f_next, grad_next = _backtrack(
                 f_t, f_grad, x_t, d_t, g_t, L_t)
         else:
-            d2_t = d_t.dot(d_t)
+            d2_t = splinalg.norm(d_t) ** 2
             step_size = min(g_t / (d2_t * L_t), 1)
             f_next, grad_next = f_grad(x_t + step_size * d_t)
         x_t += step_size * d_t
@@ -58,7 +63,8 @@ def minimize_FW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12,
         if callback is not None:
             callback(x_t)
     pbar.close()
-    return optimize.OptimizeResult(x=x_t)
+    x_final = x_t.toarray().ravel()
+    return optimize.OptimizeResult(x=x_final)
 
 
 @njit
@@ -82,7 +88,7 @@ def max_active(grad, active_set, n_features, include_zero=True):
             max_grad_active_idx = 2 * n_features
     return max_grad_active, max_grad_active_idx
 
-# @profile
+
 def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strategy='adaptive', callback=None, verbose=0):
     L0 = L_t
 
@@ -194,3 +200,43 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strat
     pbar.close()
     return optimize.OptimizeResult(
         x=x_t)
+
+# 
+# def minimize_FW_trace(
+#     f_grad, x0, alpha, mat_shape, L_t=1, max_iter=1000, tol=1e-12,
+#     backtracking=True, callback=None, verbose=0):
+#     """Frank-Wolfe algorithm with trace ball constraint"""
+#     if tol < 0:
+#         raise ValueError('Tol must be non-negative')
+#     x_t = x0.copy()
+#     if callback is not None:
+#         callback(x_t)
+#     pbar = trange(max_iter, disable=(verbose == 0))
+#     f_t, grad = f_grad(x_t)
+#     L_average = 0.
+#     for it in pbar:
+#         grad_mat = np.reshape(grad, mat_shape)
+#         u, s, vt = splinalg.svds(-grad_mat, k=1, maxiter=1000)
+#         s_t = (alpha * u.dot(vt)).ravel()
+# 
+#         d_t = s_t - x_t
+#         g_t = - d_t.T.dot(grad)
+#         if g_t <= tol:
+#             break
+#         if backtracking:
+#             step_size, L_t, f_next, grad_next = _backtrack(
+#                 f_t, f_grad, x_t, d_t, g_t, L_t)
+#         else:
+#             d2_t = d_t.dot(d_t)
+#             step_size = min(g_t / (d2_t * L_t), 1)
+#             f_next, grad_next = f_grad(x_t + step_size * d_t)
+#         x_t += step_size * d_t
+#         if it % 10 == 0:
+#             pbar.set_postfix(tol=g_t, iter=it, step_size=step_size, L_t=L_t, L_average=L_average)
+# 
+#         f_t,  grad = f_next, grad_next
+#         L_average = L_t / (it + 1) + (it/(it+1)) * L_average
+#         if callback is not None:
+#             callback(x_t)
+#     pbar.close()
+#     return optimize.OptimizeResult(x=x_t)

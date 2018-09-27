@@ -16,8 +16,8 @@ b = np.abs(b / np.max(np.abs(b)))
 
 
 all_solvers = (
-    ['FW', cp.minimize_FW_L1, 2e-2],
-    ['PFW', cp.minimize_PFW_L1, 1e-3],
+    ['FW', cp.minimize_FW, 2e-2],
+    # ['PFW', cp.minimize_PFW_L1, 1e-3],
 )
 loss_funcs = [
     cp.utils.LogLoss, 
@@ -31,12 +31,12 @@ loss_funcs = [
 def test_optimize(name_solver, solver, tol, loss_grad):
     f_grad = loss_grad(A, b, 1./n_samples).f_grad
     alpha = 1.
+    l1ball = cp.utils.L1Ball(alpha)
     opt = solver(
-        f_grad, np.zeros(n_features), alpha, tol=0,
+        f_grad, l1ball.lmo, np.zeros(n_features), tol=0,
         max_iter=5000)
     assert np.isfinite(opt.x).sum() == n_features
 
-    l1ball = cp.utils.L1Ball(alpha)
     L = cp.utils.get_lipschitz(A, 'square', 1./n_samples)
     ss = 1/L
     grad = f_grad(opt.x)[1]
