@@ -113,19 +113,19 @@ for i, beta in enumerate(all_betas):
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_pdhg[i]))
     scale = all_trace_ls[i][0] - fmin
     plot_tos, = ax[1, i].plot(
-        (all_trace_ls[i] - fmin) / scale,
-        lw=2, marker='o', markevery=200,
-        markersize=10)
+        (all_trace_ls[i] - fmin) / scale, '--',
+        lw=2, marker='o', markevery=400,
+        markersize=7)
 
     plot_tos_nols, = ax[1, i].plot(
         (all_trace_nols[i] - fmin) / scale,
-        lw=2, marker='o', markevery=200,
-        markersize=10)
+        lw=2, marker='<', markevery=400,
+        markersize=7)
 
     plot_pdhg, = ax[1, i].plot(
-        (all_trace_pdhg[i] - fmin) / scale,
-        lw=2, marker='^', markevery=200,
-        markersize=10)
+        (all_trace_pdhg[i] - fmin) / scale, '--',
+        lw=2, marker='^', markevery=400, 
+        markersize=7)
 
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')

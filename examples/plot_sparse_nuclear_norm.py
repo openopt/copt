@@ -59,7 +59,7 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
-    G1 = cp.utils.NuclearNorm(beta, *Sigma.shape)
+    G1 = cp.utils.TraceNorm(beta, Sigma.shape)
     G2 = cp.utils.L1Norm(beta)
 
     def loss(x):

@@ -65,8 +65,7 @@ def minimize_SAGA_L1(
 
     The SAGA algorithm can solve optimization problems of the form
 
-        argmin_{x \in R^p} \sum_{i}^n_samples f(A_i^T x, b_i) + alpha * ||x||_2^2 +
-                                            + beta * ||x||_1
+        minimize_x \sum_{i}^n_samples f(A_i^T x, b_i) + alpha ||x||_2^2 + beta ||x||_1
 
     Parameters
     ----------
