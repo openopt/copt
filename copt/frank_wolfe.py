@@ -60,8 +60,7 @@ def minimize_FW(f_grad, lmo, x0, L_t=1, max_iter=1000, tol=1e-12,
             step_size = min(g_t / (d2_t * L_t), 1)
             f_next, grad_next = f_grad(x_t + step_size * d_t)
         x_t += step_size * d_t
-        if it % 10 == 0:
-            pbar.set_postfix(tol=g_t, iter=it, step_size=step_size, L_t=L_t, L_average=L_average)
+        pbar.set_postfix(tol=g_t, iter=it, step_size=step_size, L_t=L_t, L_average=L_average)
 
         f_t,  grad = f_next, grad_next
         L_average = L_t / (it + 1) + (it/(it+1)) * L_average
