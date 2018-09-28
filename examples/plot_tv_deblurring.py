@@ -137,7 +137,7 @@ for i, beta in enumerate(all_betas):
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.figlegend(
     (plot_tos, plot_tos_nols, plot_pdhg),
-    ('TOS with line search', 'TOS without line search', 'PDHG'), ncol=5,
+    ('Adaptive three operator splitting', 'three operator splitting', 'primal-dual hybrid gradient'), ncol=2,
     scatterpoints=1,
     loc=(-0.00, -0.0), frameon=False,
     bbox_to_anchor=[0.05, 0.01])

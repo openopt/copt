@@ -105,7 +105,10 @@ def minimize_PGD(
         grad_fk = grad_next
 
         pbar.set_description('Iteration %i' % it)
-        pbar.set_postfix(tol=certificate, step_size=step_size, iter=it)
+        if backtracking:
+            pbar.set_postfix(tol=certificate, step_size=step_size, iter=it)
+        else:
+            pbar.set_postfix(tol=certificate, iter=it)
 
         if certificate < tol:
             if verbose:

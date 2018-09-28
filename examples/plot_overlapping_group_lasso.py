@@ -33,13 +33,14 @@ for i in range(1, n_features):
 A[:, 0] /= np.sqrt(1 - p ** 2)
 sigma = 1.
 b = A.dot(ground_truth) + sigma * np.random.randn(n_samples)
+# b = np.sign(b)
+# b = (b + 1) // 2
 
 
 # .. compute the step-size ..
 max_iter = 5000
 s = splinalg.svds(A, k=1, return_singular_vectors=False)[0]
 step_size = 1. / cp.utils.get_lipschitz(A, 'square')
-print(step_size)
 f = cp.utils.SquareLoss(A, b)
 
 # .. run the solver for different values ..
@@ -107,7 +108,8 @@ for i, beta in enumerate(all_betas):
 
 # .. plot the results ..
 fig, ax = plt.subplots(2, 4, sharey=False)
-xlim = [0.02, 0.02, 0.1]
+xlim = [4000, 4000, 1000, 100]
+markevery = [x//5 for x in xlim]
 for i, beta in enumerate(all_betas):
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
@@ -119,38 +121,37 @@ for i, beta in enumerate(all_betas):
     fmin = min(np.min(all_trace_ls[i]), np.min(all_trace_nols[i]))
     scale = 1. # all_trace_ls[i][0] - fmin
     plot_tos, = ax[1, i].plot(
-        (all_trace_ls[i] - fmin) / scale,
-        lw=4, marker='o', markevery=100,
+        (all_trace_ls[i] - fmin) / scale, '--',
+        lw=2, marker='o', markevery=markevery[i],
         markersize=10)
 
     plot_nols, = ax[1, i].plot(
         (all_trace_nols[i] - fmin) / scale,
-        lw=4, marker='h', markevery=100,
+        lw=2, marker='h', markevery=markevery[i],
         markersize=10)
 
     plot_pdhg, = ax[1, i].plot(
         (all_trace_pdhg[i] - fmin) / scale,
-        lw=4, marker='^', markevery=100,
+        lw=2, marker='^', markevery=markevery[i],
         markersize=10)
 
     plot_pdhg_nols, = ax[1, i].plot(
         (all_trace_pdhg_nols[i] - fmin) / scale,
-        lw=4, marker='d', markevery=100,
+        lw=2, marker='d', markevery=markevery[i],
         markersize=10)
 
     ax[1, i].set_xlabel('Iterations')
     ax[1, i].set_yscale('log')
-    ax[1, i].set_ylim((1e-14, None))
+    ax[1, i].set_ylim((1e-10, None))
+    ax[1, i].set_xlim((0, xlim[i]))
     ax[1, i].grid(True)
 
 
-plt.gcf().subplots_adjust(bottom=0.15)
+plt.gcf().subplots_adjust(bottom=0.25)
 plt.figlegend(
     (plot_tos, plot_nols, plot_pdhg, plot_pdhg_nols),
-    ('TOS with line search', 'TOS without line search', 'PDHG LS', 'PDHG no LS'), ncol=5,
-    scatterpoints=1,
-    loc=(-0.00, -0.0), frameon=False,
-    bbox_to_anchor=[0.05, 0.01])
+    ('TOS with line search', 'TOS without line search', 'PDHG LS', 'PDHG no LS'), 'lower center', ncol=2,
+    scatterpoints=1, frameon=False,)
 
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()

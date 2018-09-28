@@ -495,7 +495,8 @@ def minimize_VRTOS(
         if callback is not None:
             callback(z)
 
-        pbar.set_description('VRTOS iter %i' % it)
+        pbar.set_description('Epoch %i' % it)
+        pbar.set_postfix(tol=certificate, iter=it)
 
     return optimize.OptimizeResult(
         x=z, success=success, nit=it,
