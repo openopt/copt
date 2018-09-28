@@ -179,6 +179,7 @@ def minimize_SAGA_L1(
     if callback is not None:
         callback(x)
     pbar = trange(max_iter, disable=(verbose == 0))
+    pbar.set_description('SAGA')
     for it in pbar:
         x_old = x.copy()
         np.random.shuffle(idx)
@@ -191,9 +192,7 @@ def minimize_SAGA_L1(
         if diff_norm < tol:
             success = True
             break
-        if it % 10 == 0:
-            pbar.set_description('SAGA iter %i' % it)
-            pbar.set_postfix(tol=diff_norm)
+        pbar.set_postfix(tol=diff_norm)
     return optimize.OptimizeResult(
         x=x, success=success, nit=it)
 
@@ -495,7 +494,7 @@ def minimize_VRTOS(
         if callback is not None:
             callback(z)
 
-        pbar.set_description('Epoch %i' % it)
+        pbar.set_description('VRTOS')
         pbar.set_postfix(tol=certificate, iter=it)
 
     return optimize.OptimizeResult(

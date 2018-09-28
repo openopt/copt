@@ -104,7 +104,7 @@ def minimize_PGD(
         fk = f_next
         grad_fk = grad_next
 
-        pbar.set_description('Iteration %i' % it)
+        pbar.set_description('PGD')
         if backtracking:
             pbar.set_postfix(tol=certificate, step_size=step_size, iter=it)
         else:
@@ -362,8 +362,7 @@ def minimize_TOS(
                 tmp = np.sqrt(
                     step_size ** 2 + (2 * step_size / quot) * (-ls_tol))
                 step_size = min(tmp, step_size * 1.02)
-        if it % 10 == 0:
-            pbar.set_postfix(tol=certificate, iter=it, step_size=step_size)
+        pbar.set_postfix(tol=certificate, step_size=step_size)
 
         if callback is not None:
             if callback(x) is False:
@@ -503,7 +502,7 @@ def minimize_PDHG(
 
         if it % 100 == 0:
             norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
-            pbar.set_description('PDHG iter %i' % it)
+            pbar.set_description('PDHG')
             pbar.set_postfix(tol=norm_incr, iter=it, step_size=sigma, step_size2=tau, quot=sigma * tau)
 
         x[:] = x_next[:]

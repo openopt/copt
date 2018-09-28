@@ -21,7 +21,6 @@ n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
 n_samples = n_features
 max_iter = 2000
-print('#features', n_features)
 
 # .. compute blurred and noisy image ..
 A = sparse.load_npz('data/blur_matrix.npz')
@@ -134,13 +133,11 @@ for i, beta in enumerate(all_betas):
     ax[1, i].grid(True)
 
 
-plt.gcf().subplots_adjust(bottom=0.15)
+plt.gcf().subplots_adjust(bottom=0.25)
 plt.figlegend(
     (plot_tos, plot_tos_nols, plot_pdhg),
-    ('Adaptive three operator splitting', 'three operator splitting', 'primal-dual hybrid gradient'), ncol=2,
-    scatterpoints=1,
-    loc=(-0.00, -0.0), frameon=False,
-    bbox_to_anchor=[0.05, 0.01])
+    ('Adaptive three operator splitting', 'three operator splitting', 'primal-dual hybrid gradient'), 'lower center', ncol=2,
+    scatterpoints=1, frameon=False)
 
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()
