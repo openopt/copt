@@ -84,7 +84,7 @@ for i, beta in enumerate(all_betas):
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg(x0)
-    pdhg = cp.gradient.minimize_PDHG(
+    pdhg = cp.minimize_PDHG(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
@@ -96,7 +96,7 @@ for i, beta in enumerate(all_betas):
     cb_pdhg_nols = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg_nols(x0)
-    pdhg_nols = cp.gradient.minimize_PDHG(
+    pdhg_nols = cp.minimize_PDHG(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg_nols, max_iter=max_iter,
         step_size=step_size,

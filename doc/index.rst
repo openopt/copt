@@ -5,6 +5,11 @@ Welcome to copt!
 
 copt is a library for mathematical optimization written in pure Python.
 
+
+.. warning::
+    This library is a work in progress, expect some rough edges.
+
+
 Philosophy
 ----------
 
@@ -20,21 +25,25 @@ Optimization algorithms
 
 C-OPT contains implementations of different optimization methods. These are categorized as:
 
- * :ref:`gradient_methods`: :meth:`proximal gradient descent <copt.minimize_PGD>` and its :meth:`accelerated variant <copt.minimize_APGD>`, :meth:`three operator splitting <copt.minimize_TOS>`
- * :ref:`incremental_methods`: :meth:`SAGA <copt.minimize_SAGA_L1>`, :meth:`SVRG <copt.minimize_SVRG_L1>`
+ * Proximal gradient: :meth:`proximal gradient descent <copt.minimize_PGD>` and its :meth:`accelerated variant <copt.minimize_APGD>`
 
+ * Proximal splitting: :meth:`three operator splitting <copt.minimize_TOS>`, :meth:`primal-dual hybrid gradient <copt.minimize_PDHG>`
+
+ * Frank-Wolfe: :meth:`Frank-Wolfe <copt.minimize_FW>`, :meth:`Pairwise Frank-Wolfe <copt.minimize_PFW_L1>`
+
+ * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_SAGA_L1>`, :meth:`SVRG <copt.minimize_SVRG_L1>`, :meth:`variance-reduced three operator splitting <copt.minimize_VRTOS>`
+ 
+ 
 
 
 .. toctree::
     :hidden:
     :glob:
 
-    gradient.rst
+    proximal_gradient.rst
+    proximal_splitting.rst
+    frank_wolfe.rst
     incremental.rst
     loss_functions.rst
-    datasets.rst
     auto_examples/index.rst
-
-
-.. warning::
-    This library is a work in progress, expect some rough edges.
+    datasets.rst

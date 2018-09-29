@@ -29,8 +29,7 @@ def _backtrack(
 
 def minimize_FW(f_grad, lmo, x0, L_t=1, max_iter=1000, tol=1e-12,
           backtracking=True, callback=None, verbose=0):
-    """Frank-Wolfe algorithm with L1 ball constraint.
-    
+    """Frank-Wolfe algorithm
     """
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:
@@ -93,7 +92,7 @@ def max_active(grad, active_set, n_features, include_zero=True):
     return max_grad_active, max_grad_active_idx
 
 
-def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strategy='adaptive', callback=None, verbose=0):
+def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, backtracking=True, callback=None, verbose=0):
     L0 = L_t
 
     n_features = x0.shape[0]
@@ -145,7 +144,7 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strat
             raise ValueError
         else:
             d2_t = 2 * (alpha ** 2)
-        if ls_strategy == 'adaptive':
+        if backtracking:
             # because of the specific form of the update
             # we can achieve some extra efficiency this way
             for i in range(100):
@@ -166,14 +165,12 @@ def minimize_PFW_L1(f_grad, x0, alpha, L_t=1, max_iter=1000, tol=1e-12, ls_strat
                 else:
                     L_t *= 2
             # import pdb; pdb.set_trace()
-        elif ls_strategy == 'Lipschitz':
+        else:
             x_next = x_t.copy()
             step_size = min(g_t / (d2_t * L_t), gamma_max)
             x_next[idx_oracle % n_features] = x_t[idx_oracle % n_features] + step_size * mag_oracle
             x_next[idx_oracle_away % n_features] = x_t[idx_oracle_away % n_features] - step_size * mag_away
             f_next, grad_next = f_grad(x_next)
-        else:
-            raise ValueError(ls_strategy)
 
         if L_t >= 1e10:
             raise ValueError

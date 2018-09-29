@@ -222,17 +222,38 @@ class L1Ball:
         return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
+@njit
+def _blocks_to_groups(blocks):
+    groups = []
+    pointer = blocks[0]
+    cur_group = []
+    for i in range(blocks.size):
+        if blocks[i] == pointer:
+            cur_group.append(i)
+        else:
+            pointer = blocks[i]
+            groups.append(cur_group)
+            cur_group = [i]
+    groups.append(cur_group)
+    return groups
+
 class GroupL1:
     """
     Group Lasso penalty
     
+    Parameters
+    ----------
     
-    XXX TODO define blocks
+    alpha: scalar
+    
+    blocks: array-like of size n_features
     """
     def __init__(self, alpha, blocks):
         self.alpha = alpha
+        if np.any(np.diff(blocks) < 0):
+            raise ValueError('blocks cannot be discontinuous nor with decreasing id')
         self.n_features = len(blocks)
-        self.groups = [np.where(blocks == b)[0] for b in np.unique(blocks)]
+        self.groups = _blocks_to_groups(blocks)
 
     def __call__(self, x):
         return self.alpha * np.sum(

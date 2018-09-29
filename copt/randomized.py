@@ -27,7 +27,7 @@ def f_logistic(p, y):
         return np.log(1 + np.exp(p)) - p * y
 
 
-@njit
+@njit(nogil=True)
 def deriv_logistic(p, y):
     # derivative of logistic loss
     # same as in lightning (with minus sign)
@@ -40,14 +40,14 @@ def deriv_logistic(p, y):
     return phi
 
 def prox_l1(alpha):
-    @njit
+    @njit(nogil=True)
     def _prox_l1(x, ss):
         return np.fmax(x - alpha * ss, 0) - np.fmax(- x - alpha * ss, 0)
     return _prox_l1
 
 
 def prox_gl(alpha):
-    @njit
+    @njit(nogil=True)
     def _prox_gl(x, ss):
         norm = np.linalg.norm(x)
         if norm > alpha * ss:
@@ -490,12 +490,12 @@ def minimize_VRTOS(
             Y, X, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
             grad_tmp, step_size)
 
-        certificate = np.linalg.norm(x0 - z)
+        certificate = np.linalg.norm(X[0] - z) + np.linalg.norm(X[1] - z)
         if callback is not None:
             callback(z)
 
         pbar.set_description('VRTOS')
-        pbar.set_postfix(tol=certificate, iter=it)
+        pbar.set_postfix(tol=certificate)
 
     return optimize.OptimizeResult(
         x=z, success=success, nit=it,
@@ -558,7 +558,6 @@ def _csr_blocks(blocks, n_blocks):
             seen_blocks += 1
     indptr[n_blocks] = i+1
     return indices, indptr
-
 
 
 def _factory_sparse_VRTOS(

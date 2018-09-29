@@ -4,6 +4,29 @@ from copt import tv_prox
 from numpy import testing
 import pytest
 
+proximal_penalties = [
+    cp.utils.L1Norm(1.),
+    cp.utils.GroupL1(1., np.arange(16) // 2),
+    cp.utils.TraceNorm(1., (4, 4)),
+    cp.utils.TraceBall(1., (4, 4)),
+    cp.utils.TotalVariation2D(1., (4, 4))
+]
+
+
+
+
+def test_GroupL1():
+    for blocks in [np.arange(10), np.arange(10)//3]:
+        pen = cp.utils.GroupL1(1., blocks)
+        counter = 0
+        for g in pen.groups:
+            for j in g:
+                counter += 1
+        assert counter == blocks.size
+        assert pen.groups
+        for g in pen.groups:
+            assert np.unique(blocks[g]).size == 1
+
 def test_tv1_prox():
     """
     Use the properties of strongly convex functions to test the implementation
@@ -62,16 +85,9 @@ def test_tv2d_linear_operator():
     testing.assert_almost_equal(
         np.abs(L.dot(x)).sum(), TV(x))
 
-proximal = [
-    cp.utils.L1Norm(1.),
-    cp.utils.GroupL1(1., np.arange(16) // 2),
-    cp.utils.TraceNorm(1., (4, 4)),
-    cp.utils.TraceBall(1., (4, 4)),
-    cp.utils.TotalVariation2D(1., (4, 4))
-]
 
-@pytest.mark.parametrize("loss", proximal)
-def test_three_inequality(loss):
+@pytest.mark.parametrize("pen", proximal_penalties)
+def test_three_inequality(pen):
     """Test the L1 prox using the three point inequality
 
     The three-point inequality is described e.g., in Lemma 1.4
@@ -83,10 +99,10 @@ def test_three_inequality(loss):
     for _ in range(10):
         z = np.random.randn(n_features)
         u = np.random.randn(n_features)
-        xi = loss.prox(z, 1.)
+        xi = pen.prox(z, 1.)
 
-        lhs = 2 * (loss(xi) - loss(u))
+        lhs = 2 * (pen(xi) - pen(u))
         rhs = np.linalg.norm(u - z) ** 2 - \
             np.linalg.norm(u - xi) ** 2 - \
             np.linalg.norm(xi - z) ** 2
-        assert lhs <= rhs, loss
+        assert lhs <= rhs, pen
