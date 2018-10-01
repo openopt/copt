@@ -1,8 +1,6 @@
-from datetime import datetime
 import numpy as np
 from scipy import sparse, optimize
 from numba import njit
-from copt import utils
 from tqdm import trange
 
 
@@ -509,13 +507,13 @@ def _support_matrix(
     """
     Parameters
     ----------
-    A_indices, A_indptr: numpy arrays representing the data matrix in CSR format.
-    
-    XXX changed blocks
-    
-    blocks: numy array of size n_features with integer values, where the value codes for the group to which the given feature belongs.
-    
-    n_blocks: number of unique blocks in array blocks.
+    A_indices, A_indptr: arrays-like
+        Arrays representing the data matrix in CSR format.
+
+    reverse_blocks_indices: array-like
+
+    n_blocks: integer
+        Number of unique blocks in array blocks.
 
 
     Notes
@@ -625,7 +623,7 @@ def _factory_sparse_VRTOS(
 
                 # .. iterate on features inside block ..
                 for b_j in range(blocks_2_indptr[h], blocks_2_indptr[h+1]):
-                    bias_term = d2[h] * (gradient_average[b_j] + alpha * z[b_j])
+                    bias_term = d2[h] * (gradient_average[b_j] + alpha*z[b_j])
                     x2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
@@ -636,11 +634,11 @@ def _factory_sparse_VRTOS(
                 h = bs_2_indices[h_j]
                 for b_j in range(blocks_2_indptr[h], blocks_2_indptr[h+1]):
                     Y[1, b_j] += x2[b_j] - z[b_j]
-            
+
             # .. update z ..
             for h_j in range(bs_1_indptr[i], bs_1_indptr[i+1]):
                 h = bs_1_indices[h_j]
-            
+
                 # .. iterate on features inside block ..
                 for b_j in range(blocks_1_indptr[h], blocks_1_indptr[h+1]):
                     da = 1./d1[rblocks_1_indices[b_j]]
@@ -659,7 +657,8 @@ def _factory_sparse_VRTOS(
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                tmp = (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                gradient_average[j_idx] += tmp
                 grad_tmp[j_idx] = 0
             memory_gradient[i] = grad_i
 

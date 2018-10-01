@@ -35,6 +35,8 @@ C-OPT contains implementations of different optimization methods. These are cate
  
  
 
+Contents
+--------
 
  .. toctree::
     :numbered:

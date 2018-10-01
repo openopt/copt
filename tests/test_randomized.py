@@ -91,9 +91,11 @@ def test_vrtos_l1():
 
 def test_vrtos_gl():
     alpha = 1./n_samples
-    groups_2 = [np.arange(5), np.arange(5, 10)]
     groups_1 = [np.arange(5)]
-    for groups in [groups_1, groups_2]:
+    groups_2 = np.arange(5).reshape((-1, 1))
+    groups_3 = [np.arange(5), [5], [6], [7], [8], [9]]
+    groups_4 = [np.arange(5), np.arange(5, 10)]
+    for groups in [groups_1, groups_2, groups_3, groups_4]:
         for beta in np.logspace(-3, 3, 3):
             p_1 = cp.utils.GroupL1(beta, groups)
             L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
@@ -109,11 +111,10 @@ def test_vrtos_gl():
                 prox_2=p_1.prox_factory(n_features))
 
             for x in [opt_1.x, opt_2.x]:
-                full_prox = cp.utils.GroupL1(beta, groups)
                 grad = cp.utils.LogLoss(A, b, alpha).f_grad(x)[1]
                 ss = 1./L
                 # check that the gradient mapping vanishes
-                grad_map = (x - full_prox.prox(x - ss*grad, ss))/ss
+                grad_map = (x - p_1.prox(x - ss*grad, ss))/ss
                 assert np.linalg.norm(grad_map) < 1e-6
 
 

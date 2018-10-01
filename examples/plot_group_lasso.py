@@ -51,7 +51,7 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
-    G1 = cp.utils.GroupL1(beta, blocks)
+    G1 = cp.utils.GroupL1(beta, groups)
 
     def loss(x):
         return f_grad(x)[0] + G1(x)

@@ -7,6 +7,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 
 from . import tv_prox
 
+
 class Trace:
     def __init__(self, freq=1):
         self.trace_x = []
@@ -61,7 +62,6 @@ def get_max_lipschitz(A, loss, alpha=0):
     elif loss in ('huber', 'square'):
         raise NotImplementedError
     raise NotImplementedError
-
 
 
 class LogLoss:
@@ -232,6 +232,21 @@ class L1Ball:
         return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
+# @njit
+# def _blocks_to_groups(blocks):
+#     groups = []
+#     pointer = blocks[0]
+#     cur_group = []
+#     for i in range(blocks.size):
+#         if blocks[i] == pointer:
+#             cur_group.append(i)
+#         else:
+#             pointer = blocks[i]
+#             groups.append(cur_group)
+#             cur_group = [i]
+#     groups.append(cur_group)
+#     return groups
+
 class GroupL1:
     """
     Group Lasso penalty
@@ -249,13 +264,11 @@ class GroupL1:
     def __init__(self, alpha, groups):
         self.alpha = alpha
         # groups need to be increasing
-        _p = groups[0][0]
         for i, g in enumerate(groups):
             if not np.all(np.diff(g) == 1):
                 raise ValueError('Groups must be contiguous')
             if i > 0 and groups[i-1][-1] >= g[0]:
                 raise ValueError('Groups must be increasing')
-            
         self.groups = groups
 
     def __call__(self, x):
@@ -278,7 +291,7 @@ class GroupL1:
         B_data = np.zeros(n_features)
         B_indices = np.arange(n_features, dtype=np.int32)
         B_indptr = np.zeros(n_features + 1, dtype=np.int32)
-        
+
         feature_pointer = 0
         block_pointer = 0
         for g in self.groups:
@@ -303,12 +316,12 @@ class GroupL1:
         B_indptr = B_indptr[:block_pointer+1]
         B = sparse.csr_matrix((B_data, B_indices, B_indptr))
         alpha = self.alpha
-        # 
+
         @njit
         def _prox_gl(x, i, indices, indptr, d, step_size):
             for b in range(indptr[i], indptr[i+1]):
                 h = indices[b]
-                if B_data[B_indptr[h]] < 0:
+                if B_data[B_indices[B_indptr[h]]] <= 0:
                     continue
                 ss = step_size * d[h]
                 norm = 0.
