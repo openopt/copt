@@ -39,6 +39,7 @@ def deriv_logistic(p, y):
         phi = tmp / (1. + tmp) - y
     return phi
 
+
 def prox_l1(alpha):
     @njit(nogil=True)
     def _prox_l1(x, ss):
@@ -373,10 +374,8 @@ def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
     return _svrg_algorithm, full_grad
 
 
-
 def minimize_VRTOS(
-        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, blocks_1=None,
-        blocks_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
+        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
         verbose=0):
     """Variance-reduced three operator splitting (VRTOS) algorithm.
 
@@ -435,6 +434,19 @@ def minimize_VRTOS(
     
     n_samples, n_features = A.shape
     success = False
+    
+    # FIXME: just a workaround for now
+    # FIXME: check if prox_1 is a tuple
+    if hasattr(prox_1, '__len__') and len(prox_1) == 2:
+        blocks_1 = prox_1[1]
+        prox_1 = prox_1[0]
+    else:
+        blocks_1 = sparse.eye(n_features, n_features, format='csr')
+    if hasattr(prox_2, '__len__') and len(prox_2) == 2:
+        blocks_2 = prox_2[1]
+        prox_2 = prox_2[0]
+    else:
+        blocks_2 = sparse.eye(n_features, n_features, format='csr')
 
     Y = np.zeros((2, x0.size))
     z = x0.copy()
@@ -446,21 +458,13 @@ def minimize_VRTOS(
     
     if prox_1 is None:
         @njit
-        def prox_1(x, step_size):
-            return x
+        def prox_1(x, i, indices, indptr, d, step_size):
+            pass
     if prox_2 is None:
         @njit
-        def prox_2(x, step_size):
-            return x
+        def prox_2(x, i, indices, indptr, d, step_size):
+            pass
 
-    if blocks_1 is None:
-        blocks_1 = np.arange(x0.size)
-    if blocks_2 is None:
-        blocks_2 = np.arange(x0.size)        
-    for blocks in [blocks_1, blocks_2]:
-        if np.any(np.diff(blocks) < 0):
-            raise ValueError('blocks cannot be discontinuous nor with decreasing id')
-            
     A = sparse.csr_matrix(A)
     epoch_iteration = _factory_sparse_VRTOS(
         f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
@@ -471,15 +475,11 @@ def minimize_VRTOS(
     gradient_average = np.zeros(n_features)
     x1 = x0.copy()
     grad_tmp = np.zeros(n_features)
-    X = np.vstack((x0, x1))
-
 
     # warm up for the JIT
     epoch_iteration(
-        Y, X, z, memory_gradient, gradient_average, np.array([0]),
+        Y, x0, x1, z, memory_gradient, gradient_average, np.array([0]),
         grad_tmp, step_size)
-
-    start_time = datetime.now()
 
     # .. iterate on epochs ..
     if callback is not None:
@@ -487,10 +487,11 @@ def minimize_VRTOS(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         epoch_iteration(
-            Y, X, z, memory_gradient, gradient_average, np.random.permutation(n_samples),
+            Y, x0, x1, z, memory_gradient, gradient_average,
+            np.random.permutation(n_samples),
             grad_tmp, step_size)
 
-        certificate = np.linalg.norm(X[0] - z) + np.linalg.norm(X[1] - z)
+        certificate = np.linalg.norm(x0 - z) + np.linalg.norm(x1 - z)
         if callback is not None:
             callback(z)
 
@@ -502,39 +503,42 @@ def minimize_VRTOS(
         certificate=certificate)
 
 
-@njit(nogil=True)
+#@njit(nogil=True)
 def _support_matrix(
-        A_indices, A_indptr, blocks, n_blocks):
+        A_indices, A_indptr, reverse_blocks_indices, n_blocks):
     """
     Parameters
     ----------
     A_indices, A_indptr: numpy arrays representing the data matrix in CSR format.
     
+    XXX changed blocks
+    
     blocks: numy array of size n_features with integer values, where the value codes for the group to which the given feature belongs.
     
     n_blocks: number of unique blocks in array blocks.
-    
-    
+
+
+    Notes
+    -----
+    BS stands for Block Support
+
     Returns
     -------
-    Parameters of a CSR matrix representing the extended support. The returned vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    Parameters of a CSR matrix representing the extended support. The returned
+    vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
     """
     BS_indices = np.zeros(A_indices.size, dtype=np.int64)
     BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
     seen_blocks = np.zeros(n_blocks, dtype=np.int64)
     BS_indptr[0] = 0
     counter_indptr = 0
+    # iterate on samples
     for i in range(A_indptr.size - 1):
-        low = A_indptr[i]
-        high = A_indptr[i + 1]
-        for j in range(low, high):
-            g_idx = blocks[A_indices[j]]
-            if seen_blocks[g_idx] == 0:
-                # if first time we encouter this block,
-                # add to the index and mark as seen
-                BS_indices[counter_indptr] = g_idx
-                seen_blocks[g_idx] = 1
-                counter_indptr += 1
+        for j in range(A_indptr[i], A_indptr[i + 1]):
+            j_idx = A_indices[j]
+            block = reverse_blocks_indices[j_idx]
+            BS_indices[counter_indptr] = block
+            counter_indptr += 1
         BS_indptr[i + 1] = counter_indptr
         # cleanup
         for j in range(BS_indptr[i], counter_indptr):
@@ -543,7 +547,7 @@ def _support_matrix(
     return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-@njit(nogil=True)
+#@njit(nogil=True)
 def _csr_blocks(blocks, n_blocks):
     indices = np.arange(blocks.size)
     indptr = np.zeros(n_blocks+1, dtype=np.int32)
@@ -568,42 +572,35 @@ def _factory_sparse_VRTOS(
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
-    unique_blocks_1 = np.unique(blocks_1)
-    n_blocks_1 = np.unique(blocks_1).size
-    assert np.all(unique_blocks_1 == np.arange(n_blocks_1))
+    blocks_1_indices = blocks_1.indices
+    blocks_1_indptr = blocks_1.indptr
+    blocks_2_indices = blocks_2.indices
+    blocks_2_indptr = blocks_2.indptr
 
-    b1_data, b1_indices, b1_indptr = _support_matrix(
-        A_indices, A_indptr, blocks_1, n_blocks_1)
-    csr_blocks_1 = sparse.csr_matrix((b1_data, b1_indices, b1_indptr))
+    rblocks_1_indices = blocks_1.T.tocsr().indices
+    bs_1_data, bs_1_indices, bs_1_indptr = _support_matrix(
+        A_indices, A_indptr, rblocks_1_indices, blocks_1.shape[0])
+    csr_blocks_1 = sparse.csr_matrix((bs_1_data, bs_1_indices, bs_1_indptr))
 
-    unique_blocks_2 = np.unique(blocks_2)
-    n_blocks_2 = np.unique(blocks_2).size
-    assert np.all(unique_blocks_2 == np.arange(n_blocks_2))
-
-    b2_data, b2_indices, b2_indptr = _support_matrix(
-        A_indices, A_indptr, blocks_2, n_blocks_2)
-    csr_blocks_2 = sparse.csr_matrix((b2_data, b2_indices, b2_indptr))
+    rblocks_2_indices = blocks_2.T.tocsr().indices
+    bs_2_data, bs_2_indices, bs_2_indptr = _support_matrix(
+        A_indices, A_indptr, rblocks_2_indices, blocks_2.shape[0])
+    csr_blocks_2 = sparse.csr_matrix((bs_2_data, bs_2_indices, bs_2_indptr))
 
     # .. diagonal reweighting ..
     d1 = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
     idx = (d1 != 0)
     d1[idx] = n_samples / d1[idx]
     d1[~idx] = 1
-    
+
     d2 = np.array(csr_blocks_2.sum(0), dtype=np.float).ravel()
     idx = (d2 != 0)
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
 
-    # .. XXX TODO description ..
-    # This overwrites 
-    b1r_indices, b1r_indptr = _csr_blocks(blocks_1, n_blocks_1)
-
-    b2r_indices, b2r_indptr = _csr_blocks(blocks_2, n_blocks_2)
-
-    @njit(nogil=True)
+    #@njit(nogil=True)
     def epoch_iteration_template(
-            Y, X, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
+            Y, x1, x2, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
 
         # .. iterate on samples ..
         for i in sample_indices:
@@ -615,64 +612,63 @@ def _factory_sparse_VRTOS(
 
             grad_i = f_prime(p, b[i])
 
-            # .. gradient estimate (XXX difference) ..
+            # .. gradient estimate ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
 
-            # .. iterate on blocks ..
-            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
-                h = b1_indices[h_j]
+            # .. x update ..
+            for h_j in range(bs_1_indptr[i], bs_1_indptr[i+1]):
+                h = bs_1_indices[h_j]
 
                 # .. iterate on features inside block ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    bias_term = d1[h] * (gradient_average[b_j] + alpha * z[b_j])
-                    X[0, b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
+                for b_j in range(blocks_1_indptr[h], blocks_1_indptr[h+1]):
+                    bias_term = d1[h] * (gradient_average[b_j] + alpha*z[b_j])
+                    x1[b_j] = 2 * z[b_j] - Y[0, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                tmp = prox_1(
-                    X[0, b1r_indptr[h]:b1r_indptr[h+1]], d1[h] * step_size)
-                X[0, b1r_indptr[h]:b1r_indptr[h+1]] = tmp
+            prox_1(x1, i, bs_1_indices, bs_1_indptr, d1, step_size)
 
-                # .. update y ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    Y[0, b_j] += X[0, b_j] - z[b_j]
+            # .. update y ..
+            for h_j in range(bs_1_indptr[i], bs_1_indptr[i+1]):
+                h = bs_1_indices[h_j]
+                for b_j in range(blocks_1_indptr[h], blocks_1_indptr[h+1]):
+                    Y[0, b_j] += x1[b_j] - z[b_j]
 
-
-            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
-                h = b2_indices[h_j]
+            for h_j in range(bs_2_indptr[i], bs_2_indptr[i+1]):
+                h = bs_2_indices[h_j]
 
                 # .. iterate on features inside block ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
+                for b_j in range(blocks_2_indptr[h], blocks_2_indptr[h+1]):
                     bias_term = d2[h] * (gradient_average[b_j] + alpha * z[b_j])
-                    X[1, b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
+                    x2[b_j] = 2 * z[b_j] - Y[1, b_j] - step_size * 0.5 * (
                         grad_tmp[b_j] + bias_term)
 
-                tmp = prox_2(
-                    X[1, b2r_indptr[h]:b2r_indptr[h+1]], d2[h] * step_size)
-                X[1, b2r_indptr[h]:b2r_indptr[h+1]] = tmp
+            prox_2(x2, i, bs_2_indices, bs_2_indptr, d2, step_size)
 
-                # .. update y ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
-                    Y[1, b_j] += X[1, b_j] - z[b_j]
+            # .. update y ..
+            for h_j in range(bs_2_indptr[i], bs_2_indptr[i+1]):
+                h = bs_2_indices[h_j]
+                for b_j in range(blocks_2_indptr[h], blocks_2_indptr[h+1]):
+                    Y[1, b_j] += x2[b_j] - z[b_j]
             
             # .. update z ..
-            for h_j in range(b1_indptr[i], b1_indptr[i+1]):
-                h = b1_indices[h_j]
+            for h_j in range(bs_1_indptr[i], bs_1_indptr[i+1]):
+                h = bs_1_indices[h_j]
             
                 # .. iterate on features inside block ..
-                for b_j in range(b1r_indptr[h], b1r_indptr[h+1]):
-                    da = 1./d1[blocks_1[b_j]]
-                    db = 1./d2[blocks_2[b_j]] 
+                for b_j in range(blocks_1_indptr[h], blocks_1_indptr[h+1]):
+                    da = 1./d1[rblocks_1_indices[b_j]]
+                    db = 1./d2[rblocks_2_indices[b_j]]
                     z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
 
-            for h_j in range(b2_indptr[i], b2_indptr[i+1]):
-                h = b2_indices[h_j]
-            
+            for h_j in range(bs_2_indptr[i], bs_2_indptr[i+1]):
+                h = bs_2_indices[h_j]
+
                 # .. iterate on features inside block ..
-                for b_j in range(b2r_indptr[h], b2r_indptr[h+1]):
-                    da = 1./d1[blocks_1[b_j]]
-                    db = 1./d2[blocks_2[b_j]] 
+                for b_j in range(blocks_2_indptr[h], blocks_2_indptr[h+1]):
+                    da = 1./d1[rblocks_1_indices[b_j]]
+                    db = 1./d2[rblocks_2_indices[b_j]]
                     z[b_j] = (da * Y[0, b_j] + db * Y[1, b_j]) / (da + db)
 
             # .. update memory terms ..

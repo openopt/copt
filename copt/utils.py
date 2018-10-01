@@ -177,7 +177,6 @@ class HuberLoss:
         return loss, grad
 
 
-
 class L1Norm:
     """L1 norm, that is, the sum of absolute values"""
     def __init__(self, alpha):
@@ -190,6 +189,17 @@ class L1Norm:
         return np.fmax(x - self.alpha * step_size, 0) \
                    - np.fmax(- x - self.alpha * step_size, 0)
 
+    def prox_factory(self, n_features):
+        alpha = self.alpha
+
+        #@njit
+        def _prox_L1(x, i, indices, indptr, d, step_size):
+            for j in range(indptr[i], indptr[i+1]):
+                j_idx = indices[j]  # for L1 this is the same
+                a = x[j_idx] - alpha * d[j_idx] * step_size
+                b = - x[j_idx] - alpha * d[j_idx] * step_size
+                x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
+        return _prox_L1, sparse.eye(n_features, format='csr')
 
 
 class L1Ball:
@@ -222,20 +232,20 @@ class L1Ball:
         return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
-@njit
-def _blocks_to_groups(blocks):
-    groups = []
-    pointer = blocks[0]
-    cur_group = []
-    for i in range(blocks.size):
-        if blocks[i] == pointer:
-            cur_group.append(i)
-        else:
-            pointer = blocks[i]
-            groups.append(cur_group)
-            cur_group = [i]
-    groups.append(cur_group)
-    return groups
+# @njit
+# def _blocks_to_groups(blocks):
+#     groups = []
+#     pointer = blocks[0]
+#     cur_group = []
+#     for i in range(blocks.size):
+#         if blocks[i] == pointer:
+#             cur_group.append(i)
+#         else:
+#             pointer = blocks[i]
+#             groups.append(cur_group)
+#             cur_group = [i]
+#     groups.append(cur_group)
+#     return groups
 
 class GroupL1:
     """
@@ -246,22 +256,28 @@ class GroupL1:
     
     alpha: scalar
     
-    blocks: array-like of size n_features
+    blocks: list of lists
+    
+    Examples
+    --------
     """
-    def __init__(self, alpha, blocks):
+    def __init__(self, alpha, groups):
         self.alpha = alpha
-        if np.any(np.diff(blocks) < 0):
-            raise ValueError('blocks cannot be discontinuous nor with decreasing id')
-        self.n_features = len(blocks)
-        self.groups = _blocks_to_groups(blocks)
+        # groups need to be increasing
+        _p = groups[0][0]
+        for i, g in enumerate(groups):
+            if not np.all(np.diff(g) == 1):
+                raise ValueError('Groups must be contiguous')
+            if i > 0 and groups[i-1][-1] >= g[0]:
+                raise ValueError('Groups must be increasing')
+            
+        self.groups = groups
 
     def __call__(self, x):
         return self.alpha * np.sum(
             [np.linalg.norm(x[g]) for g in self.groups])
 
     def prox(self, x, step_size):
-        if self.n_features != x.size:
-            raise ValueError('Dimensions of blocks and x do not match')
         out = x.copy()
         for g in self.groups:
 
@@ -272,6 +288,56 @@ class GroupL1:
                 out[g] = 0
         return out
 
+    def prox_factory(self, n_features):
+        # XXX how to compute the number of blocks??
+        B_data = np.zeros(n_features)
+        B_indices = np.arange(n_features, dtype=np.int32)
+        B_indptr = np.zeros(n_features + 1, dtype=np.int32)
+        
+        feature_pointer = 0
+        block_pointer = 0
+        for g in self.groups:
+            while feature_pointer < g[0]:
+                # non-penalized feature
+                B_data[feature_pointer] = -1.
+                B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
+                feature_pointer += 1
+                block_pointer += 1
+            B_indptr[block_pointer + 1] = B_indptr[block_pointer]
+            for j in g:
+                B_data[feature_pointer] = 1.
+                B_indptr[block_pointer + 1] += 1
+                feature_pointer += 1
+            block_pointer += 1
+        for h in range(feature_pointer, n_features):
+                B_data[feature_pointer] = -1.
+                B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
+                feature_pointer += 1
+                block_pointer += 1            
+
+        B_indptr = B_indptr[:block_pointer+1]
+        B = sparse.csr_matrix((B_data, B_indices, B_indptr))
+        alpha = self.alpha
+        # 
+        # @njit
+        def _prox_gl(x, i, indices, indptr, d, step_size):
+            for b in range(indptr[i], indptr[i+1]):
+                h = indices[b]
+                ss = step_size * d[h]
+                norm = 0
+                for j in range(B_indptr[h], B_indptr[h+1]):
+                    j_idx = B_indices[j]
+                    norm += x[j_idx] ** 2
+                norm = np.sqrt(norm)
+                if norm > alpha * ss:
+                    for j in range(B_indptr[h], B_indptr[h+1]):
+                        j_idx = B_indices[j]
+                        x[j_idx] *= (1 - alpha * ss / norm)
+                else:
+                    for j in range(B_indptr[h], B_indptr[h+1]):
+                        j_idx = B_indices[j]
+                        x[j_idx] = 0.
+        return _prox_gl, B
 
 class SimplexConstraint:
     def __init__(self, s=1):

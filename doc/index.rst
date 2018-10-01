@@ -36,9 +36,9 @@ C-OPT contains implementations of different optimization methods. These are cate
  
 
 
-.. toctree::
-    :hidden:
-    :glob:
+ .. toctree::
+    :numbered:
+    :maxdepth: 2
 
     proximal_gradient.rst
     proximal_splitting.rst

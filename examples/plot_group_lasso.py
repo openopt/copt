@@ -19,13 +19,13 @@ np.random.seed(0)
 
 # .. generate some data ..
 n_samples, n_features = 100, 100
-blocks = np.arange(n_features) // 10
+groups = [np.arange(10 * i, 10 * i + 10) for i in range(10)]
 
 # .. construct a ground truth vector in which ..
 # .. group 4 and 5 are nonzero ..
 ground_truth = np.zeros(n_features)
-ground_truth[blocks == 4] = 1
-ground_truth[blocks == 5] = 0.5
+ground_truth[groups[4]] = 1
+ground_truth[groups[5]] = 0.5
 
 max_iter = 5000
 print('#features', n_features)

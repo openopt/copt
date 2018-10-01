@@ -90,32 +90,28 @@ def minimize_TOS(
     pbar.set_description('TOS')
     for it in pbar:
 
-        if backtracking:
+        fk, grad_fk = f_grad(z)
+        x = g_prox(z - step_size * (u + grad_fk), step_size)
+        incr = x - z
+        norm_incr = np.linalg.norm(incr)
+        ls = norm_incr > 1e-7 and backtracking
+        if ls:
             for it_ls in range(max_iter_backtracking):
-                fk, grad_fk = f_grad(z)
-                x = g_prox(z - step_size * (u + grad_fk), step_size)
-                incr = x - z
-                norm_incr = np.linalg.norm(incr)
                 rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
                 ls_tol = f_grad(x, return_gradient=False) - rhs
                 if ls_tol <= LS_EPS:
                     # step size found
-                    if ls_tol > 0:
-                        ls_tol = 0.
+                    # if ls_tol > 0:
+                    #     ls_tol = 0.
                     break
                 else:
                     step_size *= backtracking_factor
-        else:
-            fk, grad_fk = f_grad(z)
-            x = g_prox(z - step_size * (u + grad_fk), step_size)
-            incr = x - z
-            norm_incr = np.linalg.norm(incr)
 
         z = h_prox(x + step_size * u, step_size)
         u += (x - z) / step_size
         certificate = norm_incr / step_size
 
-        if backtracking and h_Lipschitz is not None:
+        if ls and h_Lipschitz is not None:
             if h_Lipschitz == 0:
                 step_size = step_size * 1.02
             else:

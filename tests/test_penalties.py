@@ -6,7 +6,7 @@ import pytest
 
 proximal_penalties = [
     cp.utils.L1Norm(1.),
-    cp.utils.GroupL1(1., np.arange(16) // 2),
+    cp.utils.GroupL1(1., np.array_split(np.arange(16), 5)),
     cp.utils.TraceNorm(1., (4, 4)),
     cp.utils.TraceBall(1., (4, 4)),
     cp.utils.TotalVariation2D(1., (4, 4))
@@ -16,16 +16,33 @@ proximal_penalties = [
 
 
 def test_GroupL1():
-    for blocks in [np.arange(10), np.arange(10)//3]:
-        pen = cp.utils.GroupL1(1., blocks)
-        counter = 0
-        for g in pen.groups:
-            for j in g:
-                counter += 1
-        assert counter == blocks.size
-        assert pen.groups
-        for g in pen.groups:
-            assert np.unique(blocks[g]).size == 1
+    groups = [(0, 1), (2, 3)]
+    g1 = cp.utils.GroupL1(1., groups)
+    _, B = g1.prox_factory(5)
+    assert np.all(B.toarray() == np.array(
+                    [[ 1.,  1.,  0.,  0.,  0.],
+                     [ 0.,  0.,  1.,  1.,  0.],
+                     [ 0.,  0.,  0.,  0., -1.]]))
+
+    groups = [(0, 1), (3, 4)]
+    g2 = cp.utils.GroupL1(1., groups)
+    _, B = g2.prox_factory(5)
+    assert np.all(B.toarray() == np.array(
+                    [[ 1.,  1.,  0.,  0.,  0.],
+                     [ 0.,  0., -1.,  0.,  0.],
+                     [ 0.,  0.,  0.,  1.,  1.]]))
+
+# 
+#     for blocks in [[(0, 1), (2, 3)], ]:
+#         pen = cp.utils.GroupL1(1., blocks)
+#         counter = 0
+#         for g in pen.groups:
+#             for j in g:
+#                 counter += 1
+#         assert counter == blocks.size
+#         assert pen.groups
+#         for g in pen.groups:
+#             assert np.unique(blocks[g]).size == 1
 
 def test_tv1_prox():
     """
