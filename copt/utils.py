@@ -192,7 +192,7 @@ class L1Norm:
     def prox_factory(self, n_features):
         alpha = self.alpha
 
-        #@njit
+        @njit
         def _prox_L1(x, i, indices, indptr, d, step_size):
             for j in range(indptr[i], indptr[i+1]):
                 j_idx = indices[j]  # for L1 this is the same
@@ -231,21 +231,6 @@ class L1Ball:
         s_indptr = np.array([0, 1], dtype=np.int32)
         return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
-
-# @njit
-# def _blocks_to_groups(blocks):
-#     groups = []
-#     pointer = blocks[0]
-#     cur_group = []
-#     for i in range(blocks.size):
-#         if blocks[i] == pointer:
-#             cur_group.append(i)
-#         else:
-#             pointer = blocks[i]
-#             groups.append(cur_group)
-#             cur_group = [i]
-#     groups.append(cur_group)
-#     return groups
 
 class GroupL1:
     """
@@ -313,18 +298,20 @@ class GroupL1:
                 B_data[feature_pointer] = -1.
                 B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
                 feature_pointer += 1
-                block_pointer += 1            
+                block_pointer += 1
 
         B_indptr = B_indptr[:block_pointer+1]
         B = sparse.csr_matrix((B_data, B_indices, B_indptr))
         alpha = self.alpha
         # 
-        # @njit
+        @njit
         def _prox_gl(x, i, indices, indptr, d, step_size):
             for b in range(indptr[i], indptr[i+1]):
                 h = indices[b]
+                if B_data[B_indptr[h]] < 0:
+                    continue
                 ss = step_size * d[h]
-                norm = 0
+                norm = 0.
                 for j in range(B_indptr[h], B_indptr[h+1]):
                     j_idx = B_indices[j]
                     norm += x[j_idx] ** 2
@@ -338,6 +325,7 @@ class GroupL1:
                         j_idx = B_indices[j]
                         x[j_idx] = 0.
         return _prox_gl, B
+
 
 class SimplexConstraint:
     def __init__(self, s=1):

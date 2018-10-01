@@ -503,7 +503,7 @@ def minimize_VRTOS(
         certificate=certificate)
 
 
-#@njit(nogil=True)
+@njit(nogil=True)
 def _support_matrix(
         A_indices, A_indptr, reverse_blocks_indices, n_blocks):
     """
@@ -532,36 +532,23 @@ def _support_matrix(
     seen_blocks = np.zeros(n_blocks, dtype=np.int64)
     BS_indptr[0] = 0
     counter_indptr = 0
-    # iterate on samples
     for i in range(A_indptr.size - 1):
-        for j in range(A_indptr[i], A_indptr[i + 1]):
-            j_idx = A_indices[j]
-            block = reverse_blocks_indices[j_idx]
-            BS_indices[counter_indptr] = block
-            counter_indptr += 1
+        low = A_indptr[i]
+        high = A_indptr[i + 1]
+        for j in range(low, high):
+            g_idx = reverse_blocks_indices[A_indices[j]]
+            if seen_blocks[g_idx] == 0:
+                # if first time we encouter this block,
+                # add to the index and mark as seen
+                BS_indices[counter_indptr] = g_idx
+                seen_blocks[g_idx] = 1
+                counter_indptr += 1
         BS_indptr[i + 1] = counter_indptr
         # cleanup
         for j in range(BS_indptr[i], counter_indptr):
             seen_blocks[BS_indices[j]] = 0
     BS_data = np.ones(counter_indptr)
     return BS_data, BS_indices[:counter_indptr], BS_indptr
-
-
-#@njit(nogil=True)
-def _csr_blocks(blocks, n_blocks):
-    indices = np.arange(blocks.size)
-    indptr = np.zeros(n_blocks+1, dtype=np.int32)
-    
-    largest_seen_block = blocks[0]
-    seen_blocks = 0
-    for i in range(blocks.size):
-        if blocks[i] > largest_seen_block:
-            # jump
-            indptr[seen_blocks + 1] = i
-            largest_seen_block = blocks[i]
-            seen_blocks += 1
-    indptr[n_blocks] = i+1
-    return indices, indptr
 
 
 def _factory_sparse_VRTOS(
@@ -572,9 +559,7 @@ def _factory_sparse_VRTOS(
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
-    blocks_1_indices = blocks_1.indices
     blocks_1_indptr = blocks_1.indptr
-    blocks_2_indices = blocks_2.indices
     blocks_2_indptr = blocks_2.indptr
 
     rblocks_1_indices = blocks_1.T.tocsr().indices
@@ -598,13 +583,13 @@ def _factory_sparse_VRTOS(
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
 
-    #@njit(nogil=True)
+    @njit(nogil=True)
     def epoch_iteration_template(
-            Y, x1, x2, z, memory_gradient, gradient_average, sample_indices, grad_tmp, step_size):
+            Y, x1, x2, z, memory_gradient, gradient_average, sample_indices,
+            grad_tmp, step_size):
 
         # .. iterate on samples ..
         for i in sample_indices:
-            
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
