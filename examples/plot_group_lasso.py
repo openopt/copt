@@ -38,16 +38,14 @@ np.random.seed(0)
 n_samples = n_features
 
 # .. compute the step-size ..
-s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                  tol=1e-3, maxiter=500)[0]
 step_size = 1. / cp.utils.get_lipschitz(A, 'square')
 f_grad = cp.utils.SquareLoss(A, b).f_grad
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
 all_betas = [0, 1e-2, 1e-1, 0.2]
-all_trace_ls, all_trace_nols, all_trace_pdhg_nols, all_trace_pdhg = [], [], [], []
-all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg_time = [], [], [], []
+all_trace_ls, all_trace_nols = [], []
+all_trace_ls_time, all_trace_nols_time = [], []
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
