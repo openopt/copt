@@ -62,11 +62,11 @@ def test_PairwiseFW(obj, backtracking):
     l1ball = cp.utils.L1Ball(alpha)
     opt = cp.minimize_PFW_L1(
         f.f_grad, alpha, n_features, tol=0,
-        max_iter=10000, backtracking=backtracking, L=L)
+        max_iter=5000, backtracking=backtracking, L=L)
     assert np.isfinite(opt.x).sum() == n_features
 
     ss = 1/L
     grad = f.f_grad(opt.x)[1]
     grad_map = (opt.x - l1ball.prox(opt.x - ss*grad, ss))/ss
 
-    assert np.linalg.norm(grad_map) < 0.03
+    assert np.linalg.norm(grad_map) < 1e-10

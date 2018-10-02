@@ -140,11 +140,12 @@ def minimize_PFW_L1(
         mag_away = alpha * np.sign(float(n_features - idx_oracle_away))
 
         is_away_zero = False
-        if active_set[2 * n_features] > 0 and grad[idx_oracle_away % n_features] * mag_away < 0:
+        if idx_oracle_away < 0 or active_set[2 * n_features] > 0 and grad[idx_oracle_away % n_features] * mag_away < 0:
             is_away_zero = True
             mag_away = 0.
             gamma_max = active_set[2 * n_features]
         else:
+            assert grad[idx_oracle_away % n_features] * mag_away > grad.dot(x_t) - 1e-3
             gamma_max = active_set[idx_oracle_away]
 
         if gamma_max <= 0:
