@@ -38,38 +38,74 @@ def deriv_logistic(p, y):
     return phi
 
 
-def prox_l1(alpha):
-    @njit(nogil=True)
-    def _prox_l1(x, ss):
-        return np.fmax(x - alpha * ss, 0) - np.fmax(- x - alpha * ss, 0)
-    return _prox_l1
+@njit(nogil=True)
+def _support_matrix(
+        A_indices, A_indptr, reverse_blocks_indices, n_blocks):
+    """
+    Parameters
+    ----------
+    A_indices, A_indptr: arrays-like
+        Arrays representing the data matrix in CSR format.
+
+    reverse_blocks_indices: array-like
+
+    n_blocks: integer
+        Number of unique blocks in array blocks.
 
 
-def prox_gl(alpha):
-    @njit(nogil=True)
-    def _prox_gl(x, ss):
-        norm = np.linalg.norm(x)
-        if norm > alpha * ss:
-            return (1 - alpha * ss / norm) * x
-        else:
-            return np.zeros_like(x)
-    return _prox_gl
+    Notes
+    -----
+    BS stands for Block Support
+
+    Returns
+    -------
+    Parameters of a CSR matrix representing the extended support. The returned
+    vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    """
+    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
+    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
+    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
+    BS_indptr[0] = 0
+    counter_indptr = 0
+    for i in range(A_indptr.size - 1):
+        low = A_indptr[i]
+        high = A_indptr[i + 1]
+        for j in range(low, high):
+            g_idx = reverse_blocks_indices[A_indices[j]]
+            if seen_blocks[g_idx] == 0:
+                # if first time we encouter this block,
+                # add to the index and mark as seen
+                BS_indices[counter_indptr] = g_idx
+                seen_blocks[g_idx] = 1
+                counter_indptr += 1
+        BS_indptr[i + 1] = counter_indptr
+        # cleanup
+        for j in range(BS_indptr[i], counter_indptr):
+            seen_blocks[BS_indices[j]] = 0
+    BS_data = np.ones(counter_indptr)
+    return BS_data, BS_indices[:counter_indptr], BS_indptr
 
 
-def minimize_SAGA_L1(
-        f_deriv, A, b, x0, step_size, alpha=0, beta=0,
+def minimize_SAGA(
+        f_deriv, A, b, x0, step_size, prox=None, alpha=0,
         max_iter=500, tol=1e-6, verbose=1, callback=None):
-    """Stochastic average gradient augmented (SAGA) algorithm for linearly-parametrized
-    loss functions.
+    """Stochastic average gradient augmented (SAGA) algorithm for
+    linearly-parametrized loss functions.
 
     The SAGA algorithm can solve optimization problems of the form
 
-        minimize_x \sum_{i}^n_samples f(A_i^T x, b_i) + alpha ||x||_2^2 + beta ||x||_1
+        minimize_x \sum_{i}^n_samples f(A_i^T x, b_i) + alpha ||x||_2^2 + g(x)
+
+    where g is a function for which we have access to its proximal operator.
+
+.. warning::
+    This feature is experimental, API is likely to change.
+
 
     Parameters
     ----------
-    f, g
-        loss functions. g can be none
+    f
+        loss functions.
 
     x0: np.ndarray or None, optional
         Starting point for optimization.
@@ -83,15 +119,15 @@ def minimize_SAGA_L1(
 
     tol: float
         Tolerance criterion. The algorithm will stop whenever the norm of the
-        gradient mapping (generalization of the gradient for nonsmooth optimization)
-        is below tol.
+        gradient mapping (generalization of the gradient for nonsmooth
+        optimization) is below tol.
 
     verbose: bool
         Verbosity level. True might print some messages.
 
     trace: bool
-        Whether to trace convergence of the function, useful for plotting and/or
-        debugging. If ye, the result will have extra members trace_func,
+        Whether to trace convergence of the function, useful for plotting
+        and/or debugging. If ye, the result will have extra members trace_func,
         trace_time.
 
     Returns
@@ -106,73 +142,90 @@ def minimize_SAGA_L1(
 
     References
     ----------
-    This variant of the SAGA algorithm is described in
+    This variant of the SAGA algorithm is described in:
 
-        Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
-        Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
-        Neural Information Processing Systems (NIPS) 2017.
+    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the
+    Nonsmooth Barrier: A Scalable Parallel Method for Composite Optimization."
+    Advances in Neural Information Processing Systems (NIPS) 2017.
     """
-    # convert any input to CSR sparse matrix representation. In the future we might want to
-    # implement also a version for dense data (numpy arrays) to better exploit data locality
+    # convert any input to CSR sparse matrix representation. In the future we
+    # might want to implement also a version for dense data (numpy arrays) to
+    # better exploit data locality
     x = np.ascontiguousarray(x0).copy()
     n_samples, n_features = A.shape
+    A = sparse.csr_matrix(A)
 
     if step_size is None:
         # then need to use line search
         raise ValueError
 
-    # .. estimate diagonal elements of the reweighting matrix (D) ..
-    A = sparse.csr_matrix(A)
-    tmp = A.copy()
-    tmp.data[:] = 1.
-    d = np.array(tmp.sum(0), dtype=np.float).ravel()
-    idx = (d != 0)
-    d[idx] = n_samples / d[idx]
-    d[~idx] = 0.
-    print('Done')
-
-    if beta > 0:
-        prox = prox_l1(beta)
-    elif beta == 0:
-        @njit
-        def prox(x, ss):
-            return x
+    if hasattr(prox, '__len__') and len(prox) == 2:
+        blocks = prox[1]
+        prox = prox[0]
     else:
-        raise ValueError
+        blocks = sparse.eye(n_features, n_features, format='csr')
+
+    if prox is None:
+        @njit
+        def prox(x, i, indices, indptr, d, step_size):
+            pass
 
     A_data = A.data
     A_indices = A.indices
     A_indptr = A.indptr
     n_samples, n_features = A.shape
 
+    rblocks_indices = blocks.T.tocsr().indices
+    blocks_indptr = blocks.indptr
+    bs_data, bs_indices, bs_indptr = _support_matrix(
+        A_indices, A_indptr, rblocks_indices, blocks.shape[0])
+    csr_blocks_1 = sparse.csr_matrix((bs_data, bs_indices, bs_indptr))
+
+    # .. diagonal reweighting ..
+    d = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    idx = (d != 0)
+    d[idx] = n_samples / d[idx]
+    d[~idx] = 1
+
     @njit(nogil=True)
     def _saga_epoch(
-            x, idx, memory_gradient, gradient_average, step_size):
+            x, idx, memory_gradient, gradient_average, grad_tmp, step_size):
         # .. inner iteration of the SAGA algorithm..
         for i in idx:
+
+            # .. gradient estimate ..
             p = 0.
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 p += x[j_idx] * A_data[j]
-
             grad_i = f_deriv(p, b[i])
-
-            # .. update coefficients ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                delta = (grad_i - memory_gradient[i]) * A_data[j]
-                incr = delta + d[j_idx] * (gradient_average[j_idx] + alpha * x[j_idx])
-                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+                grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
+
+            # .. update coefficients ..
+            # .. first iterate on blocks ..
+            for h_j in range(bs_indptr[i], bs_indptr[i+1]):
+                h = bs_indices[h_j]
+                # .. then iterate on features inside block ..
+                for b_j in range(blocks_indptr[h], blocks_indptr[h+1]):
+                    bias_term = d[h] * (gradient_average[b_j] + alpha*x[b_j])
+                    x[b_j] -= step_size * (grad_tmp[b_j] + bias_term)
+            prox(x, i, bs_indices, bs_indptr, d, step_size)
 
             # .. update memory terms ..
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                gradient_average[j_idx] += (grad_i - memory_gradient[i]) * A_data[j] / n_samples
+                tmp = (grad_i - memory_gradient[i]) * A_data[j]
+                tmp /= n_samples
+                gradient_average[j_idx] += tmp
+                grad_tmp[j_idx] = 0
             memory_gradient[i] = grad_i
 
     # .. initialize memory terms ..
     memory_gradient = np.zeros(n_samples)
     gradient_average = np.zeros(n_features)
+    grad_tmp = np.zeros(n_features)
     idx = np.arange(n_samples)
     success = False
     if callback is not None:
@@ -183,7 +236,8 @@ def minimize_SAGA_L1(
         x_old = x.copy()
         np.random.shuffle(idx)
         _saga_epoch(
-                x, idx, memory_gradient, gradient_average, step_size)
+                x, idx, memory_gradient, gradient_average, grad_tmp,
+                step_size)
         if callback is not None:
             callback(x)
 
@@ -192,13 +246,13 @@ def minimize_SAGA_L1(
             success = True
             break
         pbar.set_postfix(tol=diff_norm)
+    pbar.close()
     return optimize.OptimizeResult(
         x=x, success=success, nit=it)
 
 
-
-def minimize_SVRG_L1(
-        f_deriv, A, b, x0, step_size, alpha=0, beta=0, 
+def minimize_SVRG(
+        f_deriv, A, b, x0, step_size, alpha=0, prox=None, 
         max_iter=500, tol=1e-6, verbose=False, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 
@@ -254,20 +308,19 @@ def minimize_SVRG_L1(
     ----------
     The SAGA algorithm was originally described in
 
-        Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
-        incremental gradient method with support for non-strongly convex composite
-        objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
-        Information Processing Systems. 2014.
+    Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
+    incremental gradient method with support for non-strongly convex composite
+    objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
+    Information Processing Systems. 2014.
 
-    The implemented has some improvements with respect to the original version, such as
-    better support for sparse datasets and is described in
+    The implemented has some improvements with respect to the original,
+    like support for sparse datasets and is described in
 
-        Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the Nonsmooth
-        Barrier: A Scalable Parallel Method for Composite Optimization." Advances in
-        Neural Information Processing Systems (NIPS) 2017.
+    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien.
+    "Breaking the Nonsmooth Barrier: A Scalable Parallel Method
+    for Composite Optimization." Advances in Neural Information
+    Processing Systems (NIPS) 2017.
     """
-    # convert any input to CSR sparse matrix representation. In the future we might want to
-    # implement also a version for dense data (numpy arrays) to better exploit data locality
     x = np.ascontiguousarray(x0).copy()
     n_samples, n_features = A.shape
     A = sparse.csr_matrix(A)
@@ -276,60 +329,33 @@ def minimize_SVRG_L1(
         # then need to use line search
         raise ValueError
 
-    # .. estimate diagonal elements of the reweighting matrix (D) ..
-    tmp = A.copy()
-    tmp.data[:] = 1.
-    d = np.array(tmp.sum(0), dtype=np.float).ravel()
-    idx = (d != 0)
-    d[idx] = n_samples / d[idx]
-    d[~idx] = 0.
-
-    epoch_iteration, full_grad = _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta)
-
-    # .. initialize memory terms ..
-    idx = np.arange(n_samples)
-    success = False
-    nit = 0
-    if callback is not None:
-        callback(x)
-    for nit in range(max_iter):
-        x_snapshot = x.copy()
-        gradient_average = full_grad(x_snapshot)
-        np.random.shuffle(idx)
-        # if callback is not None:
-        #     callback(x)
-        epoch_iteration(
-            x, x_snapshot, idx, gradient_average, step_size)
-        if callback is not None:
-            callback(x)
-
-        if np.abs(x - x_snapshot).sum() < tol:
-            success = True
-            break
-        print(nit, np.linalg.norm(x - x_snapshot))
-    message = ''
-    return optimize.OptimizeResult(
-        x=x, success=success, nit=nit,
-        message=message)
-
-
-def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
-
-    if beta > 0:
-        @njit
-        def prox(x, ss):
-            return np.fmax(x - beta * ss, 0) - np.fmax(- x - beta * ss, 0)
-    elif beta == 0:
-        @njit
-        def prox(x, ss):
-            return x
+    if hasattr(prox, '__len__') and len(prox) == 2:
+        blocks = prox[1]
+        prox = prox[0]
     else:
-        raise ValueError
+        blocks = sparse.eye(n_features, n_features, format='csr')
+
+    if prox is None:
+        @njit
+        def prox(x, i, indices, indptr, d, step_size):
+            pass
 
     A_data = A.data
     A_indices = A.indices
     A_indptr = A.indptr
     n_samples, n_features = A.shape
+
+    rblocks_indices = blocks.T.tocsr().indices
+    blocks_indptr = blocks.indptr
+    bs_data, bs_indices, bs_indptr = _support_matrix(
+        A_indices, A_indptr, rblocks_indices, blocks.shape[0])
+    csr_blocks_1 = sparse.csr_matrix((bs_data, bs_indices, bs_indptr))
+
+    # .. diagonal reweighting ..
+    d = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    idx = (d != 0)
+    d[idx] = n_samples / d[idx]
+    d[~idx] = 1
 
     @njit
     def full_grad(x):
@@ -347,8 +373,8 @@ def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
         return grad
 
     @njit(nogil=True)
-    def _svrg_algorithm(
-            x, x_snapshot, idx, gradient_average, step_size):
+    def _svrg_epoch(
+            x, x_snapshot, idx, gradient_average, grad_tmp, step_size):
 
         # .. inner iteration ..
         for i in idx:
@@ -360,21 +386,50 @@ def _factory_SVRG_epoch(A, b, f_deriv, d, alpha, beta, line_search=False):
                 p_old += x_snapshot[j_idx] * A_data[j]
 
             grad_i = f_deriv(p, b[i])
-            old_grad = f_deriv(p_old, b[i])
-
-            # .. update coefficients ..
+            old_grad_i = f_deriv(p_old, b[i])
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
-                delta = (grad_i - old_grad) * A_data[j]
-                incr = delta + d[j_idx] * (gradient_average[j_idx] + alpha * x[j_idx])
-                x[j_idx] = prox(x[j_idx] - step_size * incr, step_size * d[j_idx])
+                grad_tmp[j_idx] = (grad_i - old_grad_i) * A_data[j]
 
-    return _svrg_algorithm, full_grad
+            # .. update coefficients ..
+            # .. first iterate on blocks ..
+            for h_j in range(bs_indptr[i], bs_indptr[i+1]):
+                h = bs_indices[h_j]
+                # .. then iterate on features inside block ..
+                for b_j in range(blocks_indptr[h], blocks_indptr[h+1]):
+                    bias_term = d[h] * (gradient_average[b_j] + alpha*x[b_j])
+                    x[b_j] -= step_size * (grad_tmp[b_j] + bias_term)
+            prox(x, i, bs_indices, bs_indptr, d, step_size)
+
+    idx = np.arange(n_samples)
+    grad_tmp = np.zeros(n_features)
+    success = False
+    if callback is not None:
+        callback(x)
+    pbar = trange(max_iter, disable=(verbose == 0))
+    pbar.set_description('SVRG')
+    for it in pbar:
+        x_snapshot = x.copy()
+        gradient_average = full_grad(x_snapshot)
+        np.random.shuffle(idx)
+        _svrg_epoch(
+            x, x_snapshot, idx, gradient_average, grad_tmp, step_size)
+        if callback is not None:
+            callback(x)
+
+        if np.abs(x - x_snapshot).sum() < tol:
+            success = True
+            break
+    message = ''
+    pbar.close()
+    return optimize.OptimizeResult(
+        x=x, success=success, nit=it,
+        message=message)
 
 
 def minimize_VRTOS(
-        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, alpha=0, max_iter=500, tol=1e-6, callback=None,
-        verbose=0):
+        f_deriv, A, b, x0, step_size, prox_1=None, prox_2=None, alpha=0,
+        max_iter=500, tol=1e-6, callback=None, verbose=0):
     """Variance-reduced three operator splitting (VRTOS) algorithm.
 
     The VRTOS algorithm can solve optimization problems of the form
@@ -495,62 +550,14 @@ def minimize_VRTOS(
 
         pbar.set_description('VRTOS')
         pbar.set_postfix(tol=certificate)
-
+    pbar.close()
     return optimize.OptimizeResult(
         x=z, success=success, nit=it,
         certificate=certificate)
 
 
-@njit(nogil=True)
-def _support_matrix(
-        A_indices, A_indptr, reverse_blocks_indices, n_blocks):
-    """
-    Parameters
-    ----------
-    A_indices, A_indptr: arrays-like
-        Arrays representing the data matrix in CSR format.
-
-    reverse_blocks_indices: array-like
-
-    n_blocks: integer
-        Number of unique blocks in array blocks.
-
-
-    Notes
-    -----
-    BS stands for Block Support
-
-    Returns
-    -------
-    Parameters of a CSR matrix representing the extended support. The returned
-    vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
-    """
-    BS_indices = np.zeros(A_indices.size, dtype=np.int64)
-    BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
-    seen_blocks = np.zeros(n_blocks, dtype=np.int64)
-    BS_indptr[0] = 0
-    counter_indptr = 0
-    for i in range(A_indptr.size - 1):
-        low = A_indptr[i]
-        high = A_indptr[i + 1]
-        for j in range(low, high):
-            g_idx = reverse_blocks_indices[A_indices[j]]
-            if seen_blocks[g_idx] == 0:
-                # if first time we encouter this block,
-                # add to the index and mark as seen
-                BS_indices[counter_indptr] = g_idx
-                seen_blocks[g_idx] = 1
-                counter_indptr += 1
-        BS_indptr[i + 1] = counter_indptr
-        # cleanup
-        for j in range(BS_indptr[i], counter_indptr):
-            seen_blocks[BS_indices[j]] = 0
-    BS_data = np.ones(counter_indptr)
-    return BS_data, BS_indices[:counter_indptr], BS_indptr
-
-
 def _factory_sparse_VRTOS(
-        f_prime, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, gamma):
+        f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b, alpha, gamma):
 
     A_data = A.data
     A_indices = A.indices
@@ -593,9 +600,8 @@ def _factory_sparse_VRTOS(
                 j_idx = A_indices[j]
                 p += z[j_idx] * A_data[j]
 
-            grad_i = f_prime(p, b[i])
-
             # .. gradient estimate ..
+            grad_i = f_deriv(p, b[i])
             for j in range(A_indptr[i], A_indptr[i+1]):
                 j_idx = A_indices[j]
                 grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]

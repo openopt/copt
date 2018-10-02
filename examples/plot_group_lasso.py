@@ -45,7 +45,6 @@ f_grad = cp.utils.SquareLoss(A, b).f_grad
 # .. of the regularization parameter beta ..
 all_betas = [0, 1e-2, 1e-1, 0.2]
 all_trace_ls, all_trace_nols = [], []
-all_trace_ls_time, all_trace_nols_time = [], []
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
@@ -63,7 +62,6 @@ for i, beta in enumerate(all_betas):
         callback=cb_tosls)
     trace_ls = np.array([loss(x) for x in cb_tosls.trace_x])
     all_trace_ls.append(trace_ls)
-    all_trace_ls_time.append(cb_tosls.trace_time)
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
@@ -75,7 +73,6 @@ for i, beta in enumerate(all_betas):
         backtracking=False, callback=cb_tos)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
-    all_trace_nols_time.append(cb_tos.trace_time)
     out_img.append(pgd.x)
 
 

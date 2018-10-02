@@ -9,19 +9,36 @@ from . import tv_prox
 
 
 class Trace:
-    def __init__(self, freq=1):
+    def __init__(self, f=None, freq=1):
         self.trace_x = []
         self.trace_time = []
+        self.trace_fx = []
         self.start = datetime.now()
         self._counter = 0
         self.freq = int(freq)
+        self.f = f
 
     def __call__(self, x):
         if self._counter % self.freq == 0:
-            self.trace_x.append(x.copy())
+            if self.f is not None:
+                self.trace_fx.append(self.f(x))
+            else:
+                self.trace_x.append(x.copy())
             delta = (datetime.now() - self.start).total_seconds()
             self.trace_time.append(delta)
         self._counter += 1
+
+
+def init_lipschitz(f_grad, x0):
+    L0 = 1e-3
+    f0, grad0 = f_grad(x0)
+    x_tilde = x0 - (1./L0)*grad0
+    f_tilde = f_grad(x_tilde)[0]
+    while f_tilde > f0:
+        L0 *= 10
+        x_tilde = x0 - (1./L0)*grad0
+        f_tilde = f_grad(x_tilde)[0]
+    return np.linalg.norm(grad0) ** 2 / (f0 - f_tilde)
 
 
 def get_lipschitz(A, loss, alpha=0):
@@ -128,6 +145,11 @@ class LogLoss:
 
         return loss, grad
 
+    def lipschitz(self):
+        s = splinalg.svds(self.A, k=1, return_singular_vectors=False,
+                          maxiter=100)[0]
+        return 0.25 * (s * s) / self.A.shape[0] + self.alpha
+
 
 class SquareLoss:
     def __init__(self, A, b, alpha=0):
@@ -150,6 +172,9 @@ class SquareLoss:
         grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x.T
         return loss, np.asarray(grad).ravel()
 
+    def lipschitz(self):
+        s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+        return (s * s) / self.A.shape[0] + self.alpha
 
 class HuberLoss:
     """Huber loss"""

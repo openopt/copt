@@ -27,7 +27,7 @@ for i in g:
     ground_truth[groups[i]] = np.random.randn()
 
 A = np.random.randn(n_samples, n_features)
-p = 0.95 # create a matrix with correlations between features
+p = 0.95  # create a matrix with correlations between features
 for i in range(1, n_features):
     A[:, i] = p * A[:, i] + (1 - p) * A[:, i-1]
 A[:, 0] /= np.sqrt(1 - p ** 2)

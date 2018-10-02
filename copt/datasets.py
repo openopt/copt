@@ -69,7 +69,6 @@ def load_madelon(md5_check=True, subset='full'):
         raise ValueError("subset '%s' not implemented, must be one of ('train', 'test', 'full')." % subset)
 
 
-
 def load_rcv1(md5_check=True, subset='full'):
     """
     Download and return the RCV1 dataset.
@@ -264,7 +263,7 @@ def load_kdd10(md5_check=True):
     return datasets.load_svmlight_file(file_path)
 
 
-def load_kdd12(md5_check=True):
+def load_kdd12(md5_check=True, verbose=0):
     """
     Download and return the KDD12 dataset.
 
@@ -285,22 +284,43 @@ def load_kdd12(md5_check=True):
         Labels, only takes values 0 or 1.
     """
     from sklearn import datasets  # lazy import
+    import bz2
+    file_path = os.path.join(DATA_DIR, 'kdd12.bz2')
+    data_path = os.path.join(DATA_DIR, 'kdd12.data.npy')
+    data_indices = os.path.join(DATA_DIR, 'kdd12.indices.npy')
+    data_indptr = os.path.join(DATA_DIR, 'kdd12.indptr.npy')
+    data_target = os.path.join(DATA_DIR, 'kdd12.target.npy')
+
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
-    file_path = os.path.join(DATA_DIR, 'kddb12.bz2')
     if not os.path.exists(file_path):
-        print('KDD12 dataset is not present in data folder. Downloading it ...')
+        print('URL dataset is not present in data folder. Downloading it ...')
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/kdd12.bz2'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
-    if md5_check:
-        h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
-        if not h == 'c6fc57735c3cf687dd182d60a7b51cda':
-            print('MD5 hash do not coincide')
-            print('Removing file and re-downloading')
-            os.remove(file_path)
-            return load_kdd12()
-    return datasets.load_svmlight_file(file_path)
+        if md5_check:
+            h = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+            if not h == 'c6fc57735c3cf687dd182d60a7b51cda':
+                print('MD5 hash do not coincide')
+                print('Removing file and re-downloading')
+                os.remove(file_path)
+                return load_url()
+        zipfile = bz2.BZ2File(file_path)
+        data = zipfile.read()
+        newfilepath = file_path[:-4]
+        open(newfilepath, 'wb').write(data)
+        X, y = datasets.load_svmlight_file(newfilepath)
+        np.save(data_path, X.data)
+        np.save(data_indices, X.indices)
+        np.save(data_indptr, X.indptr)
+        np.save(data_target, y)
+    X_data = np.load(data_path)
+    X_indices = np.load(data_indices)
+    X_indptr = np.load(data_indptr)
+    X = sparse.csr_matrix((X_data, X_indices, X_indptr))
+    y = np.load(data_target)
+    y = ((y + 1) // 2).astype(np.int)
+    return X, y
 
 
 def load_criteo(md5_check=True):
@@ -327,7 +347,7 @@ def load_criteo(md5_check=True):
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.svm.tar.gz')
-    data_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.data.npz')
+    data_path = os.path.join(DATA_DIR, 'criteo.kaggle2014.data.npz.npy')
     data_indices = os.path.join(DATA_DIR, 'criteo.kaggle2014.indices.npy')
     data_indptr = os.path.join(DATA_DIR, 'criteo.kaggle2014.indptr.npy')
     data_target = os.path.join(DATA_DIR, 'criteo.kaggle2014.target.npy')
@@ -346,7 +366,8 @@ def load_criteo(md5_check=True):
                 print('Removing file and re-downloading')
                 os.remove(file_path)
                 return load_criteo()
-        X, y = datasets.load_svmlight_file(os.path.join(DATA_DIR, 'criteo.kaggle2014.train.svm'))
+        X, y = datasets.load_svmlight_file(
+            os.path.join(DATA_DIR, 'criteo.kaggle2014.train.svm'))
         np.save(data_path, X.data)
         np.save(data_indices, X.indices)
         np.save(data_indptr, X.indptr)

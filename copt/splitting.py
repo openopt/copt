@@ -1,8 +1,10 @@
 import warnings
-import os
 import numpy as np
 from scipy import optimize, linalg, sparse
 from tqdm import trange
+
+from . import utils
+
 
 def minimize_TOS(
         f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
@@ -70,21 +72,23 @@ def minimize_TOS(
         raise ValueError('Line search iterations need to be greater than 0')
 
     if g_prox is None:
-        g_prox = lambda x, s: x
+        def g_prox(x, s): return x
     if h_prox is None:
-        h_prox = lambda x, s: x
+        def h_prox(x, s): return x
 
     if step_size is None:
         backtracking = True
-        step_size = 1.
+        step_size = 1./utils.init_lipschitz(f_grad, x0)
 
     z = h_prox(x0, step_size)
     LS_EPS = np.finfo(np.float).eps
 
+    if callback is not None:
+        callback(x0)
+
     fk, grad_fk = f_grad(z)
     x = g_prox(z - step_size * grad_fk, step_size)
     u = np.zeros_like(x)
-    ls_tol_old = None
 
     pbar = trange(max_iter, disable=(verbose == 0))
     pbar.set_description('TOS')
@@ -202,6 +206,7 @@ def minimize_PDHG(
     n_features = x.size
     if L is None:
         L = sparse.eye(n_features, n_features, format='csr')
+
         def Ldot(x): return x
         Ltdot = Ldot
     y = L.dot(x)

@@ -16,8 +16,8 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers_unconstrained = (
-    ['SAGA', cp.minimize_SAGA_L1, 1e-3],
-    ['SVRG', cp.minimize_SVRG_L1, 1e-3],
+    ['SAGA', cp.minimize_SAGA, 1e-3],
+    ['SVRG', cp.minimize_SVRG, 1e-3],
     ['VRTOS', cp.minimize_VRTOS, 1e-3],
 )
 
@@ -33,21 +33,22 @@ def test_optimize(name_solver, solver, tol):
         assert np.linalg.norm(grad) < tol, name_solver
 
 
-def saga_l1():
+def test_saga_l1():
     alpha = 1./n_samples
     for beta in np.logspace(-3, 3, 3):
-        full_l1 = cp.utils.L1Norm(beta)
+        pen = cp.utils.L1Norm(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
-        for solver in [cp.minimize_SAGA_L1, cp.minimize_SVRG_L1]:
+        for solver in [cp.minimize_SAGA, cp.minimize_SVRG]:
             opt = solver(
                 randomized.deriv_logistic, A, b, np.zeros(n_features),
-                1/(3 * L), alpha=alpha, max_iter=500, tol=1e-8, beta=beta)
+                1/(3 * L), alpha=alpha, max_iter=500, tol=1e-8,
+                prox=pen.prox_factory(n_features))
             grad = cp.utils.LogLoss(A, b, alpha).f_grad(opt.x)[1]
             x = opt.x
             ss = 1./L
             # check that the gradient mapping vanishes
-            grad_map = (x - full_l1.prox(x - ss*grad, ss))/ss
+            grad_map = (x - pen.prox(x - ss*grad, ss))/ss
             assert np.linalg.norm(grad_map) < 1e-6
 
 
@@ -89,33 +90,41 @@ def test_vrtos_l1():
             assert np.linalg.norm(grad_map) < 1e-6
 
 
-def test_vrtos_gl():
+all_groups = [
+    [np.arange(5)],
+    np.arange(5).reshape((-1, 1)),
+    [np.arange(5), [5], [6], [7], [8], [9]],
+    [np.arange(5), np.arange(5, 10)]]
+
+
+@pytest.mark.parametrize("groups", all_groups)
+def test_gl(groups):
     alpha = 1./n_samples
-    groups_1 = [np.arange(5)]
-    groups_2 = np.arange(5).reshape((-1, 1))
-    groups_3 = [np.arange(5), [5], [6], [7], [8], [9]]
-    groups_4 = [np.arange(5), np.arange(5, 10)]
-    for groups in [groups_1, groups_2, groups_3, groups_4]:
-        for beta in np.logspace(-3, 3, 3):
-            p_1 = cp.utils.GroupL1(beta, groups)
-            L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+    for beta in np.logspace(-3, 3, 3):
+        p_1 = cp.utils.GroupL1(beta, groups)
+        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
-            opt_1 = cp.minimize_VRTOS(
-                randomized.deriv_logistic, A, b, np.zeros(n_features),
-                1/(3 * L), alpha=alpha, max_iter=200,
-                prox_1=p_1.prox_factory(n_features))
+        opt_1 = cp.minimize_VRTOS(
+            randomized.deriv_logistic, A, b, np.zeros(n_features),
+            1/(3 * L), alpha=alpha, max_iter=200,
+            prox_1=p_1.prox_factory(n_features))
 
-            opt_2 = cp.minimize_VRTOS(
-                randomized.deriv_logistic, A, b, np.zeros(n_features),
-                1/(3 * L), alpha=alpha, max_iter=200,
-                prox_2=p_1.prox_factory(n_features))
+        opt_2 = cp.minimize_VRTOS(
+            randomized.deriv_logistic, A, b, np.zeros(n_features),
+            1/(3 * L), alpha=alpha, max_iter=200,
+            prox_2=p_1.prox_factory(n_features))
 
-            for x in [opt_1.x, opt_2.x]:
-                grad = cp.utils.LogLoss(A, b, alpha).f_grad(x)[1]
-                ss = 1./L
-                # check that the gradient mapping vanishes
-                grad_map = (x - p_1.prox(x - ss*grad, ss))/ss
-                assert np.linalg.norm(grad_map) < 1e-6
+        opt_3 = cp.minimize_SAGA(
+            randomized.deriv_logistic, A, b, np.zeros(n_features),
+            1/(3 * L), alpha=alpha, max_iter=200,
+            prox=p_1.prox_factory(n_features))
+
+        for x in [opt_1.x, opt_2.x, opt_3.x]:
+            grad = cp.utils.LogLoss(A, b, alpha).f_grad(x)[1]
+            ss = 1./L
+            # check that the gradient mapping vanishes
+            grad_map = (x - p_1.prox(x - ss*grad, ss))/ss
+            assert np.linalg.norm(grad_map) < 1e-6
 
 
 def test_vrtos_ogl():
@@ -139,6 +148,6 @@ def test_vrtos_ogl():
             g_prox=p_1.prox, h_prox=p_2.prox)
 
         norm = np.linalg.norm(opt_tos.x)
-        if norm == 0:
+        if norm < 1e-10:
             norm = 1
         assert np.linalg.norm(opt_vrtos.x - opt_tos.x)/norm < 1e-4
