@@ -41,7 +41,7 @@ def minimize_FW(
     pbar = trange(max_iter, disable=(verbose == 0))
     f_t, grad = f_grad(x_t)
     if L is None:
-        L = utils.init_lipschitz(f_grad, x0)
+        L_t = utils.init_lipschitz(f_grad, x0.toarray().ravel())
     else:
         L_t = L
     for it in pbar:
