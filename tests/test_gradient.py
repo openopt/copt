@@ -1,6 +1,5 @@
 import numpy as np
 from scipy import optimize
-from sklearn.linear_model import logistic
 import copt as cp
 import pytest
 
@@ -18,7 +17,7 @@ all_solvers = (
     ['PGD', cp.minimize_PGD, 1e-3],
     ['APGD', cp.minimize_APGD, 1e-3],
     ['PDHG', cp.minimize_PDHG, 0.3],
-    ['DavisYin', cp.minimize_TOS, 1e-2],
+    ['TOS', cp.minimize_TOS, 1e-2],
 )
 
 loss_funcs = [
@@ -43,14 +42,15 @@ def test_gradient():
 @pytest.mark.parametrize("penalty", penalty_funcs)
 def test_optimize(name_solver, solver, tol, loss, penalty):
     for alpha in np.logspace(-1, 3, 5):
-        l = loss(A, b, alpha)
+        obj = loss(A, b, alpha)
         opt = solver(
-            l.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
-        certificate = np.linalg.norm(l.f_grad(opt.x)[1])
+            obj.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
+        certificate = np.linalg.norm(obj.f_grad(opt.x)[1])
         assert certificate < tol, name_solver
 
-        L = cp.utils.get_lipschitz(A, l, alpha)
+        L = obj.lipschitz()
         opt_2 = solver(
-            l.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10, backtracking=False, step_size=1/L)
-        certificate = np.linalg.norm(l.f_grad(opt_2.x)[1])
+            obj.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10,
+            backtracking=False, step_size=1/L)
+        certificate = np.linalg.norm(obj.f_grad(opt_2.x)[1])
         assert certificate < tol, name_solver

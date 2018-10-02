@@ -7,7 +7,7 @@ from . import utils
 
 
 def minimize_TOS(
-        f_grad, x0, g_prox=None, h_prox=None, tol=1e-6, max_iter=1000,
+        f_grad, x0, prox_1=None, prox_2=None, tol=1e-6, max_iter=1000,
         verbose=0, callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=100, backtracking_factor=0.7, h_Lipschitz=None):
     """Davis-Yin three operator splitting method.
@@ -25,9 +25,9 @@ def minimize_TOS(
          Returns the function value and gradient of the objective function.
          With return_gradient=False, returns only the function value.
 
-    g_prox : callable or None
-        g_prox(x, alpha, *args) returns the proximal operator of g at xa
-        with parameter alpha. Extra arguments can be passed by g_prox_args.
+    prox_1 : callable or None
+        prox_1(x, alpha, *args) returns the proximal operator of g at xa
+        with parameter alpha. Extra arguments can be passed by prox_1_args.
 
     y0 : array-like
         Initial guess
@@ -71,23 +71,23 @@ def minimize_TOS(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    if g_prox is None:
-        def g_prox(x, s): return x
-    if h_prox is None:
-        def h_prox(x, s): return x
+    if prox_1 is None:
+        def prox_1(x, s): return x
+    if prox_2 is None:
+        def prox_2(x, s): return x
 
     if step_size is None:
         backtracking = True
         step_size = 1./utils.init_lipschitz(f_grad, x0)
 
-    z = h_prox(x0, step_size)
+    z = prox_2(x0, step_size)
     LS_EPS = np.finfo(np.float).eps
 
     if callback is not None:
         callback(x0)
 
     fk, grad_fk = f_grad(z)
-    x = g_prox(z - step_size * grad_fk, step_size)
+    x = prox_1(z - step_size * grad_fk, step_size)
     u = np.zeros_like(x)
 
     pbar = trange(max_iter, disable=(verbose == 0))
@@ -95,7 +95,7 @@ def minimize_TOS(
     for it in pbar:
 
         fk, grad_fk = f_grad(z)
-        x = g_prox(z - step_size * (u + grad_fk), step_size)
+        x = prox_1(z - step_size * (u + grad_fk), step_size)
         incr = x - z
         norm_incr = np.linalg.norm(incr)
         ls = norm_incr > 1e-7 and backtracking
@@ -111,7 +111,7 @@ def minimize_TOS(
                 else:
                     step_size *= backtracking_factor
 
-        z = h_prox(x + step_size * u, step_size)
+        z = prox_2(x + step_size * u, step_size)
         u += (x - z) / step_size
         certificate = norm_incr / step_size
 
@@ -145,7 +145,7 @@ def minimize_TOS(
 
 
 def minimize_PDHG(
-        f_grad, x0, g_prox=None, h_prox=None, L=None, tol=1e-12,
+        f_grad, x0, prox_1=None, prox_2=None, L=None, tol=1e-12,
         max_iter=1000, callback=None, step_size=1., step_size2=None,
         backtracking=True, max_iter_ls=20, verbose=0):
     """Primal-dual hybrid gradient splitting method.
@@ -164,8 +164,8 @@ def minimize_PDHG(
          It should accept the optional argument return_gradient, and when False
          it should return only the function value.
 
-    g_prox : callable of the form g_prox(x, alpha)
-        g_prox(x, alpha) returns the proximal operator of g at x
+    prox_1 : callable of the form prox_1(x, alpha)
+        prox_1(x, alpha) returns the proximal operator of g at x
         with parameter alpha.
 
     x0 : array-like
@@ -214,14 +214,14 @@ def minimize_PDHG(
     if not max_iter_ls > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    if g_prox is None:
-        def g_prox(x, step_size): return x
-    if h_prox is None:
-        def h_prox(x, step_size): return x
+    if prox_1 is None:
+        def prox_1(x, step_size): return x
+    if prox_2 is None:
+        def prox_2(x, step_size): return x
 
-    # conjugate of h_prox
-    def h_prox_conj(x, ss):
-        return x - ss * h_prox(x / ss, 1. / ss)
+    # conjugate of prox_2
+    def prox_2_conj(x, ss):
+        return x - ss * prox_2(x / ss, 1. / ss)
     # .. main iteration ..
     theta = 1.
     delta = 0.99
@@ -237,14 +237,14 @@ def minimize_PDHG(
     x_next = x.copy()
 
     for it in pbar:
-        y_next = h_prox_conj(y + tau * Ldot(x), tau)
+        y_next = prox_2_conj(y + tau * Ldot(x), tau)
         if backtracking:
             tau_next = tau * np.sqrt(1 + theta)
             while True:
                 theta = tau_next / tau
                 sigma = ss_ratio * tau_next
                 y_bar = y_next + theta * (y_next - y)
-                x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+                x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
                 incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
                 if incr_x <= 1e-10:
                     break
@@ -259,7 +259,7 @@ def minimize_PDHG(
                     tau_next *= 0.5
         else:
             y_bar = 2 * y_next - y
-            x_next = g_prox(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+            x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
             f_next, f_grad_next = f_grad(x_next)
 
         if it % 100 == 0:

@@ -252,7 +252,7 @@ def minimize_SAGA(
 
 
 def minimize_SVRG(
-        f_deriv, A, b, x0, step_size, alpha=0, prox=None, 
+        f_deriv, A, b, x0, step_size, alpha=0, prox=None,
         max_iter=500, tol=1e-6, verbose=False, callback=None):
     """Stochastic average gradient augmented (SAGA) algorithm.
 

@@ -42,7 +42,9 @@ def init_lipschitz(f_grad, x0):
 
 
 def get_lipschitz(A, loss, alpha=0):
-    """Estimate Lipschitz constant for different loss functions
+    """XXX DEPRECATED
+    
+    Estimate Lipschitz constant for different loss functions
 
     A : array-like
 
@@ -201,6 +203,9 @@ class HuberLoss:
         grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
         return loss, grad
 
+    def lipschitz(self):
+        s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+        return (s * s) / self.A.shape[0] + self.alpha
 
 class L1Norm:
     """L1 norm, that is, the sum of absolute values"""
@@ -254,7 +259,8 @@ class L1Ball:
         s_data = np.array([mag])
         s_indices = np.array([idx], dtype=np.int32)
         s_indptr = np.array([0, 1], dtype=np.int32)
-        return sparse.csr_matrix((s_data, s_indices, s_indptr), shape=(1, u.size)).T
+        return sparse.csr_matrix(
+            (s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
 # @njit
@@ -312,7 +318,6 @@ class GroupL1:
         return out
 
     def prox_factory(self, n_features):
-        # XXX how to compute the number of blocks??
         B_data = np.zeros(n_features)
         B_indices = np.arange(n_features, dtype=np.int32)
         B_indptr = np.zeros(n_features + 1, dtype=np.int32)
@@ -363,6 +368,91 @@ class GroupL1:
                         j_idx = B_indices[j]
                         x[j_idx] = 0.
         return _prox_gl, B
+
+
+class FusedLasso:
+    """
+    Fused Lasso penalty
+    
+    Parameters
+    ----------
+    
+    alpha: scalar
+    
+    Examples
+    --------
+    """
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+    def __call__(self, x):
+        return self.alpha * np.sum(np.abs(np.diff(x)))
+
+    def prox(self, x, step_size):
+        return tv_prox.prox_tv1d(x, step_size * self.alpha)
+
+    def prox_1_factory(self, n_features):
+        B_1_data = np.ones(n_features)
+        B_1_indices = np.arange(n_features, dtype=np.int32)
+        B_1_indptr = np.arange(0, n_features + 1, 2, dtype=np.int32)
+        if n_features % 2 == 1:
+            B_1_indptr[-1] -= 1
+            B_1_data[-1] = -1
+        B_1 = sparse.csr_matrix((B_1_data, B_1_indices, B_1_indptr))
+        alpha = self.alpha
+
+        @njit
+        def _prox_1_fl(x, i, indices, indptr, d, step_size):
+            for b in range(indptr[i], indptr[i+1]):
+                h = indices[b]
+                j_idx = B_1_indices[B_1_indptr[h]]
+                if B_1_data[j_idx] <= 0:
+                    continue
+                ss = step_size * d[h] * alpha
+                if x[j_idx] - ss >= x[j_idx+1] + ss:
+                    x[j_idx] -= ss
+                    x[j_idx+1] += ss
+                elif x[j_idx] + ss <= x[j_idx+1] - ss:
+                    x[j_idx] += ss
+                    x[j_idx+1] -= ss
+                else:
+                    avg = (x[j_idx] + x[j_idx+1])/2.
+                    x[j_idx] = avg
+                    x[j_idx+1] = avg
+        return _prox_1_fl, B_1
+
+    def prox_2_factory(self, n_features):
+        B_2_data = np.ones(n_features)
+        B_2_indices = np.arange(n_features, dtype=np.int32)
+        _indptr = np.arange(1, n_features + 2, 2, dtype=np.int32)
+        B_2_indptr = np.concatenate(([0], _indptr))
+        B_2_data[0] = -1
+        if n_features % 2 == 0:
+            B_2_indptr[-1] -= 1
+            B_2_data[-1] = -1
+        B_2 = sparse.csr_matrix((B_2_data, B_2_indices, B_2_indptr))
+        alpha = self.alpha
+
+        @njit
+        def _prox_2_fl(x, i, indices, indptr, d, step_size):
+            print(indptr[i], indptr[i+1])
+            for b in range(indptr[i], indptr[i+1]):
+                h = indices[b]
+                j_idx = B_2_indices[B_2_indptr[h]]
+                if B_2_data[j_idx] <= 0:
+                    continue
+                ss = step_size * d[h] * alpha
+                if x[j_idx] - ss >= x[j_idx+1] + ss:
+                    x[j_idx] -= ss
+                    x[j_idx+1] += ss
+                elif x[j_idx] + ss <= x[j_idx+1] - ss:
+                    x[j_idx] += ss
+                    x[j_idx+1] -= ss
+                else:
+                    avg = (x[j_idx] + x[j_idx+1])/2.
+                    x[j_idx] = avg
+                    x[j_idx+1] = avg
+        return _prox_2_fl, B_2
 
 
 class SimplexConstraint:
@@ -502,7 +592,7 @@ class TraceBall:
 
     def prox_factory(self):
         raise NotImplementedError
-    
+
     def lmo(self, x):
         x = x.reshape(self.shape)
         u, s, vt = splinalg.svds(x, k=1, maxiter=1000)
@@ -528,5 +618,5 @@ class TotalVariation2D:
 
     def prox(self, x, step_size):
         return tv_prox.prox_tv2d(
-            step_size * self.alpha, x, self.n_rows, self.n_cols,
+            x, step_size * self.alpha, self.n_rows, self.n_cols,
             max_iter=self.max_iter, tol=self.tol)

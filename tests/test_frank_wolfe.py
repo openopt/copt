@@ -32,7 +32,7 @@ def test_FW_L1(loss_grad):
     ss = 1/L
     grad = f_grad(opt.x)[1]
     grad_map = (opt.x - l1ball.prox(opt.x - ss*grad, ss))/ss
-    assert np.linalg.norm(grad_map) < 2e-2
+    assert np.linalg.norm(grad_map) < 0.015
 
 
 @pytest.mark.parametrize("obj", loss_funcs)
@@ -49,7 +49,7 @@ def test_FW_trace(obj):
     ss = 1/L
     grad = f.f_grad(opt.x)[1]
     grad_map = (opt.x - traceball.prox(opt.x - ss*grad, ss))/ss
-    assert np.linalg.norm(grad_map) < 2e-2
+    assert np.linalg.norm(grad_map) < 1e-2
 
 
 @pytest.mark.parametrize("obj", loss_funcs)

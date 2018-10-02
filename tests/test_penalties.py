@@ -9,10 +9,9 @@ proximal_penalties = [
     cp.utils.GroupL1(1., np.array_split(np.arange(16), 5)),
     cp.utils.TraceNorm(1., (4, 4)),
     cp.utils.TraceBall(1., (4, 4)),
-    cp.utils.TotalVariation2D(1., (4, 4))
+    cp.utils.TotalVariation2D(1., (4, 4)),
+    cp.utils.FusedLasso(1.)
 ]
-
-
 
 
 def test_GroupL1():
@@ -61,7 +60,7 @@ def test_tv1_prox():
     tv_norm = lambda x: np.sum(np.abs(np.diff(x)))
     for _ in range(1000):
         x = np.random.randn(n_features)
-        x_next = tv_prox.prox_tv1d(gamma, x)
+        x_next = tv_prox.prox_tv1d(x, gamma)
         diff_obj = tv_norm(x) - tv_norm(x_next)
         testing.assert_array_less(
         ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
@@ -83,7 +82,8 @@ def test_tv2_prox():
 
     for nrun in range(20):
         x = np.random.randn(n_features)
-        x_next = tv_prox.prox_tv2d(gamma, x, n_rows, n_cols, tol=1e-10, max_iter=10000)
+        x_next = tv_prox.prox_tv2d(
+            x, gamma, n_rows, n_cols, tol=1e-10, max_iter=10000)
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
         testing.assert_array_less(
             ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj)
@@ -111,7 +111,7 @@ def test_three_inequality(pen):
     in "Gradient-Based Algorithms with Applications to Signal
     Recovery Problems", Amir Beck and Marc Teboulle
     """
-    n_features = 16    
+    n_features = 16
 
     for _ in range(10):
         z = np.random.randn(n_features)

@@ -1,12 +1,11 @@
 import warnings
-import os
 import numpy as np
-from scipy import optimize, linalg, sparse
+from scipy import optimize
 from tqdm import trange
 
 
 def minimize_PGD(
-        f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
+        f_grad, x0, prox=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking=True, step_size=None,
         max_iter_backtracking=1000, backtracking_factor=0.6,
         ):
@@ -61,8 +60,8 @@ def minimize_PGD(
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
-    if g_prox is None:
-        g_prox = lambda x, y: x
+    if prox is None:
+        prox = lambda x, y: x
 
     if step_size is None:
         step_size = 1
@@ -81,7 +80,7 @@ def minimize_PGD(
             callback(x)
         # .. compute gradient and step size
         # TODO: could compute loss and grad in the same function call
-        x_next = g_prox(x - step_size * grad_fk, step_size)
+        x_next = prox(x - step_size * grad_fk, step_size)
         incr = x_next - x
         if backtracking:
             step_size *= 1.1
@@ -93,7 +92,7 @@ def minimize_PGD(
                 else:
                     # .. backtracking, reduce step size ..
                     step_size *= backtracking_factor
-                    x_next = g_prox(x - step_size * grad_fk, step_size)
+                    x_next = prox(x - step_size * grad_fk, step_size)
                     incr = x_next - x
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
@@ -127,7 +126,7 @@ def minimize_PGD(
 
 
 def minimize_APGD(
-        f_grad, x0, g_prox=None, tol=1e-6, max_iter=500, verbose=0,
+        f_grad, x0, prox=None, tol=1e-6, max_iter=500, verbose=0,
         callback=None, backtracking=True,
         step_size=None, max_iter_backtracking=100, backtracking_factor=0.6):
     """Accelerated proximal gradient descent.
@@ -142,9 +141,9 @@ def minimize_APGD(
     ----------
     f_grad : loss function, differentiable
 
-    g_prox : penalty, proximable
+    prox : penalty, proximable
 
-    g_prox : g_prox(x, alpha) returns the proximal operator of g at x
+    prox : prox(x, alpha) returns the proximal operator of g at x
         with parameter alpha.
 
     x0 : array-like
@@ -182,8 +181,8 @@ def minimize_APGD(
     x = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
-    if g_prox is None:
-        g_prox = lambda x, s: x
+    if prox is None:
+        prox = lambda x, s: x
 
     if step_size is None:
         step_size = 1
@@ -201,7 +200,7 @@ def minimize_APGD(
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_grad(yk)[1]
-        x = g_prox(yk - current_step_size * grad_fk, current_step_size)
+        x = prox(yk - current_step_size * grad_fk, current_step_size)
         if backtracking:
             for _ in range(max_iter_backtracking):
                 incr = x - yk
@@ -211,7 +210,7 @@ def minimize_APGD(
                 else:
                     # .. backtracking, reduce step size ..
                     current_step_size *= backtracking_factor
-                    x = g_prox(yk - current_step_size * grad_fk, current_step_size)
+                    x = prox(yk - current_step_size * grad_fk, current_step_size)
             else:
                 warnings.warn("Maxium number of line-search iterations reached")
         t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2

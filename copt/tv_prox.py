@@ -11,14 +11,7 @@ import warnings
 from numba import njit
 
 
-def prox_L1(step_size, x):
-    """
-    L1 proximal operator
-    """
-    return np.fmax(x - step_size, 0) - np.fmax(- x - step_size, 0)
-
-
-def prox_tv1d(step_size, w):
+def prox_tv1d(w, step_size):
     """
     Computes the proximal operator of the 1-dimensional total variation operator.
 
@@ -179,7 +172,7 @@ def c_prox_tv2d(step_size, x, n_rows, n_cols, max_iter, tol):
     return x
 
 
-def prox_tv2d(step_size, w, n_rows, n_cols, max_iter=500, tol=1e-6):
+def prox_tv2d(w, step_size, n_rows, n_cols, max_iter=500, tol=1e-6):
     """
     Computes the proximal operator of the 2-dimensional total variation operator.
 
