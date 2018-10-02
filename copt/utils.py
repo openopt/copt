@@ -32,6 +32,10 @@ class Trace:
 def init_lipschitz(f_grad, x0):
     L0 = 1e-3
     f0, grad0 = f_grad(x0)
+    if sparse.issparse(grad0):
+        x0 = sparse.csc_matrix(x0).T
+    elif sparse.issparse(x0):
+        grad0 = sparse.csc_matrix(grad0).T
     x_tilde = x0 - (1./L0)*grad0
     f_tilde = f_grad(x_tilde)[0]
     while f_tilde > f0:
