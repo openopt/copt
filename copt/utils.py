@@ -38,7 +38,7 @@ def init_lipschitz(f_grad, x0):
         L0 *= 10
         x_tilde = x0 - (1./L0)*grad0
         f_tilde = f_grad(x_tilde)[0]
-    return np.linalg.norm(grad0) ** 2 / (f0 - f_tilde)
+    return L0
 
 
 def get_lipschitz(A, loss, alpha=0):
@@ -396,9 +396,13 @@ class FusedLasso:
         B_1_indices = np.arange(n_features, dtype=np.int32)
         B_1_indptr = np.arange(0, n_features + 1, 2, dtype=np.int32)
         if n_features % 2 == 1:
-            B_1_indptr[-1] -= 1
+            B_1_indptr = np.concatenate(
+                (B_1_indptr, [B_1_indptr[-1] + 1]))
             B_1_data[-1] = -1
-        B_1 = sparse.csr_matrix((B_1_data, B_1_indices, B_1_indptr))
+        n_blocks = (n_features+1)//2
+        B_1 = sparse.csr_matrix(
+            (B_1_data, B_1_indices, B_1_indptr),
+            shape=(n_blocks, n_features))
         alpha = self.alpha
 
         @njit
@@ -430,12 +434,14 @@ class FusedLasso:
         if n_features % 2 == 0:
             B_2_indptr[-1] -= 1
             B_2_data[-1] = -1
-        B_2 = sparse.csr_matrix((B_2_data, B_2_indices, B_2_indptr))
+        n_blocks = n_features//2 + 1
+        B_2 = sparse.csr_matrix(
+            (B_2_data, B_2_indices, B_2_indptr),
+            shape=(n_blocks, n_features))
         alpha = self.alpha
 
         @njit
         def _prox_2_fl(x, i, indices, indptr, d, step_size):
-            print(indptr[i], indptr[i+1])
             for b in range(indptr[i], indptr[i+1]):
                 h = indices[b]
                 j_idx = B_2_indices[B_2_indptr[h]]

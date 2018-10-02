@@ -41,7 +41,7 @@ def minimize_FW(
     pbar = trange(max_iter, disable=(verbose == 0))
     f_t, grad = f_grad(x_t)
     if L is None:
-        L_t = utils.init_lipschitz(f_grad, x0.toarray().ravel())
+        L_t = utils.init_lipschitz(f_grad, x0)
     else:
         L_t = L
     for it in pbar:
@@ -99,7 +99,7 @@ def minimize_PFW_L1(
         f_grad, alpha, n_features, L=None, max_iter=1000,
         tol=1e-12, backtracking=True, callback=None, verbose=0):
     """Pairwise FW on the L1 ball
-    
+
 .. warning::
     This feature is experimental, API is likely to change.
 
@@ -115,7 +115,6 @@ def minimize_PFW_L1(
 
     active_set = np.zeros(2 * n_features + 1)
     active_set[2 * n_features] = 1.
-    LS_EPS = np.finfo(np.float).eps
     all_Lt = []
     num_bad_steps = 0
 

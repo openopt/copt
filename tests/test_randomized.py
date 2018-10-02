@@ -8,6 +8,7 @@ np.random.seed(0)
 n_samples, n_features = 20, 10
 density = 0.5
 A = sparse.random(n_samples, n_features, density=density)
+A2 = sparse.random(n_samples, n_features+1, density=density)
 w = np.random.randn(n_features)
 b = A.dot(w) + np.random.randn(n_samples)
 
@@ -153,17 +154,19 @@ def test_vrtos_ogl():
         assert np.linalg.norm(opt_vrtos.x - opt_tos.x)/norm < 1e-4
 
 
-def test_vrtos_fl():
+@pytest.mark.parametrize("A_data", [A, A2])
+def test_vrtos_fl(A_data):
     """Test on overlapping group lasso"""
+    n_samples, n_features = A_data.shape
     alpha = 1./n_samples
-    f = cp.utils.LogLoss(A, b, alpha)
+    f = cp.utils.LogLoss(A_data, b, alpha)
     for beta in np.logspace(-3, 3, 3):
         pen = cp.utils.FusedLasso(beta)
-        L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
+        L = cp.utils.get_max_lipschitz(A_data, 'logloss') + alpha/density
 
         opt_vrtos = cp.minimize_VRTOS(
-            randomized.deriv_logistic, A, b, np.zeros(n_features), 1/(3 * L),
-            alpha=alpha, max_iter=2000,
+            randomized.deriv_logistic, A_data, b, np.zeros(n_features),
+            1/(3 * L), alpha=alpha, max_iter=2000,
             prox_1=pen.prox_1_factory(n_features),
             prox_2=pen.prox_2_factory(n_features), tol=0)
 
