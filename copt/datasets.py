@@ -294,7 +294,7 @@ def load_kdd12(md5_check=True, verbose=0):
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     if not os.path.exists(file_path):
-        print('URL dataset is not present in data folder. Downloading it ...')
+        print('KDD12 dataset is not present in data folder. Downloading it ...')
         url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/kdd12.bz2'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')

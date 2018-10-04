@@ -8,25 +8,6 @@ from sklearn.utils.extmath import safe_sparse_dot
 from . import utils
 
 
-def _backtrack(
-        f_t, f_grad, x_t, d_t, g_t, L_t,
-        gamma_max=1, ratio_increase=2., ratio_decrease=0.999,
-        max_iter=100):
-    # could be included inside minimize_FW
-    d2_t = splinalg.norm(d_t) ** 2
-    for i in range(max_iter):
-        step_size = min(g_t / (d2_t * L_t), gamma_max)
-        rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
-        f_next, grad_next = f_grad(x_t + step_size * d_t)
-        if f_next <= rhs:
-            if i == 0:
-                L_t *= ratio_decrease
-            break
-    else:
-        L_t *= ratio_increase
-    return step_size, L_t, f_next, grad_next
-
-
 def minimize_FW(
         f_grad, lmo, x0, L=None, max_iter=1000, tol=1e-12,
         backtracking=True, callback=None, verbose=0):
@@ -55,11 +36,21 @@ def minimize_FW(
             g_t = g_t[0]
         if g_t <= tol:
             break
+        d2_t = splinalg.norm(d_t) ** 2
         if backtracking:
-            step_size, L_t, f_next, grad_next = _backtrack(
-                f_t, f_grad, x_t, d_t, g_t, L_t)
+            ratio_decrease = 0.999
+            ratio_increase = 2
+            for i in range(max_iter):
+                step_size = min(g_t / (d2_t * L_t), 1)
+                rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
+                f_next, grad_next = f_grad(x_t + step_size * d_t)
+                if f_next <= rhs + 1e-6:
+                    if i == 0:
+                        L_t *= ratio_decrease
+                    break
+                else:
+                    L_t *= ratio_increase
         else:
-            d2_t = splinalg.norm(d_t) ** 2
             step_size = min(g_t / (d2_t * L_t), 1)
             f_next, grad_next = f_grad(x_t + step_size * d_t)
         x_t += step_size * d_t

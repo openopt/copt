@@ -32,13 +32,15 @@ class Trace:
 def init_lipschitz(f_grad, x0):
     L0 = 1e-3
     f0, grad0 = f_grad(x0)
-    if sparse.issparse(grad0):
+    if sparse.issparse(grad0) and not sparse.issparse(x0):
         x0 = sparse.csc_matrix(x0).T
-    elif sparse.issparse(x0):
+    elif sparse.issparse(x0) and not sparse.issparse(grad0):
         grad0 = sparse.csc_matrix(grad0).T
     x_tilde = x0 - (1./L0)*grad0
     f_tilde = f_grad(x_tilde)[0]
-    while f_tilde > f0:
+    for _ in range(100):
+        if f_tilde <= f0:
+            break
         L0 *= 10
         x_tilde = x0 - (1./L0)*grad0
         f_tilde = f_grad(x_tilde)[0]
@@ -182,6 +184,7 @@ class SquareLoss:
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
 
+
 class HuberLoss:
     """Huber loss"""
     def __init__(self, A, b, alpha=0, delta=1):
@@ -205,7 +208,7 @@ class HuberLoss:
         grad = self.A[idx].T.dot(z[idx]) / self.A.shape[0] + self.alpha * x.T
         grad = np.asarray(grad)
         grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
-        return loss, grad
+        return loss, np.asarray(grad).ravel()
 
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
