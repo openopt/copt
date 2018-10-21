@@ -48,9 +48,8 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
         certificate = np.linalg.norm(obj.f_grad(opt.x)[1])
         assert certificate < tol, name_solver
 
-        L = obj.lipschitz()
         opt_2 = solver(
             obj.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10,
-            backtracking=False, step_size=1/L)
+            backtracking=False, step_size=1/obj.lipschitz)
         certificate = np.linalg.norm(obj.f_grad(opt_2.x)[1])
         assert certificate < tol, name_solver

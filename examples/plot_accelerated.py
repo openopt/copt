@@ -15,27 +15,26 @@ np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
 
-logloss = cp.utils.LogLoss(X, y).f_grad
-cb_pgd = cp.utils.Trace()
-cb_apgd = cp.utils.Trace()
-L = cp.utils.get_lipschitz(X, 'logloss')
-step_size = 1. / L
+f = cp.utils.LogLoss(X, y)
+step_size = 1. / f.lipschitz
+
+cb_pgd = cp.utils.Trace(f)
 result_pgd = cp.minimize_PGD(
-    logloss, np.zeros(n_features), step_size=step_size,
+    f.f_grad, np.zeros(n_features), step_size=step_size,
     callback=cb_pgd, tol=0, backtracking=False)
+
+cb_apgd = cp.utils.Trace(f)
 result_apgd = cp.minimize_APGD(
-    logloss, np.zeros(n_features), step_size=step_size,
+    f.f_grad, np.zeros(n_features), step_size=step_size,
     callback=cb_apgd, tol=0, backtracking=False)
 
-trace_func_pgd = np.array([logloss(x)[0] for x in cb_pgd.trace_x])
-trace_func_apgd = np.array([logloss(x)[0] for x in cb_apgd.trace_x])
 
 # .. plot the result ..
-fmin = min(np.min(trace_func_apgd), np.min(trace_func_pgd))
+fmin = min(np.min(cb_pgd.trace_fx), np.min(cb_apgd.trace_fx))
 plt.title('Comparison of full gradient optimizers')
-plt.plot(trace_func_pgd - fmin, lw=4,
+plt.plot(cb_apgd.trace_fx - fmin, lw=4,
          label='gradient descent')
-plt.plot(trace_func_apgd - fmin, lw=4,
+plt.plot(cb_pgd.trace_fx - fmin, lw=4,
          label='accelerated gradient descent')
 plt.ylabel('Function suboptimality', fontweight='bold')
 plt.xlabel('gradient evaluations', fontweight='bold')

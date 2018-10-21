@@ -49,7 +49,7 @@ def init_lipschitz(f_grad, x0):
 
 def get_lipschitz(A, loss, alpha=0):
     """XXX DEPRECATED
-    
+
     Estimate Lipschitz constant for different loss functions
 
     A : array-like
@@ -72,7 +72,10 @@ def get_lipschitz(A, loss, alpha=0):
 
 
 def get_max_lipschitz(A, loss, alpha=0):
-    """Estimate the max Lipschitz constant (as appears in
+    """
+    XXX DEPRECATED
+
+    Estimate the max Lipschitz constant (as appears in
     many stochastic methods).
 
     A : array-like
@@ -96,7 +99,7 @@ class LogLoss:
         -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\sigma(a_i^T x)) + (1 - b_i) \\log(1 - \sigma(a_i^T x))
 
     where :math:`\sigma` is the sigmoid function :math:`\sigma(t) = 1/(1 + e^{-t})`.
-    
+
     When the input vector b comes from class labels, it is expected to have the values 0 or 1.
 
     for a numerically stable computation of the logistic loss, we use the identities
@@ -153,10 +156,38 @@ class LogLoss:
 
         return loss, grad
 
+    @property
+    def partial_deriv(self):
+        @njit
+        def log_deriv(p, y):
+            # derivative of logistic loss
+            # same as in lightning (with minus sign)
+            if p > 0:
+                tmp = np.exp(-p)
+                phi = - tmp / (1. + tmp) + 1 - y
+            else:
+                tmp = np.exp(p)
+                phi = tmp / (1. + tmp) - y
+            return phi
+        return log_deriv
+
+
+
+    @property
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False,
                           maxiter=100)[0]
         return 0.25 * (s * s) / self.A.shape[0] + self.alpha
+
+
+    @property
+    def max_lipschitz(self):
+        from sklearn.utils.extmath import row_norms
+        max_squared_sum = row_norms(self.A, squared=True).max()
+
+        return 0.25 * max_squared_sum + self.alpha
+
+
 
 
 class SquareLoss:
@@ -180,6 +211,7 @@ class SquareLoss:
         grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x.T
         return loss, np.asarray(grad).ravel()
 
+    @property
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
@@ -207,12 +239,14 @@ class HuberLoss:
             return loss
         grad = self.A[idx].T.dot(z[idx]) / self.A.shape[0] + self.alpha * x.T
         grad = np.asarray(grad)
-        grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx]))/ self.A.shape[0]
+        grad += self.A[~idx].T.dot(self.delta * np.sign(z[~idx])) / self.A.shape[0]
         return loss, np.asarray(grad).ravel()
 
+    @property
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
+
 
 class L1Norm:
     """L1 norm, that is, the sum of absolute values"""
@@ -241,7 +275,7 @@ class L1Norm:
 
 class L1Ball:
     """Indicator function over the L1 ball
-    
+
     This function is 0 if the sum of absolute values is less than or equal to
     alpha, and infinity otherwise.
     """
@@ -288,14 +322,14 @@ class L1Ball:
 class GroupL1:
     """
     Group Lasso penalty
-    
+
     Parameters
     ----------
-    
+
     alpha: scalar
-    
+
     blocks: list of lists
-    
+
     Examples
     --------
     """
@@ -380,12 +414,12 @@ class GroupL1:
 class FusedLasso:
     """
     Fused Lasso penalty
-    
+
     Parameters
     ----------
-    
+
     alpha: scalar
-    
+
     Examples
     --------
     """

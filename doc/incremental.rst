@@ -6,6 +6,6 @@ Incremental methods
 .. autosummary::
    :toctree: generated/
 
-    copt.minimize_SAGA_L1
-    copt.minimize_SVRG_L1
+    copt.minimize_SAGA
+    copt.minimize_SVRG
     copt.minimize_VRTOS
