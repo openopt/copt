@@ -89,7 +89,6 @@ def minimize_PGD(
             if callback(x) is False:
                 break
         # .. compute gradient and step size
-        # TODO: could compute loss and grad in the same function call
         x_next = prox(x - step_size * grad_fk, step_size)
         incr = x_next - x
         if backtracking:

@@ -1,5 +1,4 @@
 import numpy as np
-from numba import njit
 from scipy import sparse, optimize
 from tqdm import trange
 from scipy.sparse import linalg as splinalg
@@ -64,7 +63,7 @@ def minimize_FW(
     return optimize.OptimizeResult(x=x_final, nit=it, certificate=g_t)
 
 
-@njit
+@utils.njit
 def max_active(grad, active_set, n_features, include_zero=True):
     # find the index that most correlates with the gradient
     max_grad_active = - np.inf
@@ -139,6 +138,7 @@ def minimize_PFW_L1(
             gamma_max = active_set[idx_oracle_away]
 
         if gamma_max <= 0:
+            pbar.close()
             raise ValueError
 
         g_t = grad[idx_oracle_away % n_features] * mag_away - \
