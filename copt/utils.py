@@ -8,8 +8,8 @@ from sklearn.utils.extmath import safe_sparse_dot
 try:
     from numba import njit
 except ImportError:
-    def njit(func, *args, **kw):
-        return func
+    def njit(*args, **kw):
+        return lambda x: x
 
 
 class Trace:
