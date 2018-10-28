@@ -1,7 +1,6 @@
 import numpy as np
 from scipy import sparse, linalg
 from scipy.sparse import linalg as splinalg
-from numba import njit
 from datetime import datetime
 from sklearn.utils.extmath import safe_sparse_dot
 
