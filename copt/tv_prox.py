@@ -8,7 +8,7 @@ These are implementations of some proximal operators
 
 import numpy as np
 import warnings
-from numba import njit
+from . import utils
 
 
 def prox_tv1d(w, step_size):
@@ -42,7 +42,7 @@ def prox_tv1d(w, step_size):
     return output
 
 
-@njit
+@utils.njit
 def _prox_tv1d(step_size, input, output):
     """low level function call, no checks are performed"""
     width = input.size + 1
@@ -122,7 +122,7 @@ def _prox_tv1d(step_size, input, output):
     return
 
 
-@njit
+@utils.njit
 def prox_tv1d_cols(stepsize, a, n_rows, n_cols):
     """apply prox_tv1d along columns of the matri a
     """
@@ -133,7 +133,7 @@ def prox_tv1d_cols(stepsize, a, n_rows, n_cols):
     return out.ravel()
 
 
-@njit
+@utils.njit
 def prox_tv1d_rows(stepsize, a, n_rows, n_cols):
     """apply prox_tv1d along rows of the matri a
     """

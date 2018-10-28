@@ -1,22 +1,23 @@
 import numpy as np
 from scipy import sparse, optimize
-from numba import njit
 from tqdm import trange
 
+from . import utils
 
-@njit
+
+@utils.njit
 def f_squared(p, y):
     # squared loss
     return 0.5 * ((y - p) ** 2)
 
 
-@njit
+@utils.njit
 def deriv_squared(p, y):
     # derivative of squared loss
     return - (y - p)
 
 
-@njit
+@utils.njit
 def f_logistic(p, y):
     # logistic loss
     if p > 0:
@@ -25,7 +26,7 @@ def f_logistic(p, y):
         return np.log(1 + np.exp(p)) - p * y
 
 
-@njit(nogil=True)
+@utils.njit(nogil=True)
 def deriv_logistic(p, y):
     # derivative of logistic loss
     # same as in lightning (with minus sign)
@@ -38,7 +39,7 @@ def deriv_logistic(p, y):
     return phi
 
 
-@njit(nogil=True)
+@utils.njit(nogil=True)
 def _support_matrix(
         A_indices, A_indptr, reverse_blocks_indices, n_blocks):
     """
@@ -166,7 +167,7 @@ def minimize_SAGA(
         blocks = sparse.eye(n_features, n_features, format='csr')
 
     if prox is None:
-        @njit
+        @utils.njit
         def prox(x, i, indices, indptr, d, step_size):
             pass
 
@@ -187,7 +188,7 @@ def minimize_SAGA(
     d[idx] = n_samples / d[idx]
     d[~idx] = 1
 
-    @njit(nogil=True)
+    @utils.njit(nogil=True)
     def _saga_epoch(
             x, idx, memory_gradient, gradient_average, grad_tmp, step_size):
         # .. inner iteration of the SAGA algorithm..
@@ -336,7 +337,7 @@ def minimize_SVRG(
         blocks = sparse.eye(n_features, n_features, format='csr')
 
     if prox is None:
-        @njit
+        @utils.njit
         def prox(x, i, indices, indptr, d, step_size):
             pass
 
@@ -357,7 +358,7 @@ def minimize_SVRG(
     d[idx] = n_samples / d[idx]
     d[~idx] = 1
 
-    @njit
+    @utils.njit
     def full_grad(x):
         grad = np.zeros(x.size)
         for i in range(n_samples):
@@ -372,7 +373,7 @@ def minimize_SVRG(
                 grad[j_idx] += grad_i * A_data[j] / n_samples
         return grad
 
-    @njit(nogil=True)
+    @utils.njit(nogil=True)
     def _svrg_epoch(
             x, x_snapshot, idx, gradient_average, grad_tmp, step_size):
 
@@ -484,10 +485,10 @@ def minimize_VRTOS(
     ----------
     Pedregosa, Fabian, Kilian Fatras, and Mattia Casotto. "Variance Reduced Three Operator Splitting." arXiv preprint arXiv:1806.07294 (2018).
     """
-    
+
     n_samples, n_features = A.shape
     success = False
-    
+
     # FIXME: just a workaround for now
     # FIXME: check if prox_1 is a tuple
     if hasattr(prox_1, '__len__') and len(prox_1) == 2:
@@ -508,13 +509,13 @@ def minimize_VRTOS(
 
     if step_size < 0:
         raise ValueError
-    
+
     if prox_1 is None:
-        @njit
+        @utils.njit
         def prox_1(x, i, indices, indptr, d, step_size):
             pass
     if prox_2 is None:
-        @njit
+        @utils.njit
         def prox_2(x, i, indices, indptr, d, step_size):
             pass
 
@@ -588,7 +589,7 @@ def _factory_sparse_VRTOS(
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
 
-    @njit(nogil=True)
+    @utils.njit(nogil=True)
     def epoch_iteration_template(
             Y, x1, x2, z, memory_gradient, gradient_average, sample_indices,
             grad_tmp, step_size):

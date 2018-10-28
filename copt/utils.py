@@ -5,7 +5,12 @@ from numba import njit
 from datetime import datetime
 from sklearn.utils.extmath import safe_sparse_dot
 
-from . import tv_prox
+
+try:
+    from numba import njit
+except ImportError:
+    def njit(func, *args, **kw):
+        return func
 
 
 class Trace:
@@ -430,6 +435,8 @@ class FusedLasso:
         return self.alpha * np.sum(np.abs(np.diff(x)))
 
     def prox(self, x, step_size):
+        # imported here to avoid circular imports
+        from . import tv_prox
         return tv_prox.prox_tv1d(x, step_size * self.alpha)
 
     def prox_1_factory(self, n_features):
@@ -664,6 +671,8 @@ class TotalVariation2D:
         return self.alpha * (tmp1.sum() + tmp2.sum())
 
     def prox(self, x, step_size):
+        # here to avoid circular imports
+        from . import tv_prox
         return tv_prox.prox_tv2d(
             x, step_size * self.alpha, self.n_rows, self.n_cols,
             max_iter=self.max_iter, tol=self.tol)

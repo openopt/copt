@@ -225,7 +225,9 @@ def minimize_APGD(
                 warnings.warn("Maxium number of line-search iterations reached")
         t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
         yk = x + ((tk-1.) / t_next) * (x - xk_prev)
-        certificate = np.linalg.norm((x - xk_prev) / step_size)
+
+        x_prox = prox(x - current_step_size * f_grad(x)[1], current_step_size)
+        certificate = np.linalg.norm((x - x_prox) / step_size)
         tk = t_next
         xk_prev = x.copy()
 

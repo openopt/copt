@@ -17,8 +17,8 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers = (
-    ['PGD', cp.minimize_PGD, 1e-6],
-    # ['APGD', cp.minimize_APGD, 1e-3],
+    ['PGD', cp.minimize_PGD, 1e-12],
+    ['APGD', cp.minimize_APGD, 1e-7],
 )
 
 loss_funcs = [
@@ -45,16 +45,19 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
     """
     Test a method on both the backtracking and fixed step size strategy
     """
+    max_iter = 1000
     for alpha in np.logspace(-1, 3, 3):
         obj = loss(A, b, alpha)
-        prox = penalty(1e-3).prox
+        if penalty is not None:
+            prox = penalty(1e-3).prox
+        else:
+            prox = None
         opt = solver(
-            obj.f_grad, np.zeros(n_features), prox=prox, tol=1e-12)
-        certificate = np.linalg.norm(obj.f_grad(opt.x)[1])
-        assert certificate < tol, name_solver
+            obj.f_grad, np.zeros(n_features), prox=prox,
+            tol=1e-12, max_iter=max_iter)
+        assert opt.certificate < tol, name_solver
 
         opt_2 = solver(
-            obj.f_grad, np.zeros(n_features), prox=prox, max_iter=5000,
-            tol=1e-10, backtracking=False, step_size=1/obj.lipschitz)
-        certificate = np.linalg.norm(obj.f_grad(opt_2.x)[1])
-        assert certificate < tol, name_solver
+            obj.f_grad, np.zeros(n_features), prox=prox, max_iter=max_iter,
+            tol=1e-12, backtracking=False, step_size=1/obj.lipschitz)
+        assert opt.certificate < tol, name_solver
