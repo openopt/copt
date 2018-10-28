@@ -1,3 +1,6 @@
+"""
+Tests for gradient-based methods
+"""
 import numpy as np
 from scipy import optimize
 import copt as cp
@@ -14,15 +17,13 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers = (
-    ['PGD', cp.minimize_PGD, 1e-3],
-    ['APGD', cp.minimize_APGD, 1e-3],
-    ['PDHG', cp.minimize_PDHG, 0.3],
-    ['TOS', cp.minimize_TOS, 1e-2],
+    ['PGD', cp.minimize_PGD, 1e-6],
+    # ['APGD', cp.minimize_APGD, 1e-3],
 )
 
 loss_funcs = [
     cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
-penalty_funcs = [None]
+penalty_funcs = [None, cp.utils.L1Norm]
 
 
 def test_gradient():
@@ -41,15 +42,19 @@ def test_gradient():
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
 def test_optimize(name_solver, solver, tol, loss, penalty):
-    for alpha in np.logspace(-1, 3, 5):
+    """
+    Test a method on both the backtracking and fixed step size strategy
+    """
+    for alpha in np.logspace(-1, 3, 3):
         obj = loss(A, b, alpha)
+        prox = penalty(1e-3).prox
         opt = solver(
-            obj.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10)
+            obj.f_grad, np.zeros(n_features), prox=prox, tol=1e-12)
         certificate = np.linalg.norm(obj.f_grad(opt.x)[1])
         assert certificate < tol, name_solver
 
         opt_2 = solver(
-            obj.f_grad, np.zeros(n_features), max_iter=5000, tol=1e-10,
-            backtracking=False, step_size=1/obj.lipschitz)
+            obj.f_grad, np.zeros(n_features), prox=prox, max_iter=5000,
+            tol=1e-10, backtracking=False, step_size=1/obj.lipschitz)
         certificate = np.linalg.norm(obj.f_grad(opt_2.x)[1])
         assert certificate < tol, name_solver

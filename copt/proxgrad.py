@@ -15,32 +15,36 @@ def minimize_PGD(
 
             minimize_x f(x) + g(x)
 
+
     where we have access to the gradient of f and to the proximal operator of g.
 
     Parameters
     ----------
     f_grad: callable
-         Returns the function value and gradient of the objective function.
+         Value and gradient of f: ``f_grad(x) -> float, array-like``.
 
-    g : penalty term (proximal)
+    x0 : array-like of size n_features
+        Initial guess of solution.
 
-    x0 : array-like, optional
-        Initial guess
+    prox : callable, optional.
+        Proximal operator g.
 
-    backtracking : boolean
+    backtracking : boolean, optional
         Whether to perform backtracking (i.e. line-search) or not.
 
-    max_iter : int
+    max_iter : int, optional.
         Maximum number of iterations.
 
-    verbose : int
+    verbose : int, optional.
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
     step_size : float
         Starting value for the line-search procedure. XXX
 
     callback : callable
-        callback function (optional).
+        callback function (optional). Takes a single argument (x) with the
+        current coefficients in the algorithm. The algorithm will exit if
+        callback returns False.
 
     Returns
     -------
@@ -55,6 +59,11 @@ def minimize_PGD(
     ----------
     Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
     recovery." Convex optimization in signal processing and communications (2009)
+
+    Examples
+    --------
+
+      * :ref:`sphx_glr_auto_examples_plot_group_lasso.py`
     """
     x = x0
     if not max_iter_backtracking > 0:
@@ -77,7 +86,8 @@ def minimize_PGD(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         if callback is not None:
-            callback(x)
+            if callback(x) is False:
+                break
         # .. compute gradient and step size
         # TODO: could compute loss and grad in the same function call
         x_next = prox(x - step_size * grad_fk, step_size)

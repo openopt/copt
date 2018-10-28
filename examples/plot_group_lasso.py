@@ -79,6 +79,7 @@ for i, beta in enumerate(all_betas):
 # .. plot the results ..
 fig, ax = plt.subplots(2, 4, sharey=False)
 xlim = [0.02, 0.02, 0.1]
+markevery = [1000, 1000, 100, 100]
 for i, beta in enumerate(all_betas):
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
     ax[0, i].set_title(r'$\lambda=%s$' % beta)
@@ -97,7 +98,7 @@ for i, beta in enumerate(all_betas):
 
     plot_nols, = ax[1, i].plot(
         (all_trace_nols[i] - fmin) / scale,
-        lw=4, marker='h', markevery=100,
+        lw=4, marker='h', markevery=markevery[i],
         markersize=10)
 
     ax[1, i].set_xlabel('Iterations')
