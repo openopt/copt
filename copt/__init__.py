@@ -1,4 +1,4 @@
-__version__ = '0.5.2'
+__version__ = '0.6.0'
 
 from .proxgrad import minimize_PGD, minimize_APGD
 from .splitting import minimize_TOS, minimize_PDHG
