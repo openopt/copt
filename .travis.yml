@@ -6,6 +6,7 @@ python:
 install:
 - pip install -r requirements.txt
 - pip install python-coveralls scikit-image coverage pytest-sugar
+- py.test --version
 - python setup.py develop
 script:
 - NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
