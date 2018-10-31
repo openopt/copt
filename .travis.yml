@@ -8,7 +8,7 @@ install:
 - pip install python-coveralls scikit-image coverage pytest-sugar
 - python setup.py develop
 script:
-- NUMBA_DISABLE_JIT=1 DISABLE_TQDM=1 py.test -v --cov=copt
+- NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
 after_success: coveralls
 cache:
   directories:
