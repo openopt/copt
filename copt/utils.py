@@ -26,6 +26,23 @@ except ImportError:
             return inner_function
 
 
+def safe_sparse_add(a, b):
+    if sparse.issparse(a) and sparse.issparse(b):
+        # both are sparse, keep the result sparse
+        return a + b
+    else:
+        # on of them is non-sparse, convert
+        # everything to dense.
+        if sparse.issparse(a):
+            a = a.toarray()
+            if a.ndim == 2 and b.ndim == 1:
+                b.ravel()
+        elif sparse.issparse(b):
+            b = b.toarray()
+            if b.ndim == 2 and a.ndim == 1:
+                b = b.ravel()
+        return a + b
+
 class Trace:
     def __init__(self, f=None, freq=1):
         self.trace_x = []
@@ -63,30 +80,6 @@ def init_lipschitz(f_grad, x0):
         x_tilde = x0 - (1./L0)*grad0
         f_tilde = f_grad(x_tilde)[0]
     return L0
-
-
-def get_lipschitz(A, loss, alpha=0):
-    """XXX DEPRECATED
-
-    Estimate Lipschitz constant for different loss functions
-
-    A : array-like
-
-    loss : {'logloss', 'square', 'huber'}
-    """
-
-    if hasattr(loss, 'name'):
-        loss = loss.name
-
-    if loss == 'logloss':
-        s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                          maxiter=100)[0]
-        return 0.25 * (s * s) / A.shape[0] + alpha
-    elif loss in ('huber', 'square'):
-        s = splinalg.svds(A, k=1, return_singular_vectors=False,
-                          maxiter=100)[0]
-        return (s * s) / A.shape[0] + alpha
-    raise NotImplementedError
 
 
 def get_max_lipschitz(A, loss, alpha=0):
@@ -166,7 +159,7 @@ class LogLoss:
         z0[idx] = - tmp / (1 + tmp) + 1 - self.b[idx]
         tmp = np.exp(z[~idx])
         z0[~idx] = tmp / (1 + tmp) - self.b[~idx]
-        grad = self.A.T.dot(z0) / self.A.shape[0] + self.alpha * x_.T
+        grad = safe_sparse_add(self.A.T.dot(z0) / self.A.shape[0], self.alpha * x_)
         grad = np.asarray(grad).ravel()
         grad_c = z0.mean()
         if self.intercept:
@@ -226,7 +219,7 @@ class SquareLoss:
         loss = 0.5 * (z * z).mean() + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
         if not return_gradient:
             return loss
-        grad = self.A.T.dot(z) / self.A.shape[0] + self.alpha * x.T
+        grad = safe_sparse_add(self.A.T.dot(z) / self.A.shape[0], self.alpha * x.T)
         return loss, np.asarray(grad).ravel()
 
     @property

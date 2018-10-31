@@ -19,7 +19,7 @@ np.random.seed(0)
 n_samples, n_features = 100, 1002
 
 # .. generate some data ..
-# .. the first set of blocks is 
+# .. the first set of blocks is
 groups = [np.arange(8 * i, 8 * i + 10) for i in range(125)]
 ground_truth = np.zeros(n_features)
 g = np.random.randint(0, len(groups), 10)
@@ -42,7 +42,7 @@ b = (b + 1) // 2
 # .. compute the step-size ..
 max_iter = 5000
 f = cp.utils.LogLoss(A, b)
-step_size = 1. / cp.utils.get_lipschitz(A, f)
+step_size = 1. / f.lipschitz
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
@@ -81,7 +81,7 @@ for i, beta in enumerate(all_betas):
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
     out_img.append(tos.x)
-    
+
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg(x0)
@@ -93,7 +93,7 @@ for i, beta in enumerate(all_betas):
     trace_pdhg = np.array([loss(x) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
-    
+
     cb_pdhg_nols = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg_nols(x0)
@@ -105,7 +105,7 @@ for i, beta in enumerate(all_betas):
     trace_pdhg_nols = np.array([loss(x) for x in cb_pdhg_nols.trace_x])
     all_trace_pdhg_nols.append(trace_pdhg_nols)
     all_trace_pdhg_nols_time.append(cb_pdhg_nols.trace_time)
-    
+
 
 # .. plot the results ..
 fig, ax = plt.subplots(2, 4, sharey=False)

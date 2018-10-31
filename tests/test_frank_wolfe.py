@@ -2,6 +2,10 @@ import numpy as np
 import copt as cp
 import pytest
 
+import warnings
+warnings.simplefilter("error")
+
+
 np.random.seed(0)
 n_samples, n_features = 20, 16
 A = np.random.randn(n_samples, n_features)
@@ -20,17 +24,16 @@ loss_funcs = [
 
 @pytest.mark.parametrize("loss_grad", loss_funcs)
 def test_FW_L1(loss_grad):
-    f_grad = loss_grad(A, b, 1./n_samples).f_grad
+    f = loss_grad(A, b, 1./n_samples)
     alpha = 1.
     l1ball = cp.utils.L1Ball(alpha)
     opt = cp.minimize_FW(
-        f_grad, l1ball.lmo, np.zeros(n_features), tol=0,
+        f.f_grad, l1ball.lmo, np.zeros(n_features), tol=0,
         max_iter=5000)
     assert np.isfinite(opt.x).sum() == n_features
 
-    L = cp.utils.get_lipschitz(A, 'square', 1./n_samples)
-    ss = 1/L
-    grad = f_grad(opt.x)[1]
+    ss = 1/f.lipschitz
+    grad = f.f_grad(opt.x)[1]
     grad_map = (opt.x - l1ball.prox(opt.x - ss*grad, ss))/ss
     assert np.linalg.norm(grad_map) < 0.015
 

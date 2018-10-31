@@ -48,8 +48,8 @@ b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
-step_size = 1. / cp.utils.get_lipschitz(A, 'square')
 f = cp.utils.HuberLoss(A, b)
+step_size = 1. / f.lipschitz
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..

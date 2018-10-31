@@ -32,16 +32,15 @@ n_samples = n_features
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False,
                   tol=1e-3, maxiter=500)[0]
-L = cp.utils.get_lipschitz(A, 'square')
-step_size = 1./L
-f_grad = cp.utils.SquareLoss(A, b).f_grad
+f = cp.utils.SquareLoss(A, b)
+step_size = 1./f.lipschitz
 
 
 def loss(x, beta):
     img = x.reshape((n_rows, n_cols))
     tmp1 = np.abs(np.diff(img, axis=0))
     tmp2 = np.abs(np.diff(img, axis=1))
-    return f_grad(x)[0] + beta * (tmp1.sum() + tmp2.sum())
+    return f(x) + beta * (tmp1.sum() + tmp2.sum())
 
 
 # .. run the solver for different values ..
@@ -56,7 +55,6 @@ for i, beta in enumerate(all_betas):
         return cp.tv_prox.prox_tv1d_cols(
             step_size * beta, x, n_rows, n_cols)
 
-
     def h_prox(x, step_size):
         return cp.tv_prox.prox_tv1d_rows(
             step_size * beta, x, n_rows, n_cols)
@@ -65,7 +63,7 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_adatos(x0)
     adatos = cp.minimize_TOS(
-        f_grad, x0, g_prox, h_prox,
+        f.f_grad, x0, g_prox, h_prox,
         step_size=10 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_adatos, h_Lipschitz=beta)
@@ -78,7 +76,7 @@ for i, beta in enumerate(all_betas):
     x0 = np.zeros(n_features)
     cb_tos(x0)
     cp.minimize_TOS(
-        f_grad, x0, g_prox, h_prox,
+        f.f_grad, x0, g_prox, h_prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tos, backtracking=False)
@@ -86,12 +84,11 @@ for i, beta in enumerate(all_betas):
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
 
-
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
     cb_pdhg(x0)
     cp.minimize_PDHG(
-        f_grad, x0, g_prox, h_prox,
+        f.f_grad, x0, g_prox, h_prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
         step_size2=(1. / step_size) / 2, tol=0)
@@ -123,7 +120,7 @@ for i, beta in enumerate(all_betas):
 
     plot_pdhg, = ax[1, i].plot(
         (all_trace_pdhg[i] - fmin) / scale, '--',
-        lw=2, marker='^', markevery=400, 
+        lw=2, marker='^', markevery=400,
         markersize=7)
 
     ax[1, i].set_xlabel('Iterations')

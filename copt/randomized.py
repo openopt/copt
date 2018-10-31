@@ -1,3 +1,4 @@
+"""Module that contains randomized (also known as stochastic) algorithms"""
 import numpy as np
 from scipy import sparse, optimize
 from tqdm import trange
@@ -5,44 +6,12 @@ from tqdm import trange
 from . import utils
 
 
-@utils.njit
-def f_squared(p, y):
-    # squared loss
-    return 0.5 * ((y - p) ** 2)
-
-
-@utils.njit
-def deriv_squared(p, y):
-    # derivative of squared loss
-    return - (y - p)
-
-
-@utils.njit
-def f_logistic(p, y):
-    # logistic loss
-    if p > 0:
-        return np.log(1 + np.exp(-p)) + (1 - y) * p
-    else:
-        return np.log(1 + np.exp(p)) - p * y
-
-
-@utils.njit(nogil=True)
-def deriv_logistic(p, y):
-    # derivative of logistic loss
-    # same as in lightning (with minus sign)
-    if p > 0:
-        tmp = np.exp(-p)
-        phi = - tmp / (1. + tmp) + 1 - y
-    else:
-        tmp = np.exp(p)
-        phi = tmp / (1. + tmp) - y
-    return phi
-
-
 @utils.njit(nogil=True)
 def _support_matrix(
         A_indices, A_indptr, reverse_blocks_indices, n_blocks):
     """
+    Compute the support matrix, used by variance-reduced algorithms.
+
     Parameters
     ----------
     A_indices, A_indptr: arrays-like
@@ -61,7 +30,10 @@ def _support_matrix(
     Returns
     -------
     Parameters of a CSR matrix representing the extended support. The returned
-    vectors represent a sparse matrix of shape (n_samples, n_blocks), element (i, j) is one if j is in the extended support of f_i, zero otherwise.
+    vectors represent a sparse matrix of shape (n_samples, n_blocks),
+    element (i, j) is one if j is in the extended support of f_i, zero
+    otherwise.
+
     """
     BS_indices = np.zeros(A_indices.size, dtype=np.int64)
     BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
@@ -100,7 +72,7 @@ def minimize_SAGA(
     where g is a function for which we have access to its proximal operator.
 
 .. warning::
-    This feature is experimental, API is likely to change.
+    This function is experimental, API is likely to change.
 
 
     Parameters
@@ -131,6 +103,7 @@ def minimize_SAGA(
         and/or debugging. If ye, the result will have extra members trace_func,
         trace_time.
 
+
     Returns
     -------
     opt: OptimizeResult
@@ -140,6 +113,7 @@ def minimize_SAGA(
         the optimizer exited successfully and ``message`` which describes
         the cause of the termination. See `scipy.optimize.OptimizeResult`
         for a description of other attributes.
+
 
     References
     ----------
@@ -295,6 +269,7 @@ def minimize_SVRG(
         debugging. If ye, the result will have extra members trace_func,
         trace_time.
 
+
     Returns
     -------
     opt: OptimizeResult
@@ -304,6 +279,7 @@ def minimize_SVRG(
         the optimizer exited successfully and ``message`` which describes
         the cause of the termination. See `scipy.optimize.OptimizeResult`
         for a description of other attributes.
+
 
     References
     ----------

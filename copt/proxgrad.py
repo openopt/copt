@@ -15,8 +15,7 @@ def minimize_PGD(
 
             minimize_x f(x) + g(x)
 
-
-    where we have access to the gradient of f and to the proximal operator of g.
+    where we have access to the gradient of f and the proximal operator of g.
 
     Parameters
     ----------
@@ -57,20 +56,22 @@ def minimize_PGD(
 
     References
     ----------
-    Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications to signal
-    recovery." Convex optimization in signal processing and communications (2009)
+    Beck, Amir, and Marc Teboulle. "Gradient-based algorithms with applications
+    to signal recovery." Convex optimization in signal processing and
+    communications (2009)
 
     Examples
     --------
-
       * :ref:`sphx_glr_auto_examples_plot_group_lasso.py`
+
     """
     x = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
 
     if prox is None:
-        prox = lambda x, y: x
+        def prox(x, step_size):
+            return x
 
     if step_size is None:
         step_size = 1
@@ -142,15 +143,13 @@ def minimize_APGD(
 
     Solves problems of the form
 
-            minimize_x f(x) + alpha g(x)
+            minimize_x f(x) + g(x)
 
-    where we have access to the gradient of f and to the proximal operator of g.
+    where we have access to the gradient of f and the proximal operator of g.
 
     Parameters
     ----------
     f_grad : loss function, differentiable
-
-    prox : penalty, proximable
 
     prox : prox(x, alpha) returns the proximal operator of g at x
         with parameter alpha.
@@ -184,14 +183,18 @@ def minimize_APGD(
 
     References
     ----------
-    Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications to signal
-    recovery." Convex optimization in signal processing and communications (2009)
+    Amir Beck and Marc Teboulle. "Gradient-based algorithms with applications
+    to signal recovery." Convex optimization in signal processing and
+    communications (2009)
+
     """
     x = x0
     if not max_iter_backtracking > 0:
         raise ValueError('Line search iterations need to be greater than 0')
+
     if prox is None:
-        prox = lambda x, s: x
+        def prox(x, step_size):
+            return x
 
     if step_size is None:
         step_size = 1
