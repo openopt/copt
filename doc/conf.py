@@ -134,7 +134,6 @@ html_sidebars = {
         'about.html',
         'navigation.html',
         'searchbox.html',
-        'globaltoc.html',
     ],
     'auto_examples': ['index.html'],
 }

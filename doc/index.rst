@@ -34,13 +34,9 @@ C-OPT contains implementations of different optimization methods. These are cate
  * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_SAGA>`, :meth:`SVRG <copt.minimize_SVRG>`, :meth:`variance-reduced three operator splitting <copt.minimize_VRTOS>`
 
 
-
-Contents
---------
-
- .. toctree::
-    :numbered:
+.. toctree::
     :maxdepth: 2
+    :hidden:
 
     proximal_gradient.rst
     proximal_splitting.rst
