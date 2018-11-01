@@ -1,6 +1,6 @@
 numpy
 scipy
-pytest >= 3.7.0
+pytest >= 3.8.0
 pytest-cov
 scikit-learn
 tqdm
