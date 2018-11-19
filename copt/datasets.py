@@ -45,7 +45,7 @@ def load_madelon(md5_check=True, subset='full'):
         os.makedirs(DATA_DIR)
     file_path = os.path.join(DATA_DIR, 'madelon.hdf5')
     if not os.path.exists(file_path):
-        print('RCV1 dataset is not present in data folder. Downloading it ...')
+        print('Madelon dataset is not present in data folder. Downloading it ...')
         url = 'https://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/madelon.hdf5'
         urllib.request.urlretrieve(url, file_path)
         print('Finished downloading')
