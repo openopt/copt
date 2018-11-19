@@ -199,9 +199,16 @@ class LogLoss:
         return 0.25 * max_squared_sum + self.alpha
 
 
-
-
 class SquareLoss:
+    """
+    A class evaluation and derivatives of the logistic loss. The logistic loss
+    function is defined as
+
+        .. math::
+            -\\frac{1}{n}\|A x - b\|^2
+
+    """
+
     def __init__(self, A, b, alpha=0):
         if A is None:
             A = sparse.eye(b.size, b.size, format='csr')

@@ -11,6 +11,10 @@ def minimize_FW(
         f_grad, lmo, x0, L=None, max_iter=1000, tol=1e-12,
         backtracking=True, callback=None, verbose=0):
     """Frank-Wolfe algorithm
+
+    References
+    ----------
+    Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018). Step-Size Adaptivity in Projection-Free Optimization. arXiv preprint arXiv:1806.05123. https://arxiv.org/pdf/1806.05123.pdf
     """
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:
