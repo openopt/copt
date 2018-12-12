@@ -220,7 +220,7 @@ def load_covtype():
         urllib.request.urlretrieve(url, file_name)
         print('Finished downloading')
     X, y = datasets.load_svmlight_file(file_name)
-    y-= 1  # original labels are [1, 2]
+    y -= 1  # original labels are [1, 2]
     return X, y
 
 

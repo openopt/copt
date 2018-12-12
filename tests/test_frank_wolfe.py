@@ -2,9 +2,6 @@ import numpy as np
 import copt as cp
 import pytest
 
-import warnings
-warnings.simplefilter("error")
-
 
 np.random.seed(0)
 n_samples, n_features = 20, 16
