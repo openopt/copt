@@ -70,3 +70,16 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
             tol=1e-12, backtracking=False, step_size=1/obj.lipschitz)
         grad_2x = obj.f_grad(opt_2.x)[1]
         assert certificate(opt_2.x, grad_2x, prox) < tol, name_solver
+
+
+@pytest.mark.parametrize("solver", [
+    cp.minimize_PGD, cp.minimize_APGD,
+    cp.minimize_TOS, cp.minimize_PDHG])
+def test_callback(solver):
+    """Make sure that the algorithm exists when the callback returns False"""
+    def cb(x):
+        return False
+    f = cp.utils.SquareLoss(A, b)
+    opt = solver(
+        f.f_grad, np.zeros(n_features), callback=cb)
+    assert opt.nit < 2

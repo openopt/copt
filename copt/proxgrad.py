@@ -87,7 +87,7 @@ def minimize_PGD(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         if callback is not None:
-            if callback(x) is False:
+            if callback(x) == False:
                 break
         # .. compute gradient and step size
         x_next = prox(x - step_size * grad_fk, step_size)
@@ -96,7 +96,8 @@ def minimize_PGD(
             step_size *= 1.1
             for _ in range(max_iter_backtracking):
                 f_next, grad_next = f_grad(x_next)
-                if f_next <= fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size):
+                rhs = fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size)
+                if f_next <= rhs:
                     # .. step size found ..
                     break
                 else:
@@ -209,6 +210,10 @@ def minimize_APGD(
     yk = x.copy()
     xk_prev = x.copy()
     while it <= max_iter:
+        if callback is not None:
+            if callback(x) is False:
+                break
+
         # .. compute gradient and step size
         current_step_size = step_size
         grad_fk = f_grad(yk)[1]
@@ -242,8 +247,6 @@ def minimize_APGD(
             success = True
             break
 
-        if callback is not None:
-            callback(x)
         it += 1
     if it >= max_iter:
         warnings.warn(
