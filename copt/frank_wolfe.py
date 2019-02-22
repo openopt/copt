@@ -12,9 +12,40 @@ def minimize_FW(
         backtracking=True, callback=None, verbose=0):
     """Frank-Wolfe algorithm
 
+    This method for optimization problems of the form
+
+        min_{x in D} f(x)
+    
+    where f is a differentiable function for which we have access to its
+    gradient and D is a compact set for which we have access to its 
+    linear minimization oracle (lmo), i.e., a routine that given a vector u
+    returns a solution to
+
+        argmin_{x in D} <u, x>
+
+
+    Parameters
+    ----------
+
+    f_grad: callable
+        Takes as input the current iterate (a vector of same size as x0) and
+        returns the function value and gradient of the objective function.
+        It should accept the optional argument return_gradient, and when False
+        it should return only the function value.
+
+    lmo: callable
+        Takes as input a vector u of same size as x0 and returns a solution to
+        the linear minimization oracle (defined above).
+
+
+    x0 : array-like
+        Initial guess for solution.
+
+
+
     References
     ----------
-    Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018). Step-Size Adaptivity in Projection-Free Optimization. arXiv preprint arXiv:1806.05123. https://arxiv.org/pdf/1806.05123.pdf
+    Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018). `Step-Size Adaptivity in Projection-Free Optimization <https://arxiv.org/pdf/1806.05123.pdf>`_. arXiv preprint arXiv:1806.05123. 
     """
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:

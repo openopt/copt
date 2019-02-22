@@ -169,7 +169,7 @@ def minimize_PDHG(
         with parameter alpha.
 
     x0 : array-like
-        Initial guess
+        Initial guess of solution.
 
     L : ndarray or sparse matrix
         Linear operator inside the h term.
