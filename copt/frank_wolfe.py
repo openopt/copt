@@ -23,7 +23,7 @@ def minimize_FW(
     :math:`\\bs{u}` returns a solution to
 
     .. math::
-        \\argmin_{\\bs{x} \in D} <\\bs{u}, \\bs{x}>
+        \\argmin_{\\bs{x} \in D}\\, \\langle\\bs{u}, \\bs{x}\\rangle
 
 
     Parameters

@@ -71,8 +71,8 @@ def minimize_SAGA(
 
     where g is a function for which we have access to its proximal operator.
 
-.. warning::
-    This function is experimental, API is likely to change.
+    .. warning::
+        This function is experimental, API is likely to change.
 
 
     Parameters
@@ -119,10 +119,8 @@ def minimize_SAGA(
     ----------
     This variant of the SAGA algorithm is described in:
 
-    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. `"Breaking the
-    Nonsmooth Barrier: A Scalable Parallel Method for Composite Optimization."
-    <https://arxiv.org/pdf/1707.06468.pdf>`_
-    Advances in Neural Information Processing Systems (NIPS) 2017.
+    `"Breaking the Nonsmooth Barrier: A Scalable Parallel Method for Composite Optimization."
+    <https://arxiv.org/pdf/1707.06468.pdf>`_, Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. Advances in Neural Information Processing Systems (NIPS) 2017.
     """
     # convert any input to CSR sparse matrix representation. In the future we
     # might want to implement also a version for dense data (numpy arrays) to
