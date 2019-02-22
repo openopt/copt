@@ -43,24 +43,27 @@ def safe_sparse_add(a, b):
                 b = b.ravel()
         return a + b
 
+
 class Trace:
     def __init__(self, f=None, freq=1):
         self.trace_x = []
         self.trace_time = []
         self.trace_fx = []
+        self.trace_step_size = []
         self.start = datetime.now()
         self._counter = 0
         self.freq = int(freq)
         self.f = f
 
-    def __call__(self, x):
+    def __call__(self, dl):
         if self._counter % self.freq == 0:
             if self.f is not None:
-                self.trace_fx.append(self.f(x))
+                self.trace_fx.append(self.f(dl['x']))
             else:
-                self.trace_x.append(x.copy())
+                self.trace_x.append(dl['x'].copy())
             delta = (datetime.now() - self.start).total_seconds()
             self.trace_time.append(delta)
+            self.trace_step_size.append(dl['step_size'])
         self._counter += 1
 
 

@@ -203,7 +203,7 @@ def minimize_SAGA(
     idx = np.arange(n_samples)
     success = False
     if callback is not None:
-        callback(x)
+        callback(locals())
     pbar = trange(max_iter, disable=(verbose == 0))
     pbar.set_description('SAGA')
     for it in pbar:
@@ -213,7 +213,7 @@ def minimize_SAGA(
                 x, idx, memory_gradient, gradient_average, grad_tmp,
                 step_size)
         if callback is not None:
-            callback(x)
+            callback(locals())
 
         diff_norm = np.abs(x - x_old).sum()
         if diff_norm < tol:
@@ -381,7 +381,7 @@ def minimize_SVRG(
     grad_tmp = np.zeros(n_features)
     success = False
     if callback is not None:
-        callback(x)
+        callback(locals())
     pbar = trange(max_iter, disable=(verbose == 0))
     pbar.set_description('SVRG')
     for it in pbar:
@@ -391,7 +391,7 @@ def minimize_SVRG(
         _svrg_epoch(
             x, x_snapshot, idx, gradient_average, grad_tmp, step_size)
         if callback is not None:
-            callback(x)
+            callback(locals())
 
         if np.abs(x - x_snapshot).sum() < tol:
             success = True
@@ -512,7 +512,7 @@ def minimize_VRTOS(
 
     # .. iterate on epochs ..
     if callback is not None:
-        callback(z)
+        callback(locals())
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         epoch_iteration(
@@ -522,7 +522,7 @@ def minimize_VRTOS(
 
         certificate = np.linalg.norm(x0 - z) + np.linalg.norm(x1 - z)
         if callback is not None:
-            callback(z)
+            callback(locals())
 
         pbar.set_description('VRTOS')
         pbar.set_postfix(tol=certificate)

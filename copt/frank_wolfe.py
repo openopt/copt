@@ -42,6 +42,9 @@ def minimize_FW(
     x0 : array-like
         Initial guess for solution.
 
+    L: float (optional)
+        Estimate for the Lipschitz constant of the gradient.
+
 
 
     References
@@ -51,18 +54,16 @@ def minimize_FW(
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:
         raise ValueError('Tol must be non-negative')
-    x_t = x0.copy()
-    if callback is not None:
-        callback(x_t)
+    x = x0.copy()
     pbar = trange(max_iter, disable=(verbose == 0))
-    f_t, grad = f_grad(x_t)
+    f_t, grad = f_grad(x)
     if L is None:
         L_t = utils.init_lipschitz(f_grad, x0)
     else:
         L_t = L
     for it in pbar:
         s_t = lmo(-grad)
-        d_t = s_t - x_t
+        d_t = s_t - x
 
         g_t = - safe_sparse_dot(d_t.T, grad)
         if sparse.issparse(g_t):
@@ -78,7 +79,7 @@ def minimize_FW(
             for i in range(max_iter):
                 step_size = min(g_t / (d2_t * L_t), 1)
                 rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
-                f_next, grad_next = f_grad(x_t + step_size * d_t)
+                f_next, grad_next = f_grad(x + step_size * d_t)
                 if f_next <= rhs + 1e-6:
                     if i == 0:
                         L_t *= ratio_decrease
@@ -87,15 +88,17 @@ def minimize_FW(
                     L_t *= ratio_increase
         else:
             step_size = min(g_t / (d2_t * L_t), 1)
-            f_next, grad_next = f_grad(x_t + step_size * d_t)
-        x_t += step_size * d_t
+            f_next, grad_next = f_grad(x + step_size * d_t)
+        if callback is not None:
+            callback(locals())
+        x += step_size * d_t
         pbar.set_postfix(tol=g_t, iter=it, L_t=L_t)
 
         f_t,  grad = f_next, grad_next
-        if callback is not None:
-            callback(x_t)
+    if callback is not None:
+        callback(locals())
     pbar.close()
-    x_final = x_t.toarray().ravel()
+    x_final = x.toarray().ravel()
     return optimize.OptimizeResult(x=x_final, nit=it, certificate=g_t)
 
 

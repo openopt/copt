@@ -18,15 +18,15 @@ loss_funcs = [
     cp.utils.SquareLoss,
     ]
 
-
 @pytest.mark.parametrize("loss_grad", loss_funcs)
 def test_FW_L1(loss_grad):
     f = loss_grad(A, b, 1./n_samples)
+    cb = cp.utils.Trace(f)
     alpha = 1.
     l1ball = cp.utils.L1Ball(alpha)
     opt = cp.minimize_FW(
         f.f_grad, l1ball.lmo, np.zeros(n_features), tol=0,
-        max_iter=5000)
+        max_iter=5000, callback=cb)
     assert np.isfinite(opt.x).sum() == n_features
 
     ss = 1/f.lipschitz
