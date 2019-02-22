@@ -14,14 +14,16 @@ def minimize_FW(
 
     This method for optimization problems of the form
 
-        min_{x in D} f(x)
+    .. math::
+        \\argmin_{\\bs{x} \\in \\mathcal{D}} f(\\bs{x})
 
     where f is a differentiable function for which we have access to its
     gradient and D is a compact set for which we have access to its 
-    linear minimization oracle (lmo), i.e., a routine that given a vector u
-    returns a solution to
+    linear minimization oracle (lmo), i.e., a routine that given a vector
+    :math:`\\bs{u}` returns a solution to
 
-        argmin_{x in D} <u, x>
+    .. math::
+        \\argmin_{\\bs{x} \in D} <\\bs{u}, \\bs{x}>
 
 
     Parameters
@@ -37,7 +39,6 @@ def minimize_FW(
         Takes as input a vector u of same size as x0 and returns a solution to
         the linear minimization oracle (defined above).
 
-
     x0 : array-like
         Initial guess for solution.
 
@@ -45,7 +46,7 @@ def minimize_FW(
 
     References
     ----------
-    Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018). `Step-Size Adaptivity in Projection-Free Optimization <https://arxiv.org/pdf/1806.05123.pdf>`_. arXiv preprint arXiv:1806.05123. 
+    `Step-Size Adaptivity in Projection-Free Optimization <https://arxiv.org/pdf/1806.05123.pdf>`_, Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018).  arXiv preprint arXiv:1806.05123. 
     """
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:

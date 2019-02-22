@@ -44,6 +44,17 @@ extensions = [
     'sphinx_gallery.gen_gallery',
 ]
 
+
+mathjax_config = {
+    'TeX': {
+        'Macros': {
+            'argmin': '\\DeclareMathOperator*{\\argmin}{\\mathbf{arg\\,min}}',
+            'argmax': '\\DeclareMathOperator*{\\argmin}{\\mathbf{arg\\,max}}',
+            'bs': '\\newcommand{\\bs}[1]{\\boldsymbol{#1}}',
+        }
+    }
+}
+
 autosummary_generate = True
 autodoc_default_flags = ['members', 'inherited-members']
 
