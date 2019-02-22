@@ -15,7 +15,7 @@ def minimize_FW(
     This method for optimization problems of the form
 
         min_{x in D} f(x)
-    
+
     where f is a differentiable function for which we have access to its
     gradient and D is a compact set for which we have access to its 
     linear minimization oracle (lmo), i.e., a routine that given a vector u

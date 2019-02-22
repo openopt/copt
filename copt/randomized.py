@@ -119,8 +119,9 @@ def minimize_SAGA(
     ----------
     This variant of the SAGA algorithm is described in:
 
-    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. "Breaking the
+    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien. `"Breaking the
     Nonsmooth Barrier: A Scalable Parallel Method for Composite Optimization."
+    <https://arxiv.org/pdf/1707.06468.pdf>`_
     Advances in Neural Information Processing Systems (NIPS) 2017.
     """
     # convert any input to CSR sparse matrix representation. In the future we

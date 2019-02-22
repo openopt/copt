@@ -48,7 +48,6 @@ autosummary_generate = True
 autodoc_default_flags = ['members', 'inherited-members']
 
 
-
 sphinx_gallery_conf = {
     # path to your examples scripts
     'examples_dirs' : '../examples',
