@@ -146,9 +146,9 @@ def prox_tv1d_rows(stepsize, a, n_rows, n_cols):
 
 def c_prox_tv2d(step_size, x, n_rows, n_cols, max_iter, tol):
     """
-    Douflas-Rachford to minimize a 2-dimensional total variation.
+    Proximal Dykstra to minimize a 2-dimensional total variation.
 
-    Reference: https://arxiv.org/abs/1411.0589
+    Reference: Algorithm 7 in https://arxiv.org/abs/1411.0589
     """
     n_features = n_rows * n_cols
     p = np.zeros(n_features)
