@@ -44,12 +44,28 @@ def minimize_FW(
 
     L: float (optional)
         Estimate for the Lipschitz constant of the gradient.
+    
+    backtracking: boolean or callable
 
+
+    Returns
+    -------
+    res : scipy.optimize.OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
 
 
     References
     ----------
-    `Step-Size Adaptivity in Projection-Free Optimization <https://arxiv.org/pdf/1806.05123.pdf>`_, Pedregosa, F., Askari, A., Negiar, G., & Jaggi, M. (2018).  arXiv preprint arXiv:1806.05123. 
+    Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_ ICML 2013.
+
+    Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm" <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_, 2018
+
+    Pedregosa, Fabian, et al. `"Step-Size Adaptivity in Projection-Free Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv preprint arXiv:1806.05123 (2018).
     """
     x0 = sparse.csr_matrix(x0).T
     if tol < 0:
@@ -73,7 +89,10 @@ def minimize_FW(
         if g_t <= tol:
             break
         d2_t = splinalg.norm(d_t) ** 2
-        if backtracking:
+        if hasattr(backtracking, '__call__'):
+            step_size = backtracking(locals())
+            f_next, grad_next = f_grad(x + step_size * d_t)
+        if backtracking is True:
             ratio_decrease = 0.999
             ratio_increase = 2
             for i in range(max_iter):

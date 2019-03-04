@@ -110,22 +110,16 @@ class LogLoss:
     """A class evaluation and derivatives of the logistic loss. The logistic loss function is defined as
 
     .. math::
-        -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\sigma(a_i^T x)) + (1 - b_i) \\log(1 - \sigma(a_i^T x))
+        -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\\sigma(\\bs{a}_i^T \\bs{x})) + (1 - b_i) \\log(1 - \\sigma(\\bs{a}_i^T \\bs{x}))
 
-    where :math:`\sigma` is the sigmoid function :math:`\sigma(t) = 1/(1 + e^{-t})`.
+    where :math:`\\sigma` is the sigmoid function :math:`\\sigma(t) = 1/(1 + e^{-t})`
+        
+    The input vector b verifies :math:`0 \\leq b_i \\leq 1`. When it comes from
+    class labels, it should have the values 0 or 1.
 
-    When the input vector b comes from class labels, it is expected to have the values 0 or 1.
-
-    for a numerically stable computation of the logistic loss, we use the identities
-
-    .. math::
-        \log(\sigma(t)) = \\begin{cases} -\log(1 + e^{-t}) &\\text{ if $t \geq 0$}\\\\
-        t - \log(1 + e^t) &\\text{ otherwise}\end{cases}
-
-        \log(1 - \sigma(t)) = \\begin{cases} -t -\log(1 + e^{-t}) &\\text{ if $t \geq 0$}\\\\
-        - \log(1 + e^t) &\\text{ otherwise}\end{cases}
-
-
+    References
+    ----------
+    http://fa.bianp.net/drafts/derivatives_logistic.html
     """
     def __init__(self, A, b, alpha=0.):
         if A is None:
@@ -151,9 +145,10 @@ class LogLoss:
         z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
         idx = z > 0
         loss_vec = np.zeros_like(z)
-        loss_vec[idx] = np.log(1 + np.exp(-z[idx])) + (1 - self.b[idx]) * z[idx]
-        loss_vec[~idx] = np.log(1 + np.exp(z[~idx])) - self.b[~idx] * z[~idx]
-        loss = loss_vec.mean() + .5 * self.alpha * safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
+        loss = np.sum(np.log(1 + np.exp(-z[idx])) + (1 - self.b[idx]) * z[idx])
+        loss += np.sum(np.log(1 + np.exp(z[~idx])) - self.b[~idx] * z[~idx])
+        penalty = safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
+        loss = loss / self.A.shape[0] + .5 * self.alpha * penalty
 
         if not return_gradient:
             return loss
@@ -169,6 +164,49 @@ class LogLoss:
             return np.concatenate((grad, [grad_c]))
 
         return loss, grad
+
+    def Hs(self):
+        """Return a callable that performs dot products with the Hessian"""
+        n_samples, n_features = self.A.shape
+        grad = np.empty_like(w)
+        fit_intercept = self.intercept
+
+        w, c, yz = _intercept_dot(w, X, y)
+
+        if sample_weight is None:
+            sample_weight = np.ones(y.shape[0])
+
+        z = expit(yz)
+        z0 = sample_weight * (z - 1) * y
+
+
+        # The mat-vec product of the Hessian
+        d = sample_weight * z * (1 - z)
+        if sparse.issparse(X):
+            dX = safe_sparse_dot(sparse.dia_matrix((d, 0),
+                                shape=(n_samples, n_samples)), X)
+        else:
+            # Precompute as much as possible
+            dX = d[:, np.newaxis] * X
+
+        if fit_intercept:
+            # Calculate the double derivative with respect to intercept
+            # In the case of sparse matrices this returns a matrix object.
+            dd_intercept = np.squeeze(np.array(dX.sum(axis=0)))
+
+        def Hs(s):
+            ret = np.empty_like(s)
+            ret[:n_features] = X.T.dot(dX.dot(s[:n_features]))
+            ret[:n_features] += alpha * s[:n_features]
+
+            # For the fit intercept case.
+            if fit_intercept:
+                ret[:n_features] += s[-1] * dd_intercept
+                ret[-1] = dd_intercept.dot(s[:n_features])
+                ret[-1] += d.sum() * s[-1]
+            return ret
+
+        return grad, Hs
 
     @property
     def partial_deriv(self):
@@ -204,12 +242,12 @@ class LogLoss:
 
 class SquareLoss:
     """
-    A class evaluation and derivatives of the logistic loss. The logistic loss
-    function is defined as
+    A class evaluation and derivatives of the square loss, defined as
 
         .. math::
-            -\\frac{1}{n}\|A x - b\|^2
+            \\frac{1}{n}\|A x - b\|^2~,
 
+    where :math:`\\|\cdot\\|` is the euclidean norm.
     """
 
     def __init__(self, A, b, alpha=0):
@@ -270,7 +308,18 @@ class HuberLoss:
 
 
 class L1Norm:
-    """L1 norm, that is, the sum of absolute values"""
+    """L1 norm, that is, the sum of absolute values:
+    
+    .. math::
+        \\alpha\\sum_i^d |x_i|
+    
+    Parameters
+    ----------
+
+    alpha: float
+        constant multiplying the L1 norm
+    
+    """
     def __init__(self, alpha):
         self.alpha = alpha
 
@@ -325,21 +374,6 @@ class L1Ball:
             (s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
-# @njit
-# def _blocks_to_groups(blocks):
-#     groups = []
-#     pointer = blocks[0]
-#     cur_group = []
-#     for i in range(blocks.size):
-#         if blocks[i] == pointer:
-#             cur_group.append(i)
-#         else:
-#             pointer = blocks[i]
-#             groups.append(cur_group)
-#             cur_group = [i]
-#     groups.append(cur_group)
-#     return groups
-
 class GroupL1:
     """
     Group Lasso penalty
@@ -347,12 +381,11 @@ class GroupL1:
     Parameters
     ----------
 
-    alpha: scalar
+    alpha: float
+        Constat multiplying this loss
 
     blocks: list of lists
 
-    Examples
-    --------
     """
     def __init__(self, alpha, groups):
         self.alpha = alpha
