@@ -52,7 +52,7 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
     """
     Test a method on both the backtracking and fixed step size strategy
     """
-    max_iter = 1000
+    max_iter = 2000
     for alpha in np.logspace(-1, 3, 3):
         obj = loss(A, b, alpha)
         if penalty is not None:
