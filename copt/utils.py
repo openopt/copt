@@ -1,5 +1,7 @@
 import numpy as np
-from scipy import sparse, linalg
+from scipy import sparse
+from scipy import linalg
+from scipy import special
 from scipy.sparse import linalg as splinalg
 from datetime import datetime
 from sklearn.utils.extmath import safe_sparse_dot
@@ -137,27 +139,34 @@ class LogLoss:
     def __call__(self, x):
         return self.f_grad(x, return_gradient=False)
 
+    def _sigma(self, z, idx):
+        z0 = np.zeros_like(z)
+        tmp = np.exp(-z[idx])
+        z0[idx] = 1 / (1 + tmp)
+        tmp = np.exp(z[~idx])
+        z0[~idx] = tmp / (1 + tmp)
+        return z0
+
     def f_grad(self, x, return_gradient=True):
         if self.intercept:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.
         z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
-        idx = z > 0
-        loss_vec = np.zeros_like(z)
-        loss = np.sum(np.log(1 + np.exp(-z[idx])) + (1 - self.b[idx]) * z[idx])
-        loss += np.sum(np.log(1 + np.exp(z[~idx])) - self.b[~idx] * z[~idx])
+        tmp = np.zeros((2, self.A.shape[0]))
+        tmp[1] = -z
+        loss = np.mean((1 - self.b) * z + special.logsumexp(tmp, axis=0))
         penalty = safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
-        loss = loss / self.A.shape[0] + .5 * self.alpha * penalty
+        loss += .5 * self.alpha * penalty
 
         if not return_gradient:
             return loss
-        z0 = np.zeros_like(z)
-        tmp = np.exp(-z[idx])
-        z0[idx] = - tmp / (1 + tmp) + 1 - self.b[idx]
-        tmp = np.exp(z[~idx])
-        z0[~idx] = tmp / (1 + tmp) - self.b[~idx]
-        grad = safe_sparse_add(self.A.T.dot(z0) / self.A.shape[0], self.alpha * x_)
+        
+        idx = z > 0
+        z0 = special.expit(z) - self.b
+        grad = safe_sparse_add(
+            self.A.T.dot(z0) / self.A.shape[0],
+            self.alpha * x_)
         grad = np.asarray(grad).ravel()
         grad_c = z0.mean()
         if self.intercept:
@@ -165,48 +174,44 @@ class LogLoss:
 
         return loss, grad
 
-    def Hs(self):
+    def Hessian(self, x):
         """Return a callable that performs dot products with the Hessian"""
+
         n_samples, n_features = self.A.shape
-        grad = np.empty_like(w)
-        fit_intercept = self.intercept
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.
 
-        w, c, yz = _intercept_dot(w, X, y)
-
-        if sample_weight is None:
-            sample_weight = np.ones(y.shape[0])
-
-        z = expit(yz)
-        z0 = sample_weight * (z - 1) * y
-
+        z = special.expit(safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c) 
 
         # The mat-vec product of the Hessian
-        d = sample_weight * z * (1 - z)
-        if sparse.issparse(X):
+        d = z * (1 - z)
+        if sparse.issparse(self.A):
             dX = safe_sparse_dot(sparse.dia_matrix((d, 0),
-                                shape=(n_samples, n_samples)), X)
+                                shape=(n_samples, n_samples)), self.A)
         else:
             # Precompute as much as possible
-            dX = d[:, np.newaxis] * X
+            dX = d[:, np.newaxis] * self.A
 
-        if fit_intercept:
+        if self.intercept:
             # Calculate the double derivative with respect to intercept
             # In the case of sparse matrices this returns a matrix object.
             dd_intercept = np.squeeze(np.array(dX.sum(axis=0)))
 
-        def Hs(s):
+        def _Hs(s):
             ret = np.empty_like(s)
-            ret[:n_features] = X.T.dot(dX.dot(s[:n_features]))
-            ret[:n_features] += alpha * s[:n_features]
+            ret[:n_features] = self.A.T.dot(dX.dot(s[:n_features]))
+            ret[:n_features] += self.alpha * s[:n_features]
 
             # For the fit intercept case.
-            if fit_intercept:
+            if self.intercept:
                 ret[:n_features] += s[-1] * dd_intercept
                 ret[-1] = dd_intercept.dot(s[:n_features])
                 ret[-1] += d.sum() * s[-1]
-            return ret
+            return ret / n_samples
 
-        return grad, Hs
+        return _Hs
 
     @property
     def partial_deriv(self):
