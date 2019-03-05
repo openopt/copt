@@ -2,7 +2,6 @@ import numpy as np
 import copt as cp
 from scipy import optimize
 from scipy import sparse
-from scipy import special
 
 n_samples, n_features = 100, 10
 A_dense = np.random.randn(n_samples, n_features)
