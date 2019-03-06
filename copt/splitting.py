@@ -83,9 +83,6 @@ def minimize_TOS(
     z = prox_2(x0, step_size)
     LS_EPS = np.finfo(np.float).eps
 
-    if callback is not None:
-        callback(x0)
-
     fk, grad_fk = f_grad(z)
     x = prox_1(z - step_size * grad_fk, step_size)
     u = np.zeros_like(x)
@@ -126,7 +123,7 @@ def minimize_TOS(
         pbar.set_postfix(tol=certificate, step_size=step_size)
 
         if callback is not None:
-            if callback(x) is False:
+            if callback(locals()) is False:
                 break
 
         if it > 0 and certificate < tol:
@@ -276,7 +273,7 @@ def minimize_PDHG(
             break
 
         if callback is not None:
-            if callback(x_next) is False:
+            if callback(locals()) is False:
                 break
 
     if it >= max_iter:

@@ -71,5 +71,6 @@ ax2.plot(n + np.arange(len(trace_lipschitz)), trace_lipschitz, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.xlim(n, n + len(trace_step_size))
 plt.grid()
 plt.show()

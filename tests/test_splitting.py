@@ -44,9 +44,11 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
         obj = loss(A, b, alpha)
         prox_1 = _get_prox(penalty[0])
         prox_2 = _get_prox(penalty[1])
+        trace = cp.utils.Trace(obj)
         opt = solver(
             obj.f_grad, np.zeros(n_features), prox_1=prox_1,
-            prox_2=prox_2, tol=1e-12, max_iter=max_iter)
+            prox_2=prox_2, tol=1e-12, max_iter=max_iter,
+            callback=trace)
         assert opt.certificate < tol, name_solver
 
         opt_2 = solver(

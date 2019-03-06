@@ -87,7 +87,7 @@ def minimize_PGD(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
         if callback is not None:
-            if callback(x) == False:
+            if callback(locals()) == False:
                 break
         # .. compute gradient and step size
         x_next = prox(x - step_size * grad_fk, step_size)
@@ -211,7 +211,7 @@ def minimize_APGD(
     xk_prev = x.copy()
     while it <= max_iter:
         if callback is not None:
-            if callback(x) is False:
+            if callback(locals()) is False:
                 break
 
         # .. compute gradient and step size

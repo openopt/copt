@@ -60,7 +60,6 @@ for i, beta in enumerate(all_betas):
 
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_tosls(x0)
     tos_ls = cp.minimize_TOS(
         f.f_grad, x0, G1.prox, G2.prox, step_size=10 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
@@ -71,7 +70,6 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_tos(x0)
     tos = cp.minimize_TOS(
         f.f_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
@@ -84,7 +82,6 @@ for i, beta in enumerate(all_betas):
 
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_pdhg(x0)
     pdhg = cp.minimize_PDHG(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
@@ -96,7 +93,6 @@ for i, beta in enumerate(all_betas):
 
     cb_pdhg_nols = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_pdhg_nols(x0)
     pdhg_nols = cp.minimize_PDHG(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg_nols, max_iter=max_iter,

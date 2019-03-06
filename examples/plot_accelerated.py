@@ -33,9 +33,9 @@ result_apgd = cp.minimize_APGD(
 fmin = min(np.min(cb_pgd.trace_fx), np.min(cb_apgd.trace_fx))
 plt.title('Comparison of full gradient optimizers')
 plt.plot(cb_apgd.trace_fx - fmin, lw=4,
-         label='gradient descent')
-plt.plot(cb_pgd.trace_fx - fmin, lw=4,
          label='accelerated gradient descent')
+plt.plot(cb_pgd.trace_fx - fmin, lw=4,
+         label='gradient descent')
 plt.ylabel('Function suboptimality', fontweight='bold')
 plt.xlabel('gradient evaluations', fontweight='bold')
 plt.yscale('log')

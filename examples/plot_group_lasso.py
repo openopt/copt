@@ -54,7 +54,6 @@ for i, beta in enumerate(all_betas):
 
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_tosls(x0)
     pgd_ls = cp.minimize_PGD(
         f.f_grad, x0, G1.prox, step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
@@ -64,7 +63,6 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cb_tos(x0)
     pgd = cp.minimize_PGD(
         f.f_grad, x0, G1.prox,
         step_size=step_size,
