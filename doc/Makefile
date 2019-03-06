@@ -184,5 +184,5 @@ pseudoxml:
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
 
 upload: html
-	cp -r _build/html/* ~/dev/copt_web/ && cd ~/dev/copt_web/ && git ci -a -m "update doc" && git push origin gh-pages
+	cp -r _build/html/* ~/dev/copt_web/ && cd ~/dev/copt_web/ && git add * && git ci -a -m "update doc" && git push origin gh-pages
 

@@ -56,15 +56,16 @@ trace_lipschitz = trace_lipschitz[n:]
 
 fig, ax1 = plt.subplots()
 
-color = 'tab:red'
+color = '#67a9cf'
 ax1.set_xlabel('number of iterations')
 ax1.set_ylabel('step size', color=color)
-ax1.plot(n + np.arange(len(trace_step_size)), trace_step_size, color=color, alpha=0.5)
+ax1.plot(n + np.arange(len(trace_step_size)), trace_step_size, color=color,
+    alpha=0.5)
 ax1.tick_params(axis='y', labelcolor=color)
 
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
-color = 'tab:blue'
+color = '#ef8a62'
 ax2.set_ylabel('Lipschitz constant', color=color)  # we already handled the x-label with ax1
 ax2.plot(n + np.arange(len(trace_lipschitz)), trace_lipschitz, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
