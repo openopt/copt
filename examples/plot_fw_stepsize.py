@@ -52,7 +52,7 @@ def cb(kw):
 
 out = cp.minimize_FW(
     f.f_grad, l1_ball.lmo, x0, callback=cb, max_iter=1000,
-    backtracking=exact_ls, L=f.curavature)
+    backtracking=exact_ls)
 
 # Focus on the last 4/5, since the first iterations
 # tend to have a disproportionally large step-size
