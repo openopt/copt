@@ -22,7 +22,7 @@ def load_img1(n_rows=20, n_cols=20):
 
 def load_madelon(md5_check=True, subset='full'):
     """
-    Download and return the RCV1 dataset.
+    Download and return the madelon dataset.
 
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
@@ -36,7 +36,7 @@ def load_madelon(md5_check=True, subset='full'):
 
     Returns
     -------
-    X : scipy.sparse CSR matrix
+    X : scipy.sparse CSR matrix, shape=(2600, 500)
     y: numpy array
         Labels, only takes values 0 or 1.
     """

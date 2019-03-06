@@ -1,0 +1,8 @@
+doc/_build
+dist/
+doc/auto_examples
+doc/generated
+.coverage
+.vscode
+copt.egg-info
+__pycache__
