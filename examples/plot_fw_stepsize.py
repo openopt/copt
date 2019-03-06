@@ -1,10 +1,17 @@
 """
-Step-size strategies for FW
-===========================
+Step-size and curavature on the Frank-Wolfe algorithm
+=====================================================
 
-Plot showing how an optimal step-size for the Frank-Wolfe algorithm
-evolves over time.
+Plot showing both the optimal step-size and curavature for
+the Frank-Wolfe algorithm on a logistic regression problem.
 
+The step-size is computed as the one that gives the largest
+decrease in objective function (see :func:`exact_ls`). The
+curavature is computed as the largest eigenvalue of the 
+Hessian.
+
+In the plot we can see how the variance of the step-size
+is much higher than the one associated with the curvature.
 """
 import matplotlib.pylab as plt
 from sklearn import datasets
@@ -30,7 +37,7 @@ l1_ball = cp.utils.L1Ball(n_features / 2.)
 f = cp.utils.LogLoss(X, y)
 x0 = np.zeros(n_features)
 trace_step_size = []
-trace_lipschitz = []
+trace_curavature = []
 
 
 def cb(kw):
@@ -40,18 +47,18 @@ def cb(kw):
         matvec=f.Hessian(kw['x']))
 
     s, _ = splinalg.eigsh(Hs, k=1)
-    trace_lipschitz.append(s)
+    trace_curavature.append(s)
 
 
 out = cp.minimize_FW(
     f.f_grad, l1_ball.lmo, x0, callback=cb, max_iter=1000,
-    backtracking=exact_ls, L=f.lipschitz)
+    backtracking=exact_ls, L=f.curavature)
 
 # Focus on the last 4/5, since the first iterations
 # tend to have a disproportionally large step-size
 n = len(trace_step_size) // 5
 trace_step_size = trace_step_size[n:]
-trace_lipschitz = trace_lipschitz[n:]
+trace_curavature = trace_curavature[n:]
 
 
 fig, ax1 = plt.subplots()
@@ -66,8 +73,8 @@ ax1.tick_params(axis='y', labelcolor=color)
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
 color = '#ef8a62'
-ax2.set_ylabel('Lipschitz constant', color=color)  # we already handled the x-label with ax1
-ax2.plot(n + np.arange(len(trace_lipschitz)), trace_lipschitz, color=color)
+ax2.set_ylabel('curavature constant', color=color)  # we already handled the x-label with ax1
+ax2.plot(n + np.arange(len(trace_curavature)), trace_curavature, color=color)
 ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
