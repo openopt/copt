@@ -36,13 +36,14 @@ def test_FW_L1(loss_grad):
 
 
 @pytest.mark.parametrize("obj", loss_funcs)
-def test_FW_trace(obj):
+@pytest.mark.parametrize("bt", [True, False])
+def test_FW_trace(obj, bt):
     f = obj(A, b, 1./n_samples)
     alpha = 1.
     traceball = cp.utils.TraceBall(alpha, (4, 4))
     opt = cp.minimize_FW(
         f.f_grad, traceball.lmo, np.zeros(n_features), tol=0,
-        max_iter=5000, L=f.lipschitz)
+        max_iter=5000, L=f.lipschitz, backtracking=bt)
     assert np.isfinite(opt.x).sum() == n_features
 
     ss = 1/f.lipschitz
@@ -59,9 +60,11 @@ def test_PairwiseFW(obj, backtracking):
 
     alpha = 1
     l1ball = cp.utils.L1Ball(alpha)
+    cb = cp.utils.Trace(f)
     opt = cp.minimize_PFW_L1(
         f.f_grad, alpha, n_features, tol=0,
-        max_iter=5000, backtracking=backtracking, L=L)
+        max_iter=5000, backtracking=backtracking, L=L,
+        callback=cb)
     assert np.isfinite(opt.x).sum() == n_features
 
     ss = 1/L

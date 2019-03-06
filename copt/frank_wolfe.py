@@ -153,13 +153,11 @@ def minimize_PFW_L1(
 
     """
 
-    x_t = np.zeros(n_features)
+    x = np.zeros(n_features)
     if L is None:
-        L_t = utils.init_lipschitz(f_grad, x_t)
+        L_t = utils.init_lipschitz(f_grad, x)
     else:
         L_t = L
-    if callback is not None:
-        callback(x_t)
 
     active_set = np.zeros(2 * n_features + 1)
     active_set[2 * n_features] = 1.
@@ -167,13 +165,12 @@ def minimize_PFW_L1(
     num_bad_steps = 0
 
     # do a first FW step to
-    f_t, grad = f_grad(x_t)
+    f_t, grad = f_grad(x)
 
-    if callback is not None:
-        callback(x_t)
 
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
+
         # FW oracle
         idx_oracle = np.argmax(np.abs(grad))
         if grad[idx_oracle] > 0:
@@ -192,7 +189,7 @@ def minimize_PFW_L1(
             mag_away = 0.
             gamma_max = active_set[2 * n_features]
         else:
-            assert grad[idx_oracle_away % n_features] * mag_away > grad.dot(x_t) - 1e-3
+            assert grad[idx_oracle_away % n_features] * mag_away > grad.dot(x) - 1e-3
             gamma_max = active_set[idx_oracle_away]
 
         if gamma_max <= 0:
@@ -209,7 +206,7 @@ def minimize_PFW_L1(
             # because of the specific form of the update
             # we can achieve some extra efficiency this way
             for i in range(100):
-                x_next = x_t.copy()
+                x_next = x.copy()
                 step_size = min(g_t / (d2_t * L_t), gamma_max)
 
                 x_next[idx_oracle % n_features] += step_size * mag_oracle
@@ -225,17 +222,17 @@ def minimize_PFW_L1(
                     L_t *= 2
             # import pdb; pdb.set_trace()
         else:
-            x_next = x_t.copy()
+            x_next = x.copy()
             step_size = min(g_t / (d2_t * L_t), gamma_max)
-            x_next[idx_oracle % n_features] = x_t[idx_oracle % n_features] + step_size * mag_oracle
-            x_next[idx_oracle_away % n_features] = x_t[idx_oracle_away % n_features] - step_size * mag_away
+            x_next[idx_oracle % n_features] = x[idx_oracle % n_features] + step_size * mag_oracle
+            x_next[idx_oracle_away % n_features] = x[idx_oracle_away % n_features] - step_size * mag_away
             f_next, grad_next = f_grad(x_next)
 
         if L_t >= 1e10:
             raise ValueError
         # was it a drop step?
         # x_t[idx_oracle] += step_size * mag_oracle
-        x_t = x_next
+        x = x_next
         active_set[idx_oracle] += step_size
         if is_away_zero:
             active_set[2 * n_features] -= step_size
@@ -259,7 +256,11 @@ def minimize_PFW_L1(
             bad_steps_quot=(num_bad_steps) / (it+1))
 
         if callback is not None:
-            callback(x_t)
+            callback(locals())
+
+
+    if callback is not None:
+        callback(locals())
     pbar.close()
     return optimize.OptimizeResult(
-        x=x_t, nit=it, certificate=g_t)
+        x=x, nit=it, certificate=g_t)
