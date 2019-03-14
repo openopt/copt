@@ -65,7 +65,7 @@ fig, ax1 = plt.subplots()
 
 color = '#67a9cf'
 ax1.set_xlabel('number of iterations')
-ax1.set_ylabel('step size', color=color)
+ax1.set_ylabel('step-size', color=color)
 ax1.plot(n + np.arange(len(trace_step_size)), trace_step_size, color=color,
     alpha=0.5)
 ax1.tick_params(axis='y', labelcolor=color)
