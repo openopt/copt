@@ -24,7 +24,7 @@ g = cp.utils.L1Norm(1./n_samples)
 cb_saga = cp.utils.Trace(lambda x: f(x) + g(x))
 # .. run the SAGA algorithm ..
 step_size = 1. / (3 * f.max_lipschitz)
-result_saga = cp.minimize_SAGA(
+result_saga = cp.minimize_saga(
     f.partial_deriv, X, y, np.zeros(n_features),
     prox=g.prox_factory(n_features), step_size=step_size, callback=cb_saga,
     tol=0, max_iter=100)
