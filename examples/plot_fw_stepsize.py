@@ -1,13 +1,13 @@
 """
-Step-size and curavature on the Frank-Wolfe algorithm
+Step-size and curvature on the Frank-Wolfe algorithm
 =====================================================
 
-Plot showing both the optimal step-size and curavature for
+Plot showing both the optimal step-size and curvature for
 the Frank-Wolfe algorithm on a logistic regression problem.
 
 The step-size is computed as the one that gives the largest
 decrease in objective function (see :func:`exact_ls`). The
-curavature is computed as the largest eigenvalue of the 
+curvature is computed as the largest eigenvalue of the 
 Hessian.
 
 In the plot we can see how the variance of the step-size
@@ -65,7 +65,7 @@ fig, ax1 = plt.subplots()
 
 color = '#67a9cf'
 ax1.set_xlabel('number of iterations')
-ax1.set_ylabel('step size', color=color)
+ax1.set_ylabel('step-size', color=color)
 ax1.plot(n + np.arange(len(trace_step_size)), trace_step_size, color=color,
     alpha=0.5)
 ax1.tick_params(axis='y', labelcolor=color)
