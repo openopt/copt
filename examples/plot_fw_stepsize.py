@@ -1,4 +1,6 @@
-"""Step-size and curvature on the Frank-Wolfe algorithm.
+"""
+Step-size and curvature on the Frank-Wolfe algorithm
+====================================================
 
 Plot showing both the optimal step-size and curvature for
 the Frank-Wolfe algorithm on a logistic regression problem.
