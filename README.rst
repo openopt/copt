@@ -17,6 +17,20 @@ Documentation
 See http://openopt.github.io/copt/
 
 
+Installation
+============
+
+If you already have a working installation of numpy and scipy,
+the easiest way to install copt is using ``pip`` ::
+
+    pip install -U copt
+
+
+Alternatively, you can install the latest development from github with the command::
+
+    pip install git+https://github.com/openopt/copt.git
+
+
 Citing
 ======
 

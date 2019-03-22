@@ -34,6 +34,19 @@ C-OPT contains implementations of different optimization methods. These are cate
  * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_SAGA>`, :meth:`SVRG <copt.minimize_SVRG>`, :meth:`variance-reduced three operator splitting <copt.minimize_VRTOS>`
 
 
+Getting started
+---------------
+
+If you already have a working installation of numpy and scipy,
+the easiest way to install copt is using ``pip`` ::
+
+    pip install -U copt
+
+
+Alternatively, you can install the latest development from github with the command::
+
+    pip install git+https://github.com/openopt/copt.git
+
 .. toctree::
     :maxdepth: 2
     :hidden:
