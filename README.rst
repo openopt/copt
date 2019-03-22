@@ -48,3 +48,21 @@ If this software is useful for your research, please consider citing it as
       url={http://openopt.github.io/copt/}
     }
 
+Development
+===========
+
+The recommended way to work on the development versionis the following:
+
+  1. Clone locally the github repo. This can be done with the command::
+
+    git clone https://github.com/openopt/copt.git
+  
+  This will create a copt directory.
+
+  2. Link this directory to your Python interpreter. This can be done by
+  running the following command from the copt directory created with the
+  previous step::
+
+    python setup.py develop
+  
+  Now you can run the tests with `py.test tests/`

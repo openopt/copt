@@ -162,7 +162,6 @@ class LogLoss:
         if not return_gradient:
             return loss
         
-        idx = z > 0
         z0 = special.expit(z) - self.b
         grad = safe_sparse_add(
             self.A.T.dot(z0) / self.A.shape[0],
@@ -250,9 +249,9 @@ class SquareLoss:
     A class evaluation and derivatives of the square loss, defined as
 
         .. math::
-            \\frac{1}{n}\|A x - b\|^2~,
+            \\frac{1}{n}\\|A x - b\\|^2~,
 
-    where :math:`\\|\cdot\\|` is the euclidean norm.
+    where :math:`\\|\\cdot\\|` is the euclidean norm.
     """
 
     def __init__(self, A, b, alpha=0):
@@ -432,12 +431,12 @@ class GroupL1:
                 feature_pointer += 1
                 block_pointer += 1
             B_indptr[block_pointer + 1] = B_indptr[block_pointer]
-            for j in g:
+            for _ in g:
                 B_data[feature_pointer] = 1.
                 B_indptr[block_pointer + 1] += 1
                 feature_pointer += 1
             block_pointer += 1
-        for h in range(feature_pointer, n_features):
+        for _ in range(feature_pointer, n_features):
                 B_data[feature_pointer] = -1.
                 B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
                 feature_pointer += 1
@@ -490,7 +489,7 @@ class FusedLasso:
 
     def prox(self, x, step_size):
         # imported here to avoid circular imports
-        from . import tv_prox
+        from copt import tv_prox
         return tv_prox.prox_tv1d(x, step_size * self.alpha)
 
     def prox_1_factory(self, n_features):
@@ -574,7 +573,7 @@ class SimplexConstraint:
 def euclidean_proj_simplex(v, s=1.):
     """ Compute the Euclidean projection on a positive simplex
     Solves the optimisation problem (using the algorithm from [1]):
-        min_w 0.5 * || w - v ||_2^2 , s.t. \sum_i w_i = s, w_i >= 0
+        min_w 0.5 * || w - v ||_2^2 , s.t. \\sum_i w_i = s, w_i >= 0
     Parameters
     ----------
     v: (n,) numpy array,
@@ -637,7 +636,7 @@ def euclidean_proj_l1ball(v, s=1,):
     euclidean_proj_simplex
     """
     assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
-    n, = v.shape  # will raise ValueError if v is not 1-D
+    if len(v.shape) > 1: raise ValueError
     # compute the vector of absolute values
     u = np.abs(v)
     # check if v is already a solution
@@ -703,7 +702,7 @@ class TraceBall:
 
     def lmo(self, x):
         x = x.reshape(self.shape)
-        u, s, vt = splinalg.svds(x, k=1, maxiter=1000)
+        u, _, vt = splinalg.svds(x, k=1, maxiter=1000)
         tmp = self.alpha * u.dot(vt).ravel()
         return sparse.csr_matrix(tmp).T
 
@@ -726,7 +725,7 @@ class TotalVariation2D:
 
     def prox(self, x, step_size):
         # here to avoid circular imports
-        from . import tv_prox
+        from copt import tv_prox
         return tv_prox.prox_tv2d(
             x, step_size * self.alpha, self.n_rows, self.n_cols,
             max_iter=self.max_iter, tol=self.tol)
