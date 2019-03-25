@@ -91,7 +91,7 @@ def minimize_proxgrad(
     if isinstance(step_size, float):
       step_size_ = step_size
     else:
-      # without other information start with a step-size of one    
+      # without other information start with a step-size of one
       step_size_ = 1
 
   success = False
@@ -109,12 +109,14 @@ def minimize_proxgrad(
         if not callback(locals()):
           break
       # .. compute gradient and step size
-      x_next = prox(x - step_size_ * grad_fk, step_size_)
-      incr = x_next - x
       if hasattr(step_size, "__call__"):
         step_size_ = step_size(locals())
+        x_next = prox(x - step_size_ * grad_fk, step_size_)
+        incr = x_next - x
         f_next, grad_next = f_grad(x_next)
       elif step_size == "adaptive":
+        x_next = prox(x - step_size_ * grad_fk, step_size_)
+        incr = x_next - x
         step_size_ *= 1.1
         for _ in range(max_iter_backtracking):
           f_next, grad_next = f_grad(x_next)
@@ -130,6 +132,8 @@ def minimize_proxgrad(
         else:
           warnings.warn("Maxium number of line-search iterations reached")
       else:
+        x_next = prox(x - step_size_ * grad_fk, step_size_)
+        incr = x_next - x
         f_next, grad_next = f_grad(x_next)
       certificate = np.linalg.norm((x - x_next) / step_size_)
       x[:] = x_next
