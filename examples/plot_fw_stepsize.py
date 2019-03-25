@@ -51,7 +51,7 @@ def cb(kw):
   trace_curavature.append(s)
 
 
-out = cp.minimize_fw(
+out = cp.minimize_frank_wolfe(
     f.f_grad,
     l1_ball.lmo,
     x0,

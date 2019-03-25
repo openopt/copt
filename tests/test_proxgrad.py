@@ -54,7 +54,7 @@ def test_optimize(accelerated, loss, penalty):
       prox = penalty(1e-3).prox
     else:
       prox = None
-    opt = cp.minimize_proxgrad(
+    opt = cp.minimize_proximal_gradient(
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
@@ -65,7 +65,7 @@ def test_optimize(accelerated, loss, penalty):
     grad_x = obj.f_grad(opt.x)[1]
     assert certificate(opt.x, grad_x, prox) < 1e-6
 
-    opt_2 = cp.minimize_proxgrad(
+    opt_2 = cp.minimize_proximal_gradient(
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
@@ -79,7 +79,7 @@ def test_optimize(accelerated, loss, penalty):
 
 @pytest.mark.parametrize(
     "solver",
-    [cp.minimize_proxgrad, cp.minimize_three_split, cp.minimize_primal_dual])
+    [cp.minimize_proximal_gradient, cp.minimize_three_split, cp.minimize_primal_dual])
 def test_callback(solver):
   """Make sure that the algorithm exists when the callback returns False."""
 
@@ -93,7 +93,7 @@ def test_callback(solver):
 
 @pytest.mark.parametrize(
     "solver",
-    [cp.minimize_proxgrad])
+    [cp.minimize_proximal_gradient])
 def test_line_search(solver):
   """Test the custom line search option."""
 

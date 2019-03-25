@@ -5,7 +5,7 @@ from scipy import optimize
 from tqdm import trange
 
 
-def minimize_proxgrad(
+def minimize_proximal_gradient(
     f_grad,
     x0,
     prox=None,
@@ -27,7 +27,7 @@ def minimize_proxgrad(
   where we have access to the gradient of f and the proximal operator of g.
 
   Args:
-    f_grad: callable
+    f_grad : callable.
         Value and gradient of f: ``f_grad(x) -> float, array-like``.
 
     x0 : array-like of size n_features
@@ -44,12 +44,12 @@ def minimize_proxgrad(
     verbose : int, optional.
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    callback : callable
+    callback : callable.
         callback function (optional). Takes a single argument (x) with the
         current coefficients in the algorithm. The algorithm will exit if
         callback returns False.
 
-    step_size : float | "adaptive" | (float, "adaptive")
+    step_size : float or "adaptive" or (float, "adaptive").
         Step-size value and/or strategy.
 
     accelerated: boolean

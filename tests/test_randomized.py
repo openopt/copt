@@ -175,7 +175,7 @@ def test_vrtos_fl(A_data):
             prox_1=pen.prox_1_factory(n_features),
             prox_2=pen.prox_2_factory(n_features), tol=0)
 
-        opt_pgd = cp.minimize_proxgrad(
+        opt_pgd = cp.minimize_proximal_gradient(
             f.f_grad, np.zeros(n_features),
             prox=pen.prox, max_iter=2000, tol=0)
 

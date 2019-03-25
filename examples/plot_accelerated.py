@@ -19,7 +19,7 @@ f = cp.utils.LogLoss(X, y)
 step_size = 1. / f.lipschitz
 
 cb_pgd = cp.utils.Trace(f)
-result_pgd = cp.minimize_proxgrad(
+result_pgd = cp.minimize_proximal_gradient(
     f.f_grad, np.zeros(n_features), step_size=step_size,
     callback=cb_pgd, tol=0, line_search=False)
 

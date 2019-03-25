@@ -8,7 +8,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from tqdm import trange
 
 
-def minimize_fw(f_grad,
+def minimize_frank_wolfe(f_grad,
                 lmo,
                 x0,
                 lipschitz=None,
