@@ -5,9 +5,9 @@ Effect of acceleration in gradient descent
 Showcase the improved convergence of accelerated gradient
 descent on a logistic regression problem.
 """
+import copt as cp
 import numpy as np
 import pylab as plt
-import copt as cp
 
 # .. construct (random) dataset ..
 n_samples, n_features = 1000, 200
@@ -19,14 +19,14 @@ f = cp.utils.LogLoss(X, y)
 step_size = 1. / f.lipschitz
 
 cb_pgd = cp.utils.Trace(f)
-result_pgd = cp.minimize_PGD(
+result_pgd = cp.minimize_proxgrad(
     f.f_grad, np.zeros(n_features), step_size=step_size,
-    callback=cb_pgd, tol=0, backtracking=False)
+    callback=cb_pgd, tol=0, line_search=False)
 
 cb_apgd = cp.utils.Trace(f)
 result_apgd = cp.minimize_APGD(
     f.f_grad, np.zeros(n_features), step_size=step_size,
-    callback=cb_apgd, tol=0, backtracking=False)
+    callback=cb_apgd, tol=0, line_search=False)
 
 
 # .. plot the result ..

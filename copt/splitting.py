@@ -6,11 +6,20 @@ from tqdm import trange
 from . import utils
 
 
-def minimize_TOS(
-        f_grad, x0, prox_1=None, prox_2=None, tol=1e-6, max_iter=1000,
-        verbose=0, callback=None, backtracking=True, step_size=None,
-        max_iter_backtracking=100, backtracking_factor=0.7, h_Lipschitz=None):
-    """Davis-Yin three operator splitting method.
+def minimize_three_split(f_grad,
+                         x0,
+                         prox_1=None,
+                         prox_2=None,
+                         tol=1e-6,
+                         max_iter=1000,
+                         verbose=0,
+                         callback=None,
+                         line_search=True,
+                         step_size=None,
+                         max_iter_backtracking=100,
+                         backtracking_factor=0.7,
+                         h_Lipschitz=None):
+  """Davis-Yin three operator splitting method.
 
     This algorithm can solve problems of the form
 
@@ -60,92 +69,112 @@ def minimize_TOS(
 
     References
     ----------
-    * Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and its optimization
-      applications." <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued and Variational Analysis, 2017.
+    * Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and its
+    optimization
+      applications." <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued
+      and Variational Analysis, 2017.
 
-    * Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator Splitting."
-      <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th International Conference
+    * Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator
+    Splitting."
+      <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th International
+      Conference
       on Machine Learning, 2018.
     """
-    success = False
-    if not max_iter_backtracking > 0:
-        raise ValueError('Line search iterations need to be greater than 0')
+  success = False
+  if not max_iter_backtracking > 0:
+    raise ValueError('Line search iterations need to be greater than 0')
 
-    if prox_1 is None:
-        def prox_1(x, s): return x
-    if prox_2 is None:
-        def prox_2(x, s): return x
+  if prox_1 is None:
 
-    if step_size is None:
-        backtracking = True
-        step_size = 1./utils.init_lipschitz(f_grad, x0)
+    def prox_1(x, s):
+      return x
 
-    z = prox_2(x0, step_size)
-    LS_EPS = np.finfo(np.float).eps
+  if prox_2 is None:
+
+    def prox_2(x, s):
+      return x
+
+  if step_size is None:
+    line_search = True
+    step_size = 1. / utils.init_lipschitz(f_grad, x0)
+
+  z = prox_2(x0, step_size)
+  LS_EPS = np.finfo(np.float).eps
+
+  fk, grad_fk = f_grad(z)
+  x = prox_1(z - step_size * grad_fk, step_size)
+  u = np.zeros_like(x)
+
+  pbar = trange(max_iter, disable=(verbose == 0))
+  pbar.set_description('TOS')
+  for it in pbar:
 
     fk, grad_fk = f_grad(z)
-    x = prox_1(z - step_size * grad_fk, step_size)
-    u = np.zeros_like(x)
+    x = prox_1(z - step_size * (u + grad_fk), step_size)
+    incr = x - z
+    norm_incr = np.linalg.norm(incr)
+    ls = norm_incr > 1e-7 and line_search
+    if ls:
+      for it_ls in range(max_iter_backtracking):
+        rhs = fk + grad_fk.dot(incr) + (norm_incr**2) / (2 * step_size)
+        ls_tol = f_grad(x, return_gradient=False) - rhs
+        if ls_tol <= LS_EPS:
+          # step size found
+          # if ls_tol > 0:
+          #     ls_tol = 0.
+          break
+        else:
+          step_size *= backtracking_factor
 
-    pbar = trange(max_iter, disable=(verbose == 0))
-    pbar.set_description('TOS')
-    for it in pbar:
+    z = prox_2(x + step_size * u, step_size)
+    u += (x - z) / step_size
+    certificate = norm_incr / step_size
 
-        fk, grad_fk = f_grad(z)
-        x = prox_1(z - step_size * (u + grad_fk), step_size)
-        incr = x - z
-        norm_incr = np.linalg.norm(incr)
-        ls = norm_incr > 1e-7 and backtracking
-        if ls:
-            for it_ls in range(max_iter_backtracking):
-                rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
-                ls_tol = f_grad(x, return_gradient=False) - rhs
-                if ls_tol <= LS_EPS:
-                    # step size found
-                    # if ls_tol > 0:
-                    #     ls_tol = 0.
-                    break
-                else:
-                    step_size *= backtracking_factor
+    if ls and h_Lipschitz is not None:
+      if h_Lipschitz == 0:
+        step_size = step_size * 1.02
+      else:
+        quot = h_Lipschitz**2
+        tmp = np.sqrt(step_size**2 + (2 * step_size / quot) * (-ls_tol))
+        step_size = min(tmp, step_size * 1.02)
+    pbar.set_postfix(tol=certificate, step_size=step_size)
 
-        z = prox_2(x + step_size * u, step_size)
-        u += (x - z) / step_size
-        certificate = norm_incr / step_size
+    if callback is not None:
+      if callback(locals()) is False:
+        break
 
-        if ls and h_Lipschitz is not None:
-            if h_Lipschitz == 0:
-                step_size = step_size * 1.02
-            else:
-                quot = h_Lipschitz ** 2
-                tmp = np.sqrt(
-                    step_size ** 2 + (2 * step_size / quot) * (-ls_tol))
-                step_size = min(tmp, step_size * 1.02)
-        pbar.set_postfix(tol=certificate, step_size=step_size)
+    if it > 0 and certificate < tol:
+      success = True
+      if verbose:
+        pbar.write('Achieved relative tolerance at iteration %s' % it)
+      break
 
-        if callback is not None:
-            if callback(locals()) is False:
-                break
-
-        if it > 0 and certificate < tol:
-            success = True
-            if verbose:
-                pbar.write("Achieved relative tolerance at iteration %s" % it)
-            break
-
-        if it >= max_iter:
-            pbar.write(
-                "warning: three_split did not reach the desired tolerance level")
-    pbar.close()
-    return optimize.OptimizeResult(
-        x=x, success=success, nit=it,
-        certificate=certificate, step_size=step_size)
+    if it >= max_iter:
+      pbar.write(
+          'warning: three_split did not reach the desired tolerance level')
+  pbar.close()
+  return optimize.OptimizeResult(
+      x=x,
+      success=success,
+      nit=it,
+      certificate=certificate,
+      step_size=step_size)
 
 
-def minimize_PDHG(
-        f_grad, x0, prox_1=None, prox_2=None, L=None, tol=1e-12,
-        max_iter=1000, callback=None, step_size=1., step_size2=None,
-        backtracking=True, max_iter_ls=20, verbose=0):
-    """Primal-dual hybrid gradient splitting method.
+def minimize_primal_dual(f_grad,
+                         x0,
+                         prox_1=None,
+                         prox_2=None,
+                         L=None,
+                         tol=1e-12,
+                         max_iter=1000,
+                         callback=None,
+                         step_size=1.,
+                         step_size2=None,
+                         line_search=True,
+                         max_iter_ls=20,
+                         verbose=0):
+  """Primal-dual hybrid gradient splitting method.
 
     This method for optimization problems of the form
 
@@ -199,87 +228,100 @@ def minimize_PDHG(
     Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
     first-order primal-dual algorithm." Mathematical Programming (2015)
     """
-    x = np.array(x0, copy=True)
-    n_features = x.size
-    if L is None:
-        L = sparse.eye(n_features, n_features, format='csr')
+  x = np.array(x0, copy=True)
+  n_features = x.size
+  if L is None:
+    L = sparse.eye(n_features, n_features, format='csr')
 
-        def Ldot(x): return x
-        Ltdot = Ldot
-    y = L.dot(x)
-    success = False
-    if not max_iter_ls > 0:
-        raise ValueError('Line search iterations need to be greater than 0')
+    def Ldot(x):
+      return x
 
-    if prox_1 is None:
-        def prox_1(x, step_size): return x
-    if prox_2 is None:
-        def prox_2(x, step_size): return x
+    Ltdot = Ldot
+  y = L.dot(x)
+  success = False
+  if not max_iter_ls > 0:
+    raise ValueError('Line search iterations need to be greater than 0')
 
-    # conjugate of prox_2
-    def prox_2_conj(x, ss):
-        return x - ss * prox_2(x / ss, 1. / ss)
-    # .. main iteration ..
-    theta = 1.
-    delta = 0.99
-    sigma = step_size
-    tau = step_size2
-    if tau is None:
-        tau = 0.5 * sigma
-    ss_ratio = sigma / tau
+  if prox_1 is None:
 
-    pbar = trange(max_iter, disable=(verbose == 0))
-    fk, grad_fk = f_grad(x)
-    norm_incr = np.infty
-    x_next = x.copy()
+    def prox_1(x, step_size):
+      return x
 
-    for it in pbar:
-        y_next = prox_2_conj(y + tau * Ldot(x), tau)
-        if backtracking:
-            tau_next = tau * np.sqrt(1 + theta)
-            while True:
-                theta = tau_next / tau
-                sigma = ss_ratio * tau_next
-                y_bar = y_next + theta * (y_next - y)
-                x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
-                incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
-                if incr_x <= 1e-10:
-                    break
+  if prox_2 is None:
 
-                f_next, f_grad_next = f_grad(x_next)
-                tmp = (sigma * tau_next) * (incr_x ** 2)
-                tmp += 2 * sigma * (f_next - fk - grad_fk.dot(x_next - x))
-                if tmp <= delta * (incr_x ** 2) + np.finfo(np.float).eps:
-                    tau = tau_next
-                    break
-                else:
-                    tau_next *= 0.5
+    def prox_2(x, step_size):
+      return x
+
+  # conjugate of prox_2
+  def prox_2_conj(x, ss):
+    return x - ss * prox_2(x / ss, 1. / ss)
+
+  # .. main iteration ..
+  theta = 1.
+  delta = 0.99
+  sigma = step_size
+  tau = step_size2
+  if tau is None:
+    tau = 0.5 * sigma
+  ss_ratio = sigma / tau
+
+  pbar = trange(max_iter, disable=(verbose == 0))
+  fk, grad_fk = f_grad(x)
+  norm_incr = np.infty
+  x_next = x.copy()
+
+  for it in pbar:
+    y_next = prox_2_conj(y + tau * Ldot(x), tau)
+    if line_search:
+      tau_next = tau * np.sqrt(1 + theta)
+      while True:
+        theta = tau_next / tau
+        sigma = ss_ratio * tau_next
+        y_bar = y_next + theta * (y_next - y)
+        x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+        incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
+        if incr_x <= 1e-10:
+          break
+
+        f_next, f_grad_next = f_grad(x_next)
+        tmp = (sigma * tau_next) * (incr_x**2)
+        tmp += 2 * sigma * (f_next - fk - grad_fk.dot(x_next - x))
+        if tmp <= delta * (incr_x**2) + np.finfo(np.float).eps:
+          tau = tau_next
+          break
         else:
-            y_bar = 2 * y_next - y
-            x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
-            f_next, f_grad_next = f_grad(x_next)
+          tau_next *= 0.5
+    else:
+      y_bar = 2 * y_next - y
+      x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+      f_next, f_grad_next = f_grad(x_next)
 
-        if it % 100 == 0:
-            norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
-            pbar.set_description('PDHG')
-            pbar.set_postfix(tol=norm_incr, iter=it, step_size=sigma, step_size2=tau, quot=sigma * tau)
+    if it % 100 == 0:
+      norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
+      pbar.set_description('PDHG')
+      pbar.set_postfix(
+          tol=norm_incr,
+          iter=it,
+          step_size=sigma,
+          step_size2=tau,
+          quot=sigma * tau)
 
-        x[:] = x_next[:]
-        y[:] = y_next[:]
-        fk, grad_fk = f_next, f_grad_next
+    x[:] = x_next[:]
+    y[:] = y_next[:]
+    fk, grad_fk = f_next, f_grad_next
 
-        if norm_incr < tol:
-            success = True
-            break
+    if norm_incr < tol:
+      success = True
+      break
 
-        if callback is not None:
-            if callback(locals()) is False:
-                break
+    if callback is not None:
+      if callback(locals()) is False:
+        break
 
-    if it >= max_iter:
-        warnings.warn(
-            "proximal_gradient did not reach the desired tolerance level", RuntimeWarning)
+  if it >= max_iter:
+    warnings.warn('proximal_gradient did not reach the desired tolerance level',
+                  RuntimeWarning)
 
-    pbar.close()
-    return optimize.OptimizeResult(
-        x=y, success=success, nit=it, certificate=norm_incr)
+  pbar.close()
+  return optimize.OptimizeResult(
+      x=y, success=success, nit=it, certificate=norm_incr)

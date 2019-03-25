@@ -149,7 +149,7 @@ def test_vrtos_ogl():
             alpha=alpha, max_iter=200, prox_1=p_1.prox_factory(n_features),
             prox_2=p_2.prox_factory(n_features))
 
-        opt_tos = cp.minimize_TOS(
+        opt_tos = cp.minimize_three_split(
             f.f_grad, np.zeros(n_features),
             prox_1=p_1.prox, prox_2=p_2.prox)
 
@@ -175,7 +175,7 @@ def test_vrtos_fl(A_data):
             prox_1=pen.prox_1_factory(n_features),
             prox_2=pen.prox_2_factory(n_features), tol=0)
 
-        opt_pgd = cp.minimize_PGD(
+        opt_pgd = cp.minimize_proxgrad(
             f.f_grad, np.zeros(n_features),
             prox=pen.prox, max_iter=2000, tol=0)
 

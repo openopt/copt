@@ -2,8 +2,8 @@
 """
 import copt as cp
 import numpy as np
-from scipy import optimize
 import pytest
+from scipy import optimize
 
 np.random.seed(0)
 n_samples, n_features = 20, 10
@@ -15,10 +15,6 @@ b = A.dot(w) + np.random.randn(n_samples)
 # greater than 1
 b = np.abs(b / np.max(np.abs(b)))
 
-all_solvers = (
-    ["PGD", cp.minimize_PGD, 1e-6],
-    ["APGD", cp.minimize_APGD, 1e-6],
-)
 
 loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
 penalty_funcs = [None, cp.utils.L1Norm]
@@ -38,20 +34,19 @@ def test_gradient():
 
 def certificate(x, grad_x, prox):
   if prox is None:
-
-    def prox(x, s):
+    def prox_(x, _):
       return x
+  else:
+    prox_ = prox
 
-  return np.linalg.norm(x - prox(x - grad_x, 1))
+  return np.linalg.norm(x - prox_(x - grad_x, 1))
 
 
-@pytest.mark.parametrize("name_solver, solver, tol", all_solvers)
+@pytest.mark.parametrize("accelerated", [True, False])
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
-def test_optimize(name_solver, solver, tol, loss, penalty):
-  """
-    Test a method on both the backtracking and fixed step size strategy
-    """
+def test_optimize(accelerated, loss, penalty):
+  """Test a method on both the line_search and fixed step size strategy."""
   max_iter = 2000
   for alpha in np.logspace(-1, 3, 3):
     obj = loss(A, b, alpha)
@@ -59,36 +54,52 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
       prox = penalty(1e-3).prox
     else:
       prox = None
-    opt = solver(
+    opt = cp.minimize_proxgrad(
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
         tol=1e-12,
-        max_iter=max_iter)
+        step_size="adaptive",
+        max_iter=max_iter,
+        accelerated=accelerated)
     grad_x = obj.f_grad(opt.x)[1]
-    assert certificate(opt.x, grad_x, prox) < tol, name_solver
+    assert certificate(opt.x, grad_x, prox) < 1e-6
 
-    opt_2 = solver(
+    opt_2 = cp.minimize_proxgrad(
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
         max_iter=max_iter,
         tol=1e-12,
-        backtracking=False,
-        step_size=1 / obj.lipschitz)
+        step_size=1 / obj.lipschitz,
+        accelerated=accelerated)
     grad_2x = obj.f_grad(opt_2.x)[1]
-    assert certificate(opt_2.x, grad_2x, prox) < tol, name_solver
+    assert certificate(opt_2.x, grad_2x, prox) < 1e-6
 
 
 @pytest.mark.parametrize(
     "solver",
-    [cp.minimize_PGD, cp.minimize_APGD, cp.minimize_TOS, cp.minimize_PDHG])
+    [cp.minimize_proxgrad, cp.minimize_three_split, cp.minimize_primal_dual])
 def test_callback(solver):
-  """Make sure that the algorithm exists when the callback returns False"""
+  """Make sure that the algorithm exists when the callback returns False."""
 
-  def cb(x):
+  def cb(_):
     return False
 
   f = cp.utils.SquareLoss(A, b)
   opt = solver(f.f_grad, np.zeros(n_features), callback=cb)
   assert opt.nit < 2
+
+
+@pytest.mark.parametrize(
+    "solver",
+    [cp.minimize_proxgrad])
+def test_line_search(solver):
+  """Test the custom line search option."""
+
+  def ls_wrong(_):
+    return -10
+
+  f = cp.utils.SquareLoss(A, b)
+  opt = solver(f.f_grad, np.zeros(n_features), step_size=ls_wrong)
+  assert not opt.success

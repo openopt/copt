@@ -14,8 +14,8 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers = (
-    ["TOS", cp.minimize_TOS, 1e-12],
-    ["PDHG", cp.minimize_PDHG, 1e-6],
+    ["TOS", cp.minimize_three_split, 1e-12],
+    ["PDHG", cp.minimize_primal_dual, 1e-6],
 )
 
 loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
@@ -58,7 +58,7 @@ def test_optimize(name_solver, solver, tol, loss, penalty):
         prox_2=prox_2,
         max_iter=max_iter,
         tol=1e-12,
-        backtracking=False,
+        line_search=False,
         step_size=1. / obj.lipschitz)
     assert opt.certificate < tol, name_solver
     assert opt_2.certificate < tol, name_solver

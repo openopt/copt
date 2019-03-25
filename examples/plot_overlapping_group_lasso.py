@@ -60,7 +60,7 @@ for i, beta in enumerate(all_betas):
 
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    tos_ls = cp.minimize_TOS(
+    tos_ls = cp.minimize_three_splitting(
         f.f_grad, x0, G1.prox, G2.prox, step_size=10 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tosls, h_Lipschitz=beta)
@@ -70,11 +70,11 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    tos = cp.minimize_TOS(
+    tos = cp.minimize_three_splitting(
         f.f_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        backtracking=True, callback=cb_tos)
+        line_search=True, callback=cb_tos)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
@@ -82,22 +82,22 @@ for i, beta in enumerate(all_betas):
 
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    pdhg = cp.minimize_PDHG(
+    pdhg = cp.minimize_primal_dual(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, backtracking=False)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
     trace_pdhg = np.array([loss(x) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)
 
     cb_pdhg_nols = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    pdhg_nols = cp.minimize_PDHG(
+    pdhg_nols = cp.minimize_primal_dual(
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg_nols, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, backtracking=False)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
     trace_pdhg_nols = np.array([loss(x) for x in cb_pdhg_nols.trace_x])
     all_trace_pdhg_nols.append(trace_pdhg_nols)
     all_trace_pdhg_nols_time.append(cb_pdhg_nols.trace_time)

@@ -54,7 +54,7 @@ for i, beta in enumerate(all_betas):
 
   cb_tosls = cp.utils.Trace()
   x0 = np.zeros(n_features)
-  pgd_ls = cp.minimize_PGD(
+  pgd_ls = cp.minimize_proxgrad(
       f.f_grad, x0, G1.prox, step_size=step_size,
       max_iter=max_iter, tol=1e-14, verbose=1,
       callback=cb_tosls)
@@ -63,11 +63,11 @@ for i, beta in enumerate(all_betas):
 
   cb_tos = cp.utils.Trace()
   x0 = np.zeros(n_features)
-  pgd = cp.minimize_PGD(
+  pgd = cp.minimize_proxgrad(
       f.f_grad, x0, G1.prox,
       step_size=step_size,
       max_iter=max_iter, tol=1e-14, verbose=1,
-      backtracking=False, callback=cb_tos)
+      line_search=False, callback=cb_tos)
   trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
   all_trace_nols.append(trace_nols)
   out_img.append(pgd.x)

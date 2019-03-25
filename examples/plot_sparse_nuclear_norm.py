@@ -67,7 +67,7 @@ for i, beta in enumerate(all_betas):
 
     cb_tosls = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    tos_ls = cp.minimize_TOS(
+    tos_ls = cp.minimize_three_splitting(
         f.f_grad, x0, G2.prox, G1.prox, step_size=5 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
         callback=cb_tosls, h_Lipschitz=beta)
@@ -77,11 +77,11 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    tos = cp.minimize_TOS(
+    tos = cp.minimize_three_splitting(
         f.f_grad, x0, G1.prox, G2.prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        backtracking=False, callback=cb_tos)
+        line_search=False, callback=cb_tos)
     trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)

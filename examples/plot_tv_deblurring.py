@@ -61,7 +61,7 @@ for i, beta in enumerate(all_betas):
 
     cb_adatos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    adatos = cp.minimize_TOS(
+    adatos = cp.minimize_three_splitting(
         f.f_grad, x0, g_prox, h_prox,
         step_size=10 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
@@ -73,18 +73,18 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cp.minimize_TOS(
+    cp.minimize_three_splitting(
         f.f_grad, x0, g_prox, h_prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
-        callback=cb_tos, backtracking=False)
+        callback=cb_tos, line_search=False)
     trace_nols = [loss(x, beta) for x in cb_tos.trace_x]
     all_trace_nols.append(trace_nols)
     all_trace_nols_time.append(cb_tos.trace_time)
 
     cb_pdhg = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cp.minimize_PDHG(
+    cp.minimize_primal_dual(
         f.f_grad, x0, g_prox, h_prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
