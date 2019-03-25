@@ -14,7 +14,7 @@ def minimize_fw(f_grad,
                 lipschitz=None,
                 max_iter=1000,
                 tol=1e-12,
-                backtracking=True,
+                line_search=True,
                 callback=None,
                 verbose=0):
   r"""Frank-Wolfe algorithm.
@@ -53,7 +53,7 @@ def minimize_fw(f_grad,
 
     tol: float
 
-    backtracking: boolean or callable
+    line_search: boolean or callable
 
     callback: callable
 
@@ -90,9 +90,9 @@ def minimize_fw(f_grad,
   pbar = trange(max_iter, disable=(verbose == 0))
   f_t, grad = f_grad(x)
   if lipschitz is None:
-    L_t = utils.init_lipschitz(f_grad, x0)
+    lipschitz_t = utils.init_lipschitz(f_grad, x0)
   else:
-    L_t = lipschitz
+    lipschitz_t = lipschitz
   it = 0
   for it in pbar:
     s_t = lmo(-grad)
@@ -106,29 +106,29 @@ def minimize_fw(f_grad,
     if g_t <= tol:
       break
     d2_t = splinalg.norm(d_t)**2
-    if hasattr(backtracking, '__call__'):
-      step_size = backtracking(locals())
+    if hasattr(line_search, '__call__'):
+      step_size = line_search(locals())
       f_next, grad_next = f_grad(x + step_size * d_t)
-    if backtracking is True:
+    elif line_search:
       ratio_decrease = 0.999
       ratio_increase = 2
       for i in range(max_iter):
-        step_size = min(g_t / (d2_t * L_t), 1)
-        rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * L_t * d2_t
+        step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * lipschitz_t * d2_t
         f_next, grad_next = f_grad(x + step_size * d_t)
         if f_next <= rhs + 1e-6:
           if i == 0:
-            L_t *= ratio_decrease
+            lipschitz_t *= ratio_decrease
           break
         else:
-          L_t *= ratio_increase
+          lipschitz_t *= ratio_increase
     else:
-      step_size = min(g_t / (d2_t * L_t), 1)
+      step_size = min(g_t / (d2_t * lipschitz_t), 1)
       f_next, grad_next = f_grad(x + step_size * d_t)
     if callback is not None:
       callback(locals())
     x += step_size * d_t
-    pbar.set_postfix(tol=g_t, iter=it, L_t=L_t)
+    pbar.set_postfix(tol=g_t, iter=it, L_t=lipschitz_t)
 
     f_t, grad = f_next, grad_next
   if callback is not None:
@@ -169,7 +169,7 @@ def minimize_pfw_l1(f_grad,
                     backtracking=True,
                     callback=None,
                     verbose=0):
-  """Pairwise FW on the L1 ball
+  """Pairwise FW on the L1 ball.
 
 .. warning::
     This feature is experimental, API is likely to change.

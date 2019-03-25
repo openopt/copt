@@ -57,7 +57,7 @@ out = cp.minimize_fw(
     x0,
     callback=cb,
     max_iter=1000,
-    backtracking=exact_ls)
+    line_search=exact_ls)
 
 # Focus on the last 4/5, since the first iterations
 # tend to have a disproportionally large step-size

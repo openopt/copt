@@ -2,6 +2,7 @@
 import copt as cp
 import numpy as np
 import pytest
+from scipy import optimize
 
 np.random.seed(0)
 n_samples, n_features = 20, 16
@@ -21,6 +22,7 @@ loss_funcs = [
 
 @pytest.mark.parametrize("loss_grad", loss_funcs)
 def test_fw_l1(loss_grad):
+  """Test result of FW algorithm with L1 constraint."""
   f = loss_grad(A, b, 1. / n_samples)
   cb = cp.utils.Trace(f)
   alpha = 1.
@@ -30,19 +32,26 @@ def test_fw_l1(loss_grad):
       l1ball.lmo,
       np.zeros(n_features),
       tol=0,
-      max_iter=5000,
+      # max_iter=5000,
       callback=cb)
   assert np.isfinite(opt.x).sum() == n_features
 
   ss = 1 / f.lipschitz
   grad = f.f_grad(opt.x)[1]
   grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
-  assert np.linalg.norm(grad_map) < 0.015
+  assert np.linalg.norm(grad_map) < 0.03
 
+
+def exact_ls(kw):
+  def f_ls(gamma):
+    return kw["f_grad"](kw["x"] + gamma * kw["d_t"])[0]
+  ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
+  return ls_sol.x
 
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("bt", [True, False])
-def test_fw_trace(obj, bt):
+@pytest.mark.parametrize("bt", [True, False, exact_ls])
+def test_fw_backtrack(obj, bt):
+  """Test FW with different options of the line-search strategy."""
   f = obj(A, b, 1. / n_samples)
   alpha = 1.
   traceball = cp.utils.TraceBall(alpha, (4, 4))
@@ -51,9 +60,9 @@ def test_fw_trace(obj, bt):
       traceball.lmo,
       np.zeros(n_features),
       tol=0,
-      max_iter=5000,
+      # max_iter=5000,
       lipschitz=f.lipschitz,
-      backtracking=bt)
+      line_search=bt)
   assert np.isfinite(opt.x).sum() == n_features
 
   ss = 1 / f.lipschitz
@@ -65,6 +74,7 @@ def test_fw_trace(obj, bt):
 @pytest.mark.parametrize("obj", loss_funcs)
 @pytest.mark.parametrize("backtracking", [True, False])
 def test_pairwise_fw(obj, backtracking):
+  """Test the Pairwise FW method."""
   f = obj(A, b, 1. / n_samples)
 
   alpha = 1
