@@ -50,7 +50,7 @@ def minimize_proxgrad(
         callback returns False.
 
     step_size : float | "adaptive" | (float, "adaptive")
-        Starting value for the line-search procedure. XXX
+        Step-size value and/or strategy.
 
     accelerated: boolean
         Whether to use the accelerated variant of the algorithm.
@@ -72,8 +72,7 @@ def minimize_proxgrad(
     to signal recovery." Convex optimization in signal processing and
     communications (2009)
 
-  Examples
-  --------
+  Examples:
     * :ref:`sphx_glr_auto_examples_plot_group_lasso.py`
   """
   x = x0
