@@ -26,7 +26,7 @@ setup(
     author_email='f@bianp.net',
     url='http://pypi.python.org/pypi/copt',
     packages=['copt'],
-    install_requires=['numpy', 'scipy',],
+    install_requires=['numpy', 'scipy', 'tqdm', 'sklearn', 'six',],
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     package_data={'copt': ['data/img1.csv']},
     license='BSD'
