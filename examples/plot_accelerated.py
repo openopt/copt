@@ -21,12 +21,12 @@ step_size = 1. / f.lipschitz
 cb_pgd = cp.utils.Trace(f)
 result_pgd = cp.minimize_proximal_gradient(
     f.f_grad, np.zeros(n_features), step_size=step_size,
-    callback=cb_pgd, tol=0, line_search=False)
+    callback=cb_pgd, tol=0, accelerated=False)
 
 cb_apgd = cp.utils.Trace(f)
-result_apgd = cp.minimize_APGD(
+result_apgd = cp.minimize_proximal_gradient(
     f.f_grad, np.zeros(n_features), step_size=step_size,
-    callback=cb_apgd, tol=0, line_search=False)
+    callback=cb_apgd, tol=0, accelerated=True)
 
 
 # .. plot the result ..
