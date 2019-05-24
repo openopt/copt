@@ -25,13 +25,13 @@ Optimization algorithms
 
 C-OPT contains implementations of different optimization methods. These are categorized as:
 
- * Proximal gradient: :meth:`proximal gradient descent <copt.minimize_PGD>` and its :meth:`accelerated variant <copt.minimize_APGD>`
+ * Proximal gradient: :meth:`proximal gradient descent <copt.minimize_proximal_gradient>`
 
- * Proximal splitting: :meth:`three operator splitting <copt.minimize_TOS>`, :meth:`primal-dual hybrid gradient <copt.minimize_PDHG>`
+ * Proximal splitting: :meth:`three operator splitting <copt.minimize_three_split>`, :meth:`primal-dual hybrid gradient <copt.minimize_primal_dual>`
 
- * Frank-Wolfe: :meth:`Frank-Wolfe <copt.minimize_FW>`, :meth:`Pairwise Frank-Wolfe <copt.minimize_PFW_L1>`
+ * Frank-Wolfe: :meth:`Frank-Wolfe <copt.minimize_frank_wolfe>`, :meth:`Pairwise Frank-Wolfe <copt.minimize_pfw_l1>`
 
- * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_SAGA>`, :meth:`SVRG <copt.minimize_SVRG>`, :meth:`variance-reduced three operator splitting <copt.minimize_VRTOS>`
+ * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_saga>`, :meth:`SVRG <copt.minimize_SVRG>`, :meth:`variance-reduced three operator splitting <copt.minimize_vrtos>`
 
 
 Getting started
