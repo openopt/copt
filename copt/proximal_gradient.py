@@ -105,7 +105,7 @@ def minimize_proximal_gradient(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
       if callback is not None:
-        if not callback(locals()):
+        if callback(locals()) is False:
           break
       # .. compute gradient and step size
       if hasattr(step_size, "__call__"):
@@ -159,7 +159,7 @@ def minimize_proximal_gradient(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
       if callback is not None:
-        if not callback(locals()):
+        if callback(locals()) is False:
           break
 
       # .. compute gradient and step size
