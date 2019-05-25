@@ -6,5 +6,5 @@ Proximal splitting
 .. autosummary::
    :toctree: generated/
 
-    copt.minimize_TOS
-    copt.minimize_PDHG
+    copt.minimize_three_split
+    copt.minimize_primal_dual
