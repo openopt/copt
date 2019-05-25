@@ -54,8 +54,10 @@ def minimize_three_split(f_grad,
     step_size : float
         Starting value for the line-search procedure.
 
-    callback : callable
-        callback function (optional).
+    callback : callable.
+        callback function (optional). Takes a single argument (x) with the
+        current coefficients in the algorithm. The algorithm will exit if
+        callback returns False.
 
     Returns
     -------
@@ -140,7 +142,7 @@ def minimize_three_split(f_grad,
     pbar.set_postfix(tol=certificate, step_size=step_size)
 
     if callback is not None:
-      if not callback(locals()):
+      if callback(locals()) is False:
         break
 
     if it > 0 and certificate < tol:
@@ -206,8 +208,10 @@ def minimize_primal_dual(f_grad,
     verbose : int
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    callback : callable
-        callback function (optional).
+    callback : callable.
+        callback function (optional). Takes a single argument (x) with the
+        current coefficients in the algorithm. The algorithm will exit if
+        callback returns False.
 
     Returns
     -------
@@ -315,7 +319,7 @@ def minimize_primal_dual(f_grad,
       break
 
     if callback is not None:
-      if not callback(locals()):
+      if callback(locals()) is False:
         break
 
   if it >= max_iter:
