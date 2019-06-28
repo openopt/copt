@@ -13,7 +13,7 @@ except ImportError:
     from functools import wraps
 
     def njit(*args, **kw):
-        if len(args) == 1 and len(kw)== 0 and hasattr(args[0], '__call__'):
+        if len(args) == 1 and len(kw)== 0 and hasattr(args[0], "__call__"):
             func = args[0]
             @wraps(func)
             def inner_function(*args, **kwargs):
@@ -46,6 +46,18 @@ def safe_sparse_add(a, b):
         return a + b
 
 
+def parse_step_size(step_size):
+  if hasattr(step_size, "__len__") and len(step_size) == 2:
+    return step_size[0], step_size[1]
+  elif isinstance(step_size, float):
+    return step_size, "fixed"
+  elif hasattr(step_size, "__call__") or step_size == "adaptive":
+    # without other information start with a step-size of one
+    return 1, step_size
+  else:
+    raise ValueError("Could not understand value step_size=%s" % step_size)
+
+
 class Trace:
     def __init__(self, f=None, freq=1):
         self.trace_x = []
@@ -60,12 +72,12 @@ class Trace:
     def __call__(self, dl):
         if self._counter % self.freq == 0:
             if self.f is not None:
-                self.trace_fx.append(self.f(dl['x']))
+                self.trace_fx.append(self.f(dl["x"]))
             else:
-                self.trace_x.append(dl['x'].copy())
+                self.trace_x.append(dl["x"].copy())
             delta = (datetime.now() - self.start).total_seconds()
             self.trace_time.append(delta)
-            self.trace_step_size.append(dl['step_size'])
+            self.trace_step_size.append(dl["step_size"])
         self._counter += 1
 
 
@@ -96,14 +108,14 @@ def get_max_lipschitz(A, loss, alpha=0):
 
     A : array-like
 
-    loss : {'logloss', 'square', 'huber'}
+    loss : {"logloss", "square", "huber"}
     """
     from sklearn.utils.extmath import row_norms
     max_squared_sum = row_norms(A, squared=True).max()
 
-    if loss == 'logloss':
+    if loss == "logloss":
         return 0.25 * max_squared_sum + alpha
-    elif loss in ('huber', 'square'):
+    elif loss in ("huber", "square"):
         raise NotImplementedError
     raise NotImplementedError
 
@@ -125,16 +137,16 @@ class LogLoss:
     """
     def __init__(self, A, b, alpha=0.):
         if A is None:
-            A = sparse.eye(b.size, b.size, format='csr')
+            A = sparse.eye(b.size, b.size, format="csr")
         self.A = A
         if np.max(b) > 1 or np.min(b) < 0:
-            raise ValueError('b can only contain values between 0 and 1 ')
+            raise ValueError("b can only contain values between 0 and 1 ")
         if not A.shape[0] == b.size:
-            raise ValueError('Dimensions of A and b do not coincide')
+            raise ValueError("Dimensions of A and b do not coincide")
         self.b = b
         self.alpha = alpha
         self.intercept = False
-        self.name = 'logloss'
+        self.name = "logloss"
 
     def __call__(self, x):
         return self.f_grad(x, return_gradient=False)
@@ -256,11 +268,11 @@ class SquareLoss:
 
     def __init__(self, A, b, alpha=0):
         if A is None:
-            A = sparse.eye(b.size, b.size, format='csr')
+            A = sparse.eye(b.size, b.size, format="csr")
         self.b = b
         self.alpha = alpha
         self.A = A
-        self.name = 'square'
+        self.name = "square"
 
     def __call__(self, x):
         z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
@@ -287,7 +299,7 @@ class HuberLoss:
         self.A = A
         self.b = b
         self.alpha = alpha
-        self.name = 'huber'
+        self.name = "huber"
 
     def __call__(self, x):
         return self.f_grad(x, return_gradient=False)
@@ -344,7 +356,7 @@ class L1Norm:
                 a = x[j_idx] - alpha * d[j_idx] * step_size
                 b = - x[j_idx] - alpha * d[j_idx] * step_size
                 x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
-        return _prox_L1, sparse.eye(n_features, format='csr')
+        return _prox_L1, sparse.eye(n_features, format="csr")
 
 
 class L1Ball:
@@ -396,9 +408,9 @@ class GroupL1:
         # groups need to be increasing
         for i, g in enumerate(groups):
             if not np.all(np.diff(g) == 1):
-                raise ValueError('Groups must be contiguous')
+                raise ValueError("Groups must be contiguous")
             if i > 0 and groups[i-1][-1] >= g[0]:
-                raise ValueError('Groups must be increasing')
+                raise ValueError("Groups must be increasing")
         self.groups = groups
 
     def __call__(self, x):

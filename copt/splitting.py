@@ -140,7 +140,7 @@ def minimize_three_split(f_grad,
     pbar.set_postfix(tol=certificate, step_size=step_size)
 
     if callback is not None:
-      if not callback(locals()):
+      if callback(locals()) is False:
         break
 
     if it > 0 and certificate < tol:
@@ -315,7 +315,7 @@ def minimize_primal_dual(f_grad,
       break
 
     if callback is not None:
-      if not callback(locals()):
+      if callback(locals()) is False:
         break
 
   if it >= max_iter:

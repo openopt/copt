@@ -9,12 +9,12 @@ from tqdm import trange
 
 
 def minimize_frank_wolfe(f_grad,
-                lmo,
                 x0,
+                lmo,
                 lipschitz=None,
                 max_iter=1000,
                 tol=1e-12,
-                line_search=True,
+                step_size=True,
                 callback=None,
                 verbose=0):
   r"""Frank-Wolfe algorithm.
@@ -39,12 +39,12 @@ def minimize_frank_wolfe(f_grad,
         It should accept the optional argument return_gradient, and when False
         it should return only the function value.
 
+    x0 : array-like
+        Initial guess for solution.
+
     lmo: callable
         Takes as input a vector u of same size as x0 and returns a solution to
         the linear minimization oracle (defined above).
-
-    x0 : array-like
-        Initial guess for solution.
 
     lipschitz: float (optional)
         Estimate for the Lipschitz constant of the gradient.
@@ -87,6 +87,8 @@ def minimize_frank_wolfe(f_grad,
   if tol < 0:
     raise ValueError('Tol must be non-negative')
   x = x0.copy()
+  step_size_, strategy = utils.parse_step_size(step_size)
+
   pbar = trange(max_iter, disable=(verbose == 0))
   f_t, grad = f_grad(x)
   if lipschitz is None:
@@ -106,16 +108,16 @@ def minimize_frank_wolfe(f_grad,
     if g_t <= tol:
       break
     d2_t = splinalg.norm(d_t)**2
-    if hasattr(line_search, '__call__'):
-      step_size = line_search(locals())
-      f_next, grad_next = f_grad(x + step_size * d_t)
-    elif line_search:
+    if hasattr(strategy, "__call__"):
+      step_size_ = strategy(locals())
+      f_next, grad_next = f_grad(x + step_size_ * d_t)
+    elif strategy == "adaptive":
       ratio_decrease = 0.999
       ratio_increase = 2
       for i in range(max_iter):
-        step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        rhs = f_t - step_size * g_t + 0.5 * (step_size**2) * lipschitz_t * d2_t
-        f_next, grad_next = f_grad(x + step_size * d_t)
+        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
+        rhs = f_t - step_size_ * g_t + 0.5 * (step_size_**2) * lipschitz_t * d2_t
+        f_next, grad_next = f_grad(x + step_size_ * d_t)
         if f_next <= rhs + 1e-6:
           if i == 0:
             lipschitz_t *= ratio_decrease
@@ -123,11 +125,11 @@ def minimize_frank_wolfe(f_grad,
         else:
           lipschitz_t *= ratio_increase
     else:
-      step_size = min(g_t / (d2_t * lipschitz_t), 1)
-      f_next, grad_next = f_grad(x + step_size * d_t)
+      step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
+      f_next, grad_next = f_grad(x + step_size_ * d_t)
     if callback is not None:
       callback(locals())
-    x += step_size * d_t
+    x += step_size_ * d_t
     pbar.set_postfix(tol=g_t, iter=it, L_t=lipschitz_t)
 
     f_t, grad = f_next, grad_next

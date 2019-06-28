@@ -29,8 +29,8 @@ def test_fw_l1(loss_grad):
   l1ball = cp.utils.L1Ball(alpha)
   opt = cp.minimize_frank_wolfe(
       f.f_grad,
-      l1ball.lmo,
       np.zeros(n_features),
+      l1ball.lmo,
       tol=0,
       # max_iter=5000,
       callback=cb)
@@ -57,8 +57,8 @@ def test_fw_backtrack(obj, bt):
   traceball = cp.utils.TraceBall(alpha, (4, 4))
   opt = cp.minimize_frank_wolfe(
       f.f_grad,
-      traceball.lmo,
       np.zeros(n_features),
+      traceball.lmo,
       tol=0,
       # max_iter=5000,
       lipschitz=f.lipschitz,

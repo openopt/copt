@@ -1,3 +1,4 @@
+# python3
 """
 Step-size and curvature on the Frank-Wolfe algorithm
 ====================================================
@@ -18,75 +19,99 @@ import matplotlib.pylab as plt
 import numpy as np
 from scipy import optimize
 from scipy.sparse import linalg as splinalg
-from sklearn import datasets
+from sklearn.preprocessing import robust_scale
 
 # Construct a toy classification dataset with 100 samples and 10 features
-n_samples, n_features = 100, 10
-X, y = datasets.make_classification(n_samples, n_features, random_state=0)
+# n_samples, n_features = 100, 10
+# X, y = datasets.make_classification(n_samples, n_features, random_state=0)
+datasets = [
+    ("Gisette", cp.datasets.load_gisette),
+    ("RCV1", cp.datasets.load_rcv1),
+    ("Madelon", cp.datasets.load_madelon),
+    ("Covtype", cp.datasets.load_covtype)]
 
 
-# Define an exact line search strategy
-def exact_ls(kw):
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 5))
+for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
+  print("Running on the %s dataset" % dataset_title)
 
-  def f_ls(gamma):
-    return kw['f_grad'](kw['x'] + gamma * kw['d_t'])[0]
+  X, y = load_data()
+  n_samples, n_features = X.shape
 
-  ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method='bounded')
-  return ls_sol.x
+  l1_ball = cp.utils.L1Ball(n_features / 2.)
+  f = cp.utils.LogLoss(X, y)
+  x0 = np.zeros(n_features)
+  trace_step_size = []
+  trace_curvature = []
+
+  gamma0 = [0]
+
+  # Define an exact line search strategy
+  def exact_ls(kw):
+    """Exact line-search for the Frank-Wolfe algorithm."""
+
+    def f_ls(gamma):
+      obj, grad_x = kw["f_grad"](kw["x"] + gamma[0] * kw["d_t"])
+      grad_gamma = grad_x @ kw["d_t"]
+      return obj, grad_gamma
+
+    # Although there are scalar minimizations routines in scipy, the classical
+    # L-BFGS-B method seems to be working much better at finding the optimal
+    # step-size.
+    ls_sol = optimize.minimize(
+      f_ls, gamma0, bounds=[[0, 1]], method="L-BFGS-B", jac=True, tol=1e-20)
+
+    # keep gamma0 as a warm start for next iterate
+    gamma0[0] = ls_sol.x[0]
+    trace_step_size.append(ls_sol.x)
+    return ls_sol.x[0]
 
 
-l1_ball = cp.utils.L1Ball(n_features / 2.)
-f = cp.utils.LogLoss(X, y)
-x0 = np.zeros(n_features)
-trace_step_size = []
-trace_curavature = []
+  def cb(kw):
+    # trace_step_size.append(kw["step_size"])
+    hessian = splinalg.LinearOperator(
+        shape=(n_features, n_features), matvec=f.Hessian(kw["x"]))
 
+    s, _ = splinalg.eigsh(hessian, k=1)
+    trace_curvature.append(s)
 
-def cb(kw):
-  trace_step_size.append(kw['step_size'])
-  hessian = splinalg.LinearOperator(
-      shape=(n_features, n_features), matvec=f.Hessian(kw['x']))
+  out = cp.minimize_frank_wolfe(
+      f.f_grad,
+      x0,
+      l1_ball.lmo,
+      callback=cb,
+      max_iter=500,
+      step_size=exact_ls,
+      verbose=True
+  )
 
-  s, _ = splinalg.eigsh(hessian, k=1)
-  trace_curavature.append(s)
+  # Focus on the last 4/5, since the first iterations
+  # tend to have a disproportionally large step-size
+  n = len(trace_step_size) // 5
+  trace_step_size = trace_step_size[n:]
+  trace_curvature = trace_curvature[n:]
 
+  color = "#67a9cf"
+  ax.set_xlabel("number of iterations")
+  ax.set_ylabel("step-size", color=color)
+  ax.plot(
+      n + np.arange(len(trace_step_size)),
+      robust_scale(trace_step_size, with_centering=False),
+      color=color,
+      alpha=0.5)
+  ax.tick_params(axis="y", labelcolor=color)
 
-out = cp.minimize_frank_wolfe(
-    f.f_grad,
-    l1_ball.lmo,
-    x0,
-    callback=cb,
-    max_iter=1000,
-    line_search=exact_ls)
+  ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
 
-# Focus on the last 4/5, since the first iterations
-# tend to have a disproportionally large step-size
-n = len(trace_step_size) // 5
-trace_step_size = trace_step_size[n:]
-trace_curavature = trace_curavature[n:]
+  color = "#ef8a62"
+  ax2.set_ylabel(
+      "curavature constant",
+      color=color)  # we already handled the x-label with ax
+  ax2.plot(
+      n + np.arange(len(trace_curvature)), robust_scale(trace_curvature, with_centering=False), color=color, alpha=0.5)
+  ax2.tick_params(axis="y", labelcolor=color)
 
-fig, ax1 = plt.subplots()
-
-color = '#67a9cf'
-ax1.set_xlabel('number of iterations')
-ax1.set_ylabel('step-size', color=color)
-ax1.plot(
-    n + np.arange(len(trace_step_size)),
-    trace_step_size,
-    color=color,
-    alpha=0.5)
-ax1.tick_params(axis='y', labelcolor=color)
-
-ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-
-color = '#ef8a62'
-ax2.set_ylabel(
-    'curavature constant',
-    color=color)  # we already handled the x-label with ax1
-ax2.plot(n + np.arange(len(trace_curavature)), trace_curavature, color=color)
-ax2.tick_params(axis='y', labelcolor=color)
-
-fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.xlim(n, n + len(trace_step_size))
+  fig.tight_layout()  # otherwise the right y-label is slightly clipped
+  plt.xlim(n, n + len(trace_step_size))
 plt.grid()
 plt.show()

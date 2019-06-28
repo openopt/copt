@@ -1,5 +1,4 @@
-"""Tests for gradient-based methods
-"""
+"""Tests for gradient-based methods."""
 import copt as cp
 import numpy as np
 import pytest
@@ -103,3 +102,16 @@ def test_line_search(solver):
   f = cp.utils.SquareLoss(A, b)
   opt = solver(f.f_grad, np.zeros(n_features), step_size=ls_wrong)
   assert not opt.success
+
+  # Define an exact line search strategy
+  def exact_ls(kw):
+
+    def f_ls(gamma):
+      x_next = kw["prox"](kw["x"] - gamma * kw["grad_fk"], gamma)
+      return kw["f_grad"](x_next)[0]
+
+    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
+    return ls_sol.x
+
+  opt = solver(f.f_grad, np.zeros(n_features), step_size=exact_ls)
+  assert opt.success

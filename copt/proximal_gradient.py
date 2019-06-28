@@ -1,8 +1,9 @@
 """Proximal-gradient algorithms."""
-import warnings
+from copt import utils
 import numpy as np
 from scipy import optimize
 from tqdm import trange
+import warnings
 
 
 def minimize_proximal_gradient(
@@ -83,16 +84,7 @@ def minimize_proximal_gradient(
     def prox(x, step_size):
       return x
 
-  if hasattr(step_size, "__len__") and len(step_size) == 2:
-    step_size_ = step_size[0]
-    step_size = step_size[1]
-  else:
-    if isinstance(step_size, float):
-      step_size_ = step_size
-    else:
-      # without other information start with a step-size of one
-      step_size_ = 1
-
+  step_size_, strategy = utils.parse_step_size(step_size)
   success = False
   certificate = np.NaN
 
@@ -105,15 +97,15 @@ def minimize_proximal_gradient(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
       if callback is not None:
-        if not callback(locals()):
+        if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
           break
       # .. compute gradient and step size
-      if hasattr(step_size, "__call__"):
-        step_size_ = step_size(locals())
+      if hasattr(strategy, "__call__"):
+        step_size_ = strategy(locals())
         x_next = prox(x - step_size_ * grad_fk, step_size_)
         incr = x_next - x
         f_next, grad_next = f_grad(x_next)
-      elif step_size == "adaptive":
+      elif strategy == "adaptive":
         x_next = prox(x - step_size_ * grad_fk, step_size_)
         incr = x_next - x
         step_size_ *= 1.1
@@ -130,10 +122,12 @@ def minimize_proximal_gradient(
             incr = x_next - x
         else:
           warnings.warn("Maxium number of line-search iterations reached")
-      else:
+      elif strategy == "fixed":
         x_next = prox(x - step_size_ * grad_fk, step_size_)
         incr = x_next - x
         f_next, grad_next = f_grad(x_next)
+      else:
+        raise ValueError("Step-size strategy not understood")
       certificate = np.linalg.norm((x - x_next) / step_size_)
       x[:] = x_next
       fk = f_next
@@ -159,7 +153,7 @@ def minimize_proximal_gradient(
     pbar = trange(max_iter, disable=(verbose == 0))
     for it in pbar:
       if callback is not None:
-        if not callback(locals()):
+        if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
           break
 
       # .. compute gradient and step size
