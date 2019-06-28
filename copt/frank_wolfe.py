@@ -14,7 +14,7 @@ def minimize_frank_wolfe(f_grad,
                 lipschitz=None,
                 max_iter=1000,
                 tol=1e-12,
-                step_size=True,
+                step_size=1.,
                 callback=None,
                 verbose=0):
   r"""Frank-Wolfe algorithm.
@@ -53,7 +53,8 @@ def minimize_frank_wolfe(f_grad,
 
     tol: float
 
-    line_search: boolean or callable
+    step_size : float or "adaptive" or (float, "adaptive").
+        Step-size value and/or strategy.
 
     callback: callable
 
@@ -125,8 +126,12 @@ def minimize_frank_wolfe(f_grad,
         else:
           lipschitz_t *= ratio_increase
     else:
-      step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
-      f_next, grad_next = f_grad(x + step_size_ * d_t)
+      # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
+      if lipschitz is None:
+        step_size = 2. / (it+2)
+      else:
+        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_ * d_t)
     if callback is not None:
       callback(locals())
     x += step_size_ * d_t
