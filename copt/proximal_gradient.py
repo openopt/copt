@@ -142,7 +142,7 @@ def minimize_proximal_gradient(
         success = True
         break
     else:
-      warnings.warn("minimize_PGD did not reach the desired tolerance level",
+      warnings.warn("minimize_proximal_gradient did not reach the desired tolerance level",
                     RuntimeWarning)
   else:
     tk = 1
@@ -193,7 +193,7 @@ def minimize_proximal_gradient(
 
       it += 1
     if it >= max_iter:
-      warnings.warn("minimize_APGD did not reach the desired tolerance level",
+      warnings.warn("minimize_proximal_gradient did not reach the desired tolerance level",
                     RuntimeWarning)
 
   pbar.close()

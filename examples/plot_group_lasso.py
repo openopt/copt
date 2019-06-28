@@ -67,7 +67,7 @@ for i, beta in enumerate(all_betas):
       f.f_grad, x0, G1.prox,
       step_size=step_size,
       max_iter=max_iter, tol=1e-14, verbose=1,
-      line_search=False, callback=cb_tos)
+      callback=cb_tos)
   trace_nols = np.array([loss(x) for x in cb_tos.trace_x])
   all_trace_nols.append(trace_nols)
   out_img.append(pgd.x)
