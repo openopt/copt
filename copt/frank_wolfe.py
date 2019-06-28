@@ -129,6 +129,7 @@ def minimize_frank_wolfe(f_grad,
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz is None:
         step_size = 2. / (it+2)
+        f_next, grad_next = f_grad(x + step_size_ * d_t)
       else:
         step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_ * d_t)

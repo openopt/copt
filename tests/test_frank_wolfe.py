@@ -32,7 +32,8 @@ def test_fw_l1(loss_grad):
       np.zeros(n_features),
       l1ball.lmo,
       tol=0,
-      # max_iter=5000,
+      lipschitz=f.lipschitz,
+      max_iter=5000,
       callback=cb)
   assert np.isfinite(opt.x).sum() == n_features
 
