@@ -46,8 +46,8 @@ def minimize_frank_wolfe(f_grad,
         Takes as input a vector u of same size as x0 and returns a solution to
         the linear minimization oracle (defined above).
 
-    lipschitz: float (optional)
-        Estimate for the Lipschitz constant of the gradient.
+    lipschitz: None or float or "adaptive" or (float, "adaptive").
+        Estimate for the Lipschitz constant of the gradient. 
 
     max_iter: integer
 
@@ -127,7 +127,7 @@ def minimize_frank_wolfe(f_grad,
           lipschitz_t *= ratio_increase
     else:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
-      if lipschitz is None:
+      if lipschitz_t is None:
         step_size = 2. / (it+2)
         f_next, grad_next = f_grad(x + step_size_ * d_t)
       else:
