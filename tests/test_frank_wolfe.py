@@ -32,7 +32,7 @@ def test_fw_l1(loss_grad):
       np.zeros(n_features),
       l1ball.lmo,
       tol=0,
-      lipschitz=f.lipschitz,
+      step_size=f.lipschitz,
       max_iter=5000,
       callback=cb)
   assert np.isfinite(opt.x).sum() == n_features
@@ -50,7 +50,7 @@ def exact_ls(kw):
   return ls_sol.x
 
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("bt", [1., "adaptive", exact_ls])
+@pytest.mark.parametrize("bt", ["fixed", "adaptive", exact_ls])
 def test_fw_backtrack(obj, bt):
   """Test FW with different options of the line-search strategy."""
   f = obj(A, b, 1. / n_samples)
@@ -62,8 +62,7 @@ def test_fw_backtrack(obj, bt):
       traceball.lmo,
       tol=0,
       # max_iter=5000,
-      lipschitz=f.lipschitz,
-      step_size=bt)
+      step_size=(f.lipschitz, bt))
   assert np.isfinite(opt.x).sum() == n_features
 
   ss = 1 / f.lipschitz

@@ -243,8 +243,7 @@ class LogLoss:
 
     @property
     def lipschitz(self):
-        s = splinalg.svds(self.A, k=1, return_singular_vectors=False,
-                          maxiter=100)[0]
+        s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return 0.25 * (s * s) / self.A.shape[0] + self.alpha
 
 

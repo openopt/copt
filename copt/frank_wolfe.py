@@ -11,7 +11,6 @@ from tqdm import trange
 def minimize_frank_wolfe(f_grad,
                 x0,
                 lmo,
-                lipschitz=None,
                 max_iter=1000,
                 tol=1e-12,
                 step_size=1.,
@@ -88,20 +87,18 @@ def minimize_frank_wolfe(f_grad,
   if tol < 0:
     raise ValueError('Tol must be non-negative')
   x = x0.copy()
-  step_size_, strategy = utils.parse_step_size(step_size)
+  lipschitz_t, strategy = utils.parse_step_size(step_size)
 
   pbar = trange(max_iter, disable=(verbose == 0))
   f_t, grad = f_grad(x)
-  if lipschitz is None:
-    lipschitz_t = utils.init_lipschitz(f_grad, x0)
-  else:
-    lipschitz_t = lipschitz
+
   it = 0
   for it in pbar:
     s_t = lmo(-grad)
     d_t = s_t - x
 
     g_t = -safe_sparse_dot(d_t.T, grad)
+    assert len(g_t) == 1
     if sparse.issparse(g_t):
       g_t = g_t[0, 0]
     else:
@@ -125,14 +122,39 @@ def minimize_frank_wolfe(f_grad,
           break
         else:
           lipschitz_t *= ratio_increase
+    elif strategy == "adaptive2":
+      rho = 0.2
+      for i in range(max_iter):
+        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_ * d_t)
+        if (f_next - f_t) / step_size_ < - g_t / 2:
+          # we can decrease the Lipschitz / increase the step-size
+          lipschitz_t /= 1.5
+          continue
+        if (f_next - f_t) / step_size_ >  - rho * g_t / 2:
+          lipschitz_t *= 2.
+          continue
+        # import pdb; pdb.set_trace()
+        break
+      else:
+        raise 1/0
+        # rhs = f_t - rho * step_size_ * g_t / 2
+        # if f_next <= rhs + 1e-6:
+        #   if i == 0:
+        #     lipschitz_t *= ratio_decrease
+        #   break
+        # else:
+        #   lipschitz_t *= ratio_increase
     else:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz_t is None:
-        step_size = 2. / (it+2)
+        step_size_ = 2. / (it+2)
         f_next, grad_next = f_grad(x + step_size_ * d_t)
       else:
+        # this is the case in which we know the Lipschitz constant
         step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_ * d_t)
+        # import pdb; pdb.set_trace()
     if callback is not None:
       callback(locals())
     x += step_size_ * d_t
