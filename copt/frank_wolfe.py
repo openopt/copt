@@ -79,9 +79,9 @@ def minimize_frank_wolfe(f_grad,
     <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_,
     2018
 
-    Pedregosa, Fabian, et al. `"Step-Size Adaptivity in Projection-Free
-    Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv preprint
-    arXiv:1806.05123 (2018).
+    Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. 
+    `"Step-Size Adaptivity in Projection-Free Optimization." 
+    <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv preprint arXiv:1806.05123 (2018).
   """
   x0 = sparse.csr_matrix(x0).T
   if tol < 0:

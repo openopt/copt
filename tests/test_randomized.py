@@ -42,7 +42,7 @@ def test_saga_l1():
         pen = cp.utils.L1Norm(beta)
         L = cp.utils.get_max_lipschitz(A, 'logloss') + alpha/density
 
-        for solver in [cp.minimize_saga, cp.minimize_SVRG]:
+        for solver in [cp.minimize_saga, cp.minimize_svrg]:
             opt = solver(
                 f.partial_deriv, A, b, np.zeros(n_features),
                 1/(3 * L), alpha=alpha, max_iter=500, tol=1e-8,
