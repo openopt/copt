@@ -232,7 +232,7 @@ def minimize_saga(f_deriv,
   return optimize.OptimizeResult(x=x, success=success, nit=it)
 
 
-def minimize_SVRG(f_deriv,
+def minimize_svrg(f_deriv,
                   A,
                   b,
                   x0,

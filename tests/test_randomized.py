@@ -18,7 +18,7 @@ b = np.abs(b / np.max(np.abs(b)))
 
 all_solvers_unconstrained = (
     ['SAGA', cp.minimize_saga, 1e-3],
-    ['SVRG', cp.minimize_SVRG, 1e-3],
+    ['SVRG', cp.minimize_svrg, 1e-3],
     ['VRTOS', cp.minimize_vrtos, 1e-3],
 )
 

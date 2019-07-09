@@ -61,7 +61,7 @@ for i, beta in enumerate(all_betas):
 
     cb_adatos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    adatos = cp.minimize_three_splitting(
+    adatos = cp.minimize_three_split(
         f.f_grad, x0, g_prox, h_prox,
         step_size=10 * step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
@@ -73,7 +73,7 @@ for i, beta in enumerate(all_betas):
 
     cb_tos = cp.utils.Trace()
     x0 = np.zeros(n_features)
-    cp.minimize_three_splitting(
+    cp.minimize_three_split(
         f.f_grad, x0, g_prox, h_prox,
         step_size=step_size,
         max_iter=max_iter, tol=1e-14, verbose=1,
