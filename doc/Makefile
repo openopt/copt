@@ -186,3 +186,5 @@ pseudoxml:
 upload: html
 	cp -r _build/html/* ~/dev/copt_web/ && cd ~/dev/copt_web/ && git add * && git ci -a -m "update doc" && git push origin gh-pages
 
+apidoc:
+	sphinx-apidoc -o source/ ../copt

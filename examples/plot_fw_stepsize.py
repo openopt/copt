@@ -9,6 +9,7 @@ import copt as cp
 import matplotlib.pylab as plt
 import numpy as np
 
+# datasets and their respective loading functions
 datasets = [
     ("Gisette", cp.datasets.load_gisette),
     ("RCV1", cp.datasets.load_rcv1),
@@ -35,10 +36,10 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
       ]:
     cb = cp.utils.Trace(f)
     trace_gt = []
+
     def trace(kw):
       # store the Frank-Wolfe gap g_t
-      trace_gt.append(kw['g_t'])
-      # print(kw['f_t'], kw['f_next'])
+      trace_gt.append(kw["g_t"])
 
     cp.minimize_frank_wolfe(
         f.f_grad,
@@ -52,7 +53,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
     )
     # ax.plot(trace_gt, label=label)
     ax.plot(trace_gt, label=label)
-    ax.set_yscale('log')
+    ax.set_yscale("log")
     ax.legend()
   ax.set_xlabel("number of iterations")
   ax.set_ylabel("FW gap")
