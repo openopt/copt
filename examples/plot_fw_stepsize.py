@@ -29,9 +29,9 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
   x0 = np.zeros(n_features)
 
   for step_size, label in [
-      [(f.lipschitz, "adaptive"), "adaptive step-size"],
-      [(f.lipschitz, "adaptive2"), "adaptive2 step-size"],
-      [(f.lipschitz, "fixed"), "Lipschitz step-size"]
+      ["adaptive", "adaptive step-size"],
+      ["adaptive2", "adaptive2 step-size"],
+      [None, "Lipschitz step-size"]
       ]:
     cb = cp.utils.Trace(f)
     trace_gt = []
@@ -47,7 +47,8 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         callback=trace,
         max_iter=500,
         step_size=step_size,
-        verbose=True
+        verbose=True,
+        lipschitz=f.lipschitz,
     )
     # ax.plot(trace_gt, label=label)
     ax.plot(trace_gt, label=label)

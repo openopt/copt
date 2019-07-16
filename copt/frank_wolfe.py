@@ -13,8 +13,9 @@ def minimize_frank_wolfe(f_grad,
                 lmo,
                 max_iter=1000,
                 tol=1e-12,
-                step_size=1.,
+                step_size=None,
                 callback=None,
+                lipschitz=None,
                 verbose=0):
   r"""Frank-Wolfe algorithm.
 
@@ -45,15 +46,19 @@ def minimize_frank_wolfe(f_grad,
         Takes as input a vector u of same size as x0 and returns a solution to
         the linear minimization oracle (defined above).
 
-    lipschitz: None or float or "adaptive" or (float, "adaptive").
+    step_size: None or "adaptive" or "adaptive2" or callable
+        Step-size step_size to use. If None is used and keyword lipschitz
+        is not given or None, then it will use a decreasing step-size of the form
+        2/(k+1) (described in [1]). If None is used and keyword lipschitz is not
+        None, then it will use the Demyanov-Rubinov step-size step_size
+        (variant 1 in [2]).
+
+    lipschitz: None or float.
         Estimate for the Lipschitz constant of the gradient. 
 
     max_iter: integer
 
     tol: float
-
-    step_size : float or "adaptive" or (float, "adaptive").
-        Step-size value and/or strategy.
 
     callback: callable
 
@@ -71,23 +76,24 @@ def minimize_frank_wolfe(f_grad,
 
 
   References:
-    Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex
+    [1] Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex
     Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_ ICML
     2013.
 
-    Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
+    [2] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
     <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_,
     2018
 
-    Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. 
-    `"Step-Size Adaptivity in Projection-Free Optimization." 
-    <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv preprint arXiv:1806.05123 (2018).
+    [3] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi.
+    `"Step-Size Adaptivity in Projection-Free Optimization."
+    <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
   """
   x0 = sparse.csr_matrix(x0).T
   if tol < 0:
-    raise ValueError('Tol must be non-negative')
+    raise ValueError("Tol must be non-negative")
   x = x0.copy()
-  lipschitz_t, strategy = utils.parse_step_size(step_size)
+  if lipschitz is not None:
+    lipschitz_t = lipschitz
 
   pbar = trange(max_iter, disable=(verbose == 0))
   f_t, grad = f_grad(x)
@@ -106,58 +112,50 @@ def minimize_frank_wolfe(f_grad,
     if g_t <= tol:
       break
     d2_t = splinalg.norm(d_t)**2
-    if hasattr(strategy, "__call__"):
-      step_size_ = strategy(locals())
-      f_next, grad_next = f_grad(x + step_size_ * d_t)
-    elif strategy == "adaptive":
+    if hasattr(step_size, "__call__"):
+      cur_step_size = step_size(locals())
+      f_next, grad_next = f_grad(x + cur_step_size * d_t)
+    elif step_size == "adaptive":
       ratio_decrease = 0.999
       ratio_increase = 2
       for i in range(max_iter):
-        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
-        rhs = f_t - step_size_ * g_t + 0.5 * (step_size_**2) * lipschitz_t * d2_t
-        f_next, grad_next = f_grad(x + step_size_ * d_t)
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        rhs = f_t - cur_step_size * g_t + 0.5 * (cur_step_size**2) * lipschitz_t * d2_t
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
         if f_next <= rhs + 1e-6:
           if i == 0:
             lipschitz_t *= ratio_decrease
           break
         else:
           lipschitz_t *= ratio_increase
-    elif strategy == "adaptive2":
+    elif step_size == "adaptive2":
       rho = 0.2
       for i in range(max_iter):
-        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_ * d_t)
-        if (f_next - f_t) / step_size_ < - g_t / 2:
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+        if (f_next - f_t) / cur_step_size < - g_t / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
-        if (f_next - f_t) / step_size_ >  - rho * g_t / 2:
+        if (f_next - f_t) / cur_step_size >  - rho * g_t / 2:
           lipschitz_t *= 2.
           continue
-        # import pdb; pdb.set_trace()
         break
-      else:
-        raise 1/0
-        # rhs = f_t - rho * step_size_ * g_t / 2
-        # if f_next <= rhs + 1e-6:
-        #   if i == 0:
-        #     lipschitz_t *= ratio_decrease
-        #   break
-        # else:
-        #   lipschitz_t *= ratio_increase
-    else:
+    elif step_size is None:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz_t is None:
-        step_size_ = 2. / (it+2)
-        f_next, grad_next = f_grad(x + step_size_ * d_t)
+        cur_step_size = 2. / (it+2)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
       else:
         # this is the case in which we know the Lipschitz constant
-        step_size_ = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_ * d_t)
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
         # import pdb; pdb.set_trace()
+    else:
+      raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
       callback(locals())
-    x += step_size_ * d_t
+    x += cur_step_size * d_t
     pbar.set_postfix(tol=g_t, iter=it, L_t=lipschitz_t)
 
     f_t, grad = f_next, grad_next
