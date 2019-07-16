@@ -10,9 +10,6 @@ Frank-Wolfe
     copt.minimize_pfw_l1
 
 
-Examples
-========
-
 
 .. topic:: Examples:
 
