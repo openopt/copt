@@ -4,8 +4,7 @@
    :target: https://coveralls.io/github/openopt/copt?branch=master
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
-.. image:: https://img.shields.io/pypi/l/copt.svg
-   :target: https://github.com/openopt/copt/blob/master/LICENSE
+
 
 C-OPT: composite optimization in Python
 =======================================
