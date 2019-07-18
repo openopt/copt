@@ -61,9 +61,10 @@ autodoc_default_flags = ['members', 'inherited-members']
 
 sphinx_gallery_conf = {
     # path to your examples scripts
-    'examples_dirs' : '../examples',
+    'examples_dirs': '../examples',
     # path where to save gallery generated examples
-    'gallery_dirs': 'auto_examples'}
+    'gallery_dirs': 'auto_examples',
+    'show_memory': True}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -75,7 +76,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # Generate the plots for the gallery
-plot_gallery = True
+plot_gallery = "True"
 
 # The master toctree document.
 master_doc = 'index'
