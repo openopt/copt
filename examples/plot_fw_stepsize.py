@@ -3,7 +3,8 @@
 Comparison of different step-sizes in Frank-Wolfe
 =================================================
 
-
+Speed of convergence of different step-size strategies
+and on 4 different classification datasets.
 """
 import copt as cp
 import matplotlib.pylab as plt
@@ -32,8 +33,10 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
   for step_size, label in [
       ["adaptive", "adaptive step-size"],
       ["adaptive2", "adaptive2 step-size"],
+      ["adaptive3", "adaptive3 step-size"],
       [None, "Lipschitz step-size"]
       ]:
+    print("Running %s variant" % label)
     cb = cp.utils.Trace(f)
     trace_gt = []
 
@@ -46,7 +49,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         x0,
         l1_ball.lmo,
         callback=trace,
-        max_iter=500,
+        max_iter=50,
         step_size=step_size,
         verbose=True,
         lipschitz=f.lipschitz,

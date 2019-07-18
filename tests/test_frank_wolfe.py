@@ -33,14 +33,13 @@ def test_fw_l1(loss_grad):
       l1ball.lmo,
       tol=0,
       lipschitz=f.lipschitz,
-      max_iter=5000,
       callback=cb)
   assert np.isfinite(opt.x).sum() == n_features
 
   ss = 1 / f.lipschitz
   grad = f.f_grad(opt.x)[1]
   grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
-  assert np.linalg.norm(grad_map) < 0.03
+  assert np.linalg.norm(grad_map) < 0.08
 
 
 def exact_ls(kw):
@@ -50,7 +49,7 @@ def exact_ls(kw):
   return ls_sol.x
 
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("bt", [None, "adaptive", exact_ls])
+@pytest.mark.parametrize("bt", [None, "adaptive", "adaptive2", "adaptive3", exact_ls])
 def test_fw_backtrack(obj, bt):
   """Test FW with different options of the line-search strategy."""
   f = obj(A, b, 1. / n_samples)

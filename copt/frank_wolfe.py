@@ -141,6 +141,23 @@ def minimize_frank_wolfe(f_grad,
           lipschitz_t *= 2.
           continue
         break
+    elif step_size == "adaptive3":
+      rho = 0.2
+      for i in range(max_iter):
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+          # sufficient decrease not met, increase Lipchitz constant
+          lipschitz_t *= 2
+          continue
+        if (f_next - f_t) / cur_step_size <= (rho / 2 - 1) * g_t:
+          # there's sufficient decrease but the quadratic approximation is not good
+          # we can decrease the Lipschitz / increase the step-size
+          lipschitz_t /= 1.5
+          continue
+        break
+      else:
+        raise ValueError('Exhausted line search iterations in minimize_frank_wolfe')
     elif step_size is None:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz_t is None:
@@ -150,7 +167,6 @@ def minimize_frank_wolfe(f_grad,
         # this is the case in which we know the Lipschitz constant
         cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + cur_step_size * d_t)
-        # import pdb; pdb.set_trace()
     else:
       raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
