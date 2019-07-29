@@ -1,4 +1,4 @@
-"""Frank-Wolfe algorithm."""
+"""Frank-Wolfe and related algorithms."""
 from copt import utils
 import numpy as np
 from scipy import optimize
@@ -9,14 +9,14 @@ from tqdm import trange
 
 
 def minimize_frank_wolfe(f_grad,
-                x0,
-                lmo,
-                max_iter=1000,
-                tol=1e-12,
-                step_size=None,
-                callback=None,
-                lipschitz=None,
-                verbose=0):
+                         x0,
+                         lmo,
+                         max_iter=1000,
+                         tol=1e-12,
+                         step_size=None,
+                         callback=None,
+                         lipschitz=None,
+                         verbose=0):
   r"""Frank-Wolfe algorithm.
 
   This method for optimization problems of the form
@@ -142,7 +142,7 @@ def minimize_frank_wolfe(f_grad,
           continue
         break
     elif step_size == "adaptive3":
-      rho = 0.2
+      rho = 0.9
       for i in range(max_iter):
         cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + cur_step_size * d_t)
@@ -184,7 +184,7 @@ def minimize_frank_wolfe(f_grad,
 
 @utils.njit
 def max_active(grad, active_set, n_features, include_zero=True):
-  # find the index that most correlates with the gradient
+  """Find the index that most correlates with the gradient."""
   max_grad_active = -np.inf
   max_grad_active_idx = -1
   for j in range(n_features):
