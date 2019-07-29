@@ -1,9 +1,13 @@
 # python3
 """
-Overlap in update direction for Frank-Wolfe
-=================================================
+Update Direction Overlap in Frank-Wolfe
+========================================
 
-
+This example quantifies how many times the Frank-Wolfe algorithm selects
+the same extremal vertex (which will determine the update direction) twice
+in a row. Selecting the same vertex twice in a row is symptomatic of a poor
+step-size, as it implies that the last two updates could have been replaced
+by a single update with larger step-size.
 """
 import copt as cp
 import matplotlib.pylab as plt
@@ -47,14 +51,14 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         # coincide. Since these might be sparse vectors, we use
         # sparse.linalg.norm to make the comparison
         prev_overlap = overlap[-1]
-        if splinalg.norm(dt_prev[0] - kw['s_t']) == 0:
+        if splinalg.norm(dt_prev[0] - kw["s_t"]) == 0:
           overlap.append(prev_overlap + 1)
         else:
           overlap.append(prev_overlap)
-        dt_prev[0] = kw['s_t']
+        dt_prev[0] = kw["s_t"]
       else:
         overlap.append(0)
-        dt_prev.append(kw['s_t'])
+        dt_prev.append(kw["s_t"])
 
     cp.minimize_frank_wolfe(
         f.f_grad,
