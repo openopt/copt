@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 pip install -r requirements.txt
-pip install sphinx
+pip install sphinx sphinx-gallery
 python setup.py install
 cd doc
 make html
