@@ -5,7 +5,7 @@ steps:
   args:
   - -c
   - 'ci/test.sh'
-- name: 'python:3.7-slim'
+- name: 'python:3.7'
   id: Doc
   entrypoint: /bin/sh
   args:
