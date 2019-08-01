@@ -4,18 +4,21 @@ Total variation regularization
 
 Comparison of solvers with total variation regularization.
 """
-import numpy as np
-from scipy import misc, sparse
-from scipy.sparse import linalg as splinalg
-from scipy.ndimage import gaussian_filter as gf
-import pylab as plt
 import copt as cp
+import numpy as np
+import pylab as plt
+from scipy import misc
+from scipy import sparse
+from scipy.sparse import linalg as splinalg
+from PIL import Image
 
 np.random.seed(0)
 
-img = misc.face(gray=True).astype(np.float)
+img = misc.face(gray=True)
+# resize
+new_size = [int(d * 0.15) for d in img.shape]
+img = np.array(Image.fromarray(img).resize(new_size)).astype(np.float)
 img /= img.max()
-img = misc.imresize(img, 0.15)
 
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
