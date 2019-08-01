@@ -5,3 +5,4 @@ pytest-cov
 scikit-learn
 tqdm
 h5py
+Pillow
