@@ -42,9 +42,14 @@ Contrary to other constrained optimization algorithms like projected gradient de
 Pairwise Frank-Wolfe
 --------------------
 
+The Pairwise Frank-Wolfe algorithm [4]_
+
 .. autosummary::
    :toctree: generated/
 
     copt.minimize_pfw_l1
 
 
+.. topic:: References:
+
+  .. [4] Lacoste-Julien, Simon, and Martin Jaggi. "On the global linear convergence of Frank-Wolfe optimization variants." Advances in Neural Information Processing Systems. 2015.

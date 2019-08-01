@@ -54,7 +54,6 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         verbose=True,
         lipschitz=f.lipschitz,
     )
-    # ax.plot(trace_gt, label=label)
     ax.plot(trace_gt, label=label)
     ax.set_yscale("log")
     ax.legend()
@@ -63,5 +62,4 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
   ax.set_title(dataset_title)
   fig.tight_layout()  # otherwise the right y-label is slightly clipped
   ax.grid()
-# plt.legend()
 plt.show()

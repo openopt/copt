@@ -35,9 +35,8 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
   x0 = np.zeros(n_features)
 
   for i, (step_size, label, marker) in enumerate([
-      ["adaptive", "adaptive step-size", "^"],
-      ["adaptive2", "adaptive2 step-size", "*"],
-      ["adaptive3", "adaptive3 step-size", "s"],
+      ["adaptive", "Frank-Wolfe adaptive step-size", "^"],
+      ["adaptive3", "adaptive++ step-size", "s"],
       [None, "Lipschitz step-size", "d"]
       ]):
     print("Running %s variant" % label)
@@ -60,17 +59,19 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         overlap.append(0)
         dt_prev.append(kw["s_t"])
 
-    cp.minimize_frank_wolfe(
-        f.f_grad,
-        x0,
-        l1_ball.lmo,
-        callback=trace,
-        max_iter=50,
-        step_size=step_size,
-        verbose=True,
-        lipschitz=f.lipschitz,
-    )
-    # ax.plot(trace_gt, label=label)
+    if label.startswith("Frank-Wolfe"):
+      cp.minimize_frank_wolfe(
+          f.f_grad,
+          x0,
+          l1_ball.lmo,
+          callback=trace,
+          max_iter=50,
+          step_size=step_size,
+          verbose=True,
+          lipschitz=f.lipschitz,
+      )
+    elif label.startswith("Pairwise"):
+      pass
     ax.plot(overlap, label=label, marker=marker, markevery=7 + i)
     ax.legend()
   ax.set_xlabel("number of iterations")
