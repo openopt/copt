@@ -1,0 +1,7 @@
+steps:
+- name: 'python:3.7-slim'
+  id: Test
+  entrypoint: /bin/sh
+  args:
+  - -c
+  - 'pip install -r requirements.txt && py.test'
