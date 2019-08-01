@@ -4,4 +4,10 @@ steps:
   entrypoint: /bin/sh
   args:
   - -c
-  - 'pip install -r requirements.txt && python setup.py install && py.test'
+  - 'ci/test.sh'
+- name: 'python:3.7-slim'
+  id: Doc
+  entrypoint: /bin/sh
+  args:
+  - -c
+  - 'ci/doc.sh'
