@@ -1,7 +1,9 @@
-import numpy as np
-from scipy import sparse, misc
-import os
+# python3
 import hashlib
+import os
+import numpy as np
+from scipy import misc
+from scipy import sparse
 from six.moves import urllib
 
 DATA_DIR = os.environ.get('COPT_DATA_DIR',
@@ -9,7 +11,7 @@ DATA_DIR = os.environ.get('COPT_DATA_DIR',
 
 
 def load_img1(n_rows=20, n_cols=20):
-  """Load sample image"""
+  """Load sample image."""
   dir_path = os.path.dirname(os.path.realpath(__file__))
   grid = np.loadtxt(os.path.join(dir_path, 'data', 'img1.csv'), delimiter=',')
   dim1 = int(np.sqrt(grid.shape[0]))
@@ -192,8 +194,7 @@ def load_url(md5_check=True):
 
 
 def load_covtype():
-  """
-    Download and return the covtype dataset.
+  """Download and return the covtype dataset.
 
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
@@ -290,8 +291,7 @@ def load_kdd10(md5_check=True):
 
 
 def load_kdd12(md5_check=True, verbose=0):
-  """
-    Download and return the KDD12 dataset.
+  """Download and return the KDD12 dataset.
 
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
@@ -350,8 +350,7 @@ def load_kdd12(md5_check=True, verbose=0):
 
 
 def load_criteo(md5_check=True):
-  """
-    Download and return the criteo dataset.
+  """Download and return the criteo dataset.
 
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
