@@ -213,7 +213,7 @@ def load_covtype():
   file_name = os.path.join(DATA_DIR, 'covtype.libsvm.binary.scale.bz2')
   if not os.path.exists(file_name):
     print('Covtype dataset is not present in data folder. Downloading it ...')
-    url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/covtype.libsvm.binary.scale.bz2'
+    url = 'https://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/covtype.libsvm.binary.scale.bz2'
     urllib.request.urlretrieve(url, file_name)
     print('Finished downloading')
   X, y = datasets.load_svmlight_file(file_name)
@@ -241,7 +241,7 @@ def load_gisette():
   file_name = os.path.join(DATA_DIR, 'gisette_scale.bz2')
   if not os.path.exists(file_name):
     print('Gisette dataset is not present in data folder. Downloading it ...')
-    url = 'https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/gisette_scale.bz2'
+    url = 'https://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/gisette_scale.bz2'
     urllib.request.urlretrieve(url, file_name)
     print('Finished downloading')
   X, y = datasets.load_svmlight_file(file_name)
