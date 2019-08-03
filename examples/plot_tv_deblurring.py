@@ -15,11 +15,10 @@ from scipy.sparse import linalg as splinalg
 
 np.random.seed(0)
 
-img = misc.face(gray=True)
+img = misc.face(gray=True).astype(np.float)
 # resize
-new_size = [int(d * 0.15) for d in img.shape]
-img = np.array(Image.fromarray(img).resize(new_size)).astype(np.float)
-img /= img.max()
+img = np.array(Image.fromarray(img).resize((153, 115)))
+img = img.astype(np.float) / img.max()
 
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols
@@ -28,7 +27,7 @@ max_iter = 2000
 
 # .. compute blurred and noisy image ..
 A = sparse.load_npz('data/blur_matrix.npz')
-b = A.dot(img.ravel()) + np.random.randn(n_samples)
+b = A.dot(img.ravel()) + 0 * np.random.randn(n_samples)
 
 np.random.seed(0)
 n_samples = n_features
@@ -55,13 +54,13 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
   print('Iteration %s, beta %s' % (i, beta))
 
-  def g_prox(x, step_size):
+  def g_prox(x, gamma, pen=beta):
     return cp.tv_prox.prox_tv1d_cols(
-        step_size * beta, x, n_rows, n_cols)
+        gamma * pen, x, n_rows, n_cols)
 
-  def h_prox(x, step_size):
+  def h_prox(x, gamma, pen=beta):
     return cp.tv_prox.prox_tv1d_rows(
-        step_size * beta, x, n_rows, n_cols)
+        gamma * pen, x, n_rows, n_cols)
 
   cb_adatos = cp.utils.Trace()
   x0 = np.zeros(n_features)
@@ -133,9 +132,9 @@ for i, beta in enumerate(all_betas):
 
 plt.gcf().subplots_adjust(bottom=0.25)
 plt.figlegend(
-  (plot_tos, plot_tos_nols, plot_pdhg),
-  ('Adaptive three operator splitting', 'three operator splitting', 'primal-dual hybrid gradient'), 'lower center', ncol=2,
-  scatterpoints=1, frameon=False)
+    (plot_tos, plot_tos_nols, plot_pdhg),
+    ('Adaptive three operator splitting', 'three operator splitting', 'primal-dual hybrid gradient'), 'lower center', ncol=2,
+    scatterpoints=1, frameon=False)
 
 ax[1, 0].set_ylabel('Objective minus optimum')
 plt.show()
