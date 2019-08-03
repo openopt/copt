@@ -85,7 +85,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'copt'
-copyright = u'Fabian Pedregosa'
+copyright = u'COPT developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -297,8 +297,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'project-template', u'project-template Documentation',
-    u'Fabian Pedregosa', 'project-template', 'One line description of project.',
-    'Miscellaneous'),
+     u'Fabian Pedregosa', 'project-template', 'One line description of project.',
+     'Miscellaneous'),
 ]
 
 def generate_example_rst(app, what, name, obj, options, lines):
