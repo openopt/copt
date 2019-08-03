@@ -1,3 +1,4 @@
+# python3
 # -*- coding: utf-8 -*-
 #
 # project-template documentation build configuration file, created by
@@ -12,8 +13,8 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
+import sys
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -57,7 +58,7 @@ mathjax_config = {
 }
 
 autosummary_generate = True
-autodoc_default_options = {'members' : True, 'inherited-members': True}
+autodoc_default_options = {'members': True, 'inherited-members': True}
 
 
 sphinx_gallery_conf = {
@@ -251,8 +252,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'project-template.tex', u'project-template Documentation',
-   u'Fabian Pedregosa', 'manual'),
+    ('index', 'project-template.tex', u'project-template Documentation',
+     u'Fabian Pedregosa', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -295,9 +296,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'project-template', u'project-template Documentation',
-   u'Fabian Pedregosa', 'project-template', 'One line description of project.',
-   'Miscellaneous'),
+    ('index', 'project-template', u'project-template Documentation',
+    u'Fabian Pedregosa', 'project-template', 'One line description of project.',
+    'Miscellaneous'),
 ]
 
 def generate_example_rst(app, what, name, obj, options, lines):
