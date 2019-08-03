@@ -151,8 +151,8 @@ def minimize_frank_wolfe(f_grad,
           lipschitz_t *= 2
           continue
         if (f_next - f_t) / cur_step_size <= (rho / 2 - 1) * g_t:
-          # there's sufficient decrease but the quadratic approximation is not good
-          # we can decrease the Lipschitz / increase the step-size
+          # there's sufficient decrease but the quadratic approximation is not
+          # good. We can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
         break
