@@ -13,6 +13,9 @@ steps:
   - -c
   - 'ci/doc.sh'
   timeout: 50000s
-  waitFor: ['-']  # The '-' indicates that this step begins immediately.
+  # waitFor: ['-']  # The '-' indicates that this step begins immediately.
 
-timeout: 50000s
+- name: gcr.io/cloud-builders/gsutil
+  args: ["-m", "rsync", "-r", "-c", "-d", "doc/html/_build/", "gs://copt"]
+
+  timeout: 50000s
