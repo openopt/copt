@@ -57,7 +57,7 @@ mathjax_config = {
 }
 
 autosummary_generate = True
-autodoc_default_options = ['members', 'inherited-members']
+autodoc_default_options = {'members' : True, 'inherited-members': True}
 
 
 sphinx_gallery_conf = {
