@@ -1,12 +1,12 @@
 steps:
-- name: 'python:3.7'
+- name: 'python:3.6'
   id: Test
   entrypoint: /bin/sh
   args:
   - -c
   - 'ci/test.sh'
   timeout: 1800s  # 30 min.
-- name: 'python:3.7'
+- name: 'python:3.6'
   id: Doc
   entrypoint: /bin/sh
   args:
