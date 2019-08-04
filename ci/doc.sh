@@ -9,4 +9,4 @@ pip install -U sphinx-gallery
 python setup.py install
 cd doc
 make html-noplot
-gsutil -m rsync -r -c -d _build/html/ gs://copt
+# gsutil -m rsync -r -c -d _build/html/ gs://copt
