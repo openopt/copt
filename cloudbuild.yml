@@ -18,11 +18,11 @@ steps:
 - name: 'ubuntu'
   id: Push doc
   entrypoint: '/bin/bash'
-  args: ["-c", "ls"]
+  args: ["-c", "ls", "doc"]
   # args: ["-m", "rsync", "-r", "-c", "-d", "doc/html/_build/", "gs://copt"]
 
 - name: gcr.io/cloud-builders/gsutil
-  args: ["-c", "ls"]
+  args: [ls"]
 
 timeout: 50000s
 options:
