@@ -22,7 +22,7 @@ steps:
   # args: ["-m", "rsync", "-r", "-c", "-d", "doc/html/_build/", "gs://copt"]
 
 - name: gcr.io/cloud-builders/gsutil
-  args: [ls"]
+  args: ["ls"]
 
 timeout: 50000s
 options:
