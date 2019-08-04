@@ -17,7 +17,9 @@ steps:
 
 - name: gcr.io/cloud-builders/gsutil
   id: Push doc
-  args: ["-m", "rsync", "-r", "-c", "-d", "doc/html/_build/", "gs://copt"]
+  entrypoint: '/bin/bash'
+  args: ["ls"]
+  # args: ["-m", "rsync", "-r", "-c", "-d", "doc/html/_build/", "gs://copt"]
 
 timeout: 50000s
 options:
