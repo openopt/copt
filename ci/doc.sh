@@ -8,4 +8,5 @@ pip install -U sphinx loky joblib sphinx_copybutton memory_profiler
 pip install -U sphinx-gallery
 python setup.py install
 cd doc
-make html
+make html-noplot
+gsutil -m rsync -r -c -d doc/html/_build/ gs://copt
