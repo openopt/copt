@@ -25,8 +25,8 @@ Contrary to other constrained optimization algorithms like projected gradient de
 
 .. topic:: Examples:
 
-   * :ref:`sphx_glr_auto_examples_plot_fw_stepsize.py`
-   * :ref:`sphx_glr_auto_examples_plot_fw_vertex_overlap.py`
+   * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_stepsize.py`
+   * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_vertex_overlap.py`
 
 
 
