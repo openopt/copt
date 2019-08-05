@@ -19,13 +19,14 @@ datasets = [
     ]
 
 
-fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 5))
-for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
+for dataset_title, load_data in datasets:
   print("Running on the %s dataset" % dataset_title)
 
   X, y = load_data()
   n_samples, n_features = X.shape
 
+  # the size of the constraint set. We set it to
+  # (for example) n_features / 2
   l1_ball = cp.utils.L1Ball(n_features / 2.)
   f = cp.utils.LogLoss(X, y)
   x0 = np.zeros(n_features)
@@ -49,17 +50,15 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
         x0,
         l1_ball.lmo,
         callback=trace,
-        max_iter=50,
         step_size=step_size,
-        verbose=True,
         lipschitz=f.lipschitz,
     )
-    ax.plot(trace_gt, label=label)
-    ax.set_yscale("log")
-    ax.legend()
-  ax.set_xlabel("number of iterations")
-  ax.set_ylabel("FW gap")
-  ax.set_title(dataset_title)
-  fig.tight_layout()  # otherwise the right y-label is slightly clipped
-  ax.grid()
-plt.show()
+    plt.plot(trace_gt, label=label)
+    plt.yscale("log")
+  plt.legend()
+  plt.xlabel("number of iterations")
+  plt.ylabel("FW gap")
+  plt.title(dataset_title)
+  plt.tight_layout()  # otherwise the right y-label is slightly clipped
+  plt.grid()
+  plt.show()

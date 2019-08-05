@@ -6,9 +6,6 @@ Welcome to copt!
 copt is a library for mathematical optimization written in pure Python.
 
 
-.. warning::
-    This library is a work in progress, expect some rough edges.
-
 
 Philosophy
 ----------

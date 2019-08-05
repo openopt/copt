@@ -1,9 +1,9 @@
 """
-Effect of acceleration in gradient descent
-==========================================
+Accelerated gradient descent
+============================
 
-Showcase the improved convergence of accelerated gradient
-descent on a logistic regression problem.
+Speed of convergence comparison between gradient descent
+and Nesterov acceleration on a logistic regression problem.
 """
 import copt as cp
 import numpy as np

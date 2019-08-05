@@ -11,7 +11,7 @@ from tqdm import trange
 def minimize_frank_wolfe(f_grad,
                          x0,
                          lmo,
-                         max_iter=1000,
+                         max_iter=200,
                          tol=1e-12,
                          step_size=None,
                          callback=None,
