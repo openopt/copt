@@ -29,5 +29,6 @@ options:
  machineType: 'N1_HIGHCPU_8'
 
 artifacts:
-  objects: gs://copt
-  paths: ['doc/_build/html']
+  objects:
+    location: 'gs://copt/'
+    paths: ['doc/_build/html/*.html']
