@@ -30,4 +30,4 @@ options:
 
 artifacts:
   objects: gs://copt
-  paths: doc/_build/html
+  paths: ['doc/_build/html']
