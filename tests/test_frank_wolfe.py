@@ -39,7 +39,7 @@ def test_fw_l1(loss_grad):
   ss = 1 / f.lipschitz
   grad = f.f_grad(opt.x)[1]
   grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
-  assert np.linalg.norm(grad_map) < 0.08
+  assert np.linalg.norm(grad_map) < 0.2
 
 
 def exact_ls(kw):
@@ -68,7 +68,7 @@ def test_fw_backtrack(obj, bt):
   ss = 1 / f.lipschitz
   grad = f.f_grad(opt.x)[1]
   grad_map = (opt.x - traceball.prox(opt.x - ss * grad, ss)) / ss
-  assert np.linalg.norm(grad_map) < 1e-2
+  assert np.linalg.norm(grad_map) < 1e-1
 
 
 # @pytest.mark.parametrize("obj", loss_funcs)

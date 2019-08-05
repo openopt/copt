@@ -7,7 +7,7 @@ Frank-Wolfe and other projection-free algorithms
 Frank-Wolfe
 -----------
 
-The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_ a method for constrained optimization and has seen an impressive revival in recent years due to its low memory requirement and projection-free iterations. It can solve problems of the form  
+The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ a method for constrained optimization and has seen an impressive revival in recent years due to its low memory requirement and projection-free iterations. It can solve problems of the form  
 
 .. math::
       \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
@@ -42,7 +42,15 @@ Contrary to other constrained optimization algorithms like projected gradient de
 Pairwise Frank-Wolfe
 --------------------
 
-The Pairwise Frank-Wolfe algorithm [4]_
+As the Frank-Wolfe algorithm, the Pairwise Frank-Wolfe [4]_ solves problems of the form 
+
+.. math::
+      \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
+
+where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
+
+Although the algorithm is more broadly applicable, the implementation in this library assumes, :meth:`copt.minimize_pfw_l1`, assumes that the domain :math:`\mathcal{D}` is the :math:`\ell_1` ball, that is, :math:`\mathcal{D} = \{x : \sum_i |x| \leq \alpha\}`, where :math:`\alpha` is a user-defined parameter.
+
 
 .. autosummary::
    :toctree: generated/
