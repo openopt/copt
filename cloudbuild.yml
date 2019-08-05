@@ -27,3 +27,7 @@ steps:
 timeout: 50000s
 options:
  machineType: 'N1_HIGHCPU_8'
+
+artifacts:
+  objects: gs://copt
+  paths: doc/_build/html
