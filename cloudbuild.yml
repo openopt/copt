@@ -22,4 +22,4 @@ options:
 artifacts:
   objects:
     location: 'gs://copt/'
-    paths: ['doc/_build/html/*.html', 'doc/_build/html/*.css', 'doc/_build/html/*.png']
+    paths: ['doc/_build/html/*', 'doc/_build/html/*.css', 'doc/_build/html/*.png']
