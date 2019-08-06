@@ -11,11 +11,11 @@ from tqdm import trange
 def minimize_frank_wolfe(f_grad,
                          x0,
                          lmo,
+                         step_size=None,
+                         lipschitz=None,
                          max_iter=200,
                          tol=1e-12,
-                         step_size=None,
                          callback=None,
-                         lipschitz=None,
                          verbose=0):
   r"""Frank-Wolfe algorithm.
 
@@ -48,13 +48,13 @@ def minimize_frank_wolfe(f_grad,
 
     step_size: None or "adaptive" or "adaptive2" or callable
         Step-size step_size to use. If None is used and keyword lipschitz
-        is not given or None, then it will use a decreasing step-size of the form
-        2/(k+1) (described in [1]). If None is used and keyword lipschitz is not
-        None, then it will use the Demyanov-Rubinov step-size step_size
+        is not given or None, then it will use a decreasing step-size of the
+        form 2/(k+1) (described in [1]). If None is used and keyword lipschitz
+        is not None, then it will use the Demyanov-Rubinov step-size step_size
         (variant 1 in [2]).
 
     lipschitz: None or float.
-        Estimate for the Lipschitz constant of the gradient. 
+        Estimate for the Lipschitz constant of the gradient.
 
     max_iter: integer
 

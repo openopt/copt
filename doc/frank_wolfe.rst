@@ -7,22 +7,29 @@ Frank-Wolfe and other projection-free algorithms
 Frank-Wolfe
 -----------
 
-The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ is a method for constrained optimization. It can solve problems of the form  
+The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ is a method for constrained optimization. It can solve problems of the form  f
 
 .. math::
       \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
 
 where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
 
-The Frank-Wolfe distinguishes from other algorithms by its low memory requirements and the fact that it doesn't require to evaluate the projection onto the constrain set.
-
-
 Contrary to other constrained optimization algorithms like projected gradient descent, the Frank-Wolfe algorithm does not require access to a projection, hence why it is sometimes referred to as a projection-free algorithm. It instead relies on a routine that solves a linear problem over the domain. We refer to this routine as a linear minimization oracle (keyword argument lmo).
 
+The Frank-Wolfe algorithm is implemented in this library in the method :meth:`copt.minimize_frank_wolfe`. As most other methods it takes as argument an objective function to minimize, but unlike most other methods, it also requires to 
 
-The Frank-Wolfe algorithm updates the coefficients through a linear 
+At each iteration, the Frank-Wolfe algorithm selects the vertex :math:`\boldsymbol{s}_t` of the domain that correlates the most with the negative gradient (thanks to the linear minimization oracle) and then constructs the next iterate :math:`\boldsymbol{x}_{t+1}` as a convex combination of the current iterate :math:`\boldsymbol{x}_{t}` and the newly acquired vertex :math:`\boldsymbol{s}_t`:
 
-:meth:`copt.minimize_frank_wolfe`
+.. math::
+      \boldsymbol{x}_{t+1} = (1 - \gamma)\boldsymbol{x}_t + \gamma \boldsymbol{s}_t
+
+
+
+.. .. image:: http://fa.bianp.net/images/2018/FW_iterates.png
+..    :alt: FW iterates
+..    :align: center
+
+
 
 
 .. autosummary::
