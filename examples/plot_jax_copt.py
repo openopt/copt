@@ -8,11 +8,10 @@ In this example tensorflow-datasets is used to provide
 the training data.
 """
 import copt as cp
-import jax.numpy as np
-import numpy as onp
-from jax import random
-from jax import vmap
 from jax import grad
+from jax import numpy as np
+from jax import random
+import numpy as onp
 import pylab as plt
 
 # .. construct (random) dataset ..
@@ -27,6 +26,7 @@ def loss(w):
   # squared error loss
   z = X.dot(w) - y
   return np.sum(z * z)
+
 
 def f_grad(w):
   return loss(w), grad(loss)(w)
