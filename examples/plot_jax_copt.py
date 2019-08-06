@@ -34,11 +34,11 @@ def f_grad(w):
 w0 = onp.zeros(n_features)
 
 l1_ball = cp.utils.L1Ball(n_features / 2.)
-cb = cp.utils.Trace(loss)
+cb = cp.utils.Trace(lambda x: loss(x) + l1_ball(x))
 cp.minimize_proximal_gradient(
     f_grad,
     w0,
-    verbose=True,
+    prox=l1_ball.prox,
     callback=cb
 )
 plt.plot(cb.trace_fx)
