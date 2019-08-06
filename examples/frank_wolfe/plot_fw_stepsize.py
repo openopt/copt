@@ -30,6 +30,7 @@ for dataset_title, load_data in datasets:
   l1_ball = cp.utils.L1Ball(n_features / 2.)
   f = cp.utils.LogLoss(X, y)
   x0 = np.zeros(n_features)
+  plt.figure()
 
   for step_size, label in [
       ["adaptive", "adaptive step-size"],
