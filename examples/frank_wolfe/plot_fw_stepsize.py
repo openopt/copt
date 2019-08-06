@@ -30,7 +30,6 @@ for dataset_title, load_data in datasets:
   l1_ball = cp.utils.L1Ball(n_features / 2.)
   f = cp.utils.LogLoss(X, y)
   x0 = np.zeros(n_features)
-  plt.figure()
 
   for step_size, label in [
       ["adaptive", "adaptive step-size"],
@@ -38,7 +37,6 @@ for dataset_title, load_data in datasets:
       ["adaptive3", "adaptive3 step-size"],
       [None, "Lipschitz step-size"]
       ]:
-    print("Running %s variant" % label)
     cb = cp.utils.Trace(f)
     trace_gt = []
 
