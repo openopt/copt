@@ -7,12 +7,14 @@ Frank-Wolfe and other projection-free algorithms
 Frank-Wolfe
 -----------
 
-The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ a method for constrained optimization and has seen an impressive revival in recent years due to its low memory requirement and projection-free iterations. It can solve problems of the form  
+The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ is a method for constrained optimization. It can solve problems of the form  
 
 .. math::
       \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
 
 where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
+
+The Frank-Wolfe distinguishes from other algorithms by its low memory requirements and the fact that it doesn't require to evaluate the projection onto the constrain set.
 
 
 Contrary to other constrained optimization algorithms like projected gradient descent, the Frank-Wolfe algorithm does not require access to a projection, hence why it is sometimes referred to as a projection-free algorithm. It instead relies on a routine that solves a linear problem over the domain. We refer to this routine as a linear minimization oracle (keyword argument lmo).
