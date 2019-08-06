@@ -10,22 +10,19 @@ the training data.
 import copt as cp
 from jax import grad
 from jax import numpy as np
-from jax import random
 import numpy as onp
 import pylab as plt
+from sklearn import datasets
 
 # .. construct (random) dataset ..
-n_samples, n_features = 1000, 200
-key = random.PRNGKey(1)
-X = random.normal(key, (n_samples, n_features))
-key, subkey = random.split(key)
-y = random.normal(key, (n_samples,))
+X, y = datasets.make_regression()
+n_samples, n_features = X.shape
 
 
 def loss(w):
   # squared error loss
-  z = X.dot(w) - y
-  return np.sum(z * z)
+  z = np.dot(X, w) - y
+  return np.sum(z * z) / n_samples
 
 
 def f_grad(w):
@@ -33,15 +30,16 @@ def f_grad(w):
 
 w0 = onp.zeros(n_features)
 
-l1_ball = cp.utils.L1Ball(n_features / 2.)
+l1_ball = cp.utils.L1Norm(0.1)
 cb = cp.utils.Trace(lambda x: loss(x) + l1_ball(x))
-cp.minimize_proximal_gradient(
+sol = cp.minimize_proximal_gradient(
     f_grad,
     w0,
     prox=l1_ball.prox,
     callback=cb
 )
-plt.plot(cb.trace_fx)
+plt.plot(cb.trace_fx, lw=3)
+plt.yscale('log')
 plt.xlabel('# Iterations')
 plt.ylabel('Objective value')
 plt.grid()
