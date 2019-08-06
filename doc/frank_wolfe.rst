@@ -17,6 +17,12 @@ where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a conve
 
 Contrary to other constrained optimization algorithms like projected gradient descent, the Frank-Wolfe algorithm does not require access to a projection, hence why it is sometimes referred to as a projection-free algorithm. It instead relies on a routine that solves a linear problem over the domain. We refer to this routine as a linear minimization oracle (keyword argument lmo).
 
+
+The Frank-Wolfe algorithm updates the coefficients through a linear 
+
+:meth:`copt.minimize_frank_wolfe`
+
+
 .. autosummary::
    :toctree: generated/
 
@@ -49,13 +55,13 @@ As the Frank-Wolfe algorithm, the Pairwise Frank-Wolfe [4]_ solves problems of t
 
 where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
 
-Although the algorithm is more broadly applicable, the implementation in this library assumes, :meth:`copt.minimize_pfw_l1`, assumes that the domain :math:`\mathcal{D}` is the :math:`\ell_1` ball, that is, :math:`\mathcal{D} = \{x : \sum_i |x| \leq \alpha\}`, where :math:`\alpha` is a user-defined parameter.
+Although the algorithm is more broadly applicable, this library's implementation, :meth:`copt.minimize_pairwise_frank_wolfe_l1`, assumes that the domain :math:`\mathcal{D}` is the :math:`\ell_1` ball, that is, :math:`\mathcal{D} = \{x : \sum_i |x| \leq \alpha\}`, where :math:`\alpha` is a user-defined parameter.
 
 
 .. autosummary::
    :toctree: generated/
 
-    copt.minimize_pfw_l1
+    copt.minimize_pairwise_frank_wolfe_l1
 
 
 .. topic:: References:

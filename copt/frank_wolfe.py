@@ -204,7 +204,7 @@ def max_active(grad, active_set, n_features, include_zero=True):
   return max_grad_active, max_grad_active_idx
 
 
-def minimize_pfw_l1(f_grad,
+def minimize_pairwise_frank_wolfe_l1(f_grad,
                     alpha,
                     n_features,
                     lipschitz=None,
