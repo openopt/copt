@@ -2,10 +2,10 @@
 Combining COPT with JAX
 =======================
 
-This example shows how JAX can be used within COPT
-to compute the gradients of the objective function.
-In this example tensorflow-datasets is used to provide
-the training data.
+This example shows how `JAX <https://github.com/google/jax>`_
+can be used within COPT to compute the gradients of the
+objective function. In this example tensorflow-datasets
+is used to provide the training data.
 """
 import copt as cp
 from jax import grad
