@@ -158,6 +158,46 @@ def minimize_frank_wolfe(f_grad,
         break
       else:
         raise ValueError('Exhausted line search iterations in minimize_frank_wolfe')
+    elif step_size == "adaptive4":
+      sigma = 0.7
+      rho = 0.5
+      for i in range(max_iter):
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+        if (f_next - f_t) / cur_step_size < - sigma * g_t / 2:
+          # we can decrease the Lipschitz / increase the step-size
+          lipschitz_t /= 1.5
+          continue
+        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+          lipschitz_t *= 2.
+          continue
+        break
+    elif step_size == "adaptive5":
+      sigma = 0.9
+      rho = 0.4
+      eps = .3
+      K = 2 * lipschitz_t * d_t_norm / g_t
+      M = max((K + sigma) / (K + rho), 1.)
+      tau = M * (1 + eps)
+      eta = (1 - eps) / M
+
+#       print("Let's check multipliers")
+#       print(tau)
+#       print(eta)
+
+      for i in range(max_iter):
+        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+        if (f_next - f_t) / cur_step_size < - sigma * g_t / 2:
+          # we can decrease the Lipschitz / increase the step-size
+          lipschitz_t *= eta
+          continue
+        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+          lipschitz_t *= tau
+          continue
+        break
+      else:
+        raise ValueError('Exhausted line search iterations in minimize_frank_wolfe')
     elif step_size is None:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz_t is None:
