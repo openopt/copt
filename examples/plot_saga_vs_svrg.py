@@ -3,7 +3,8 @@ SAGA vs SVRG
 ===========================================
 
 A comparison between two variance-reduced stochastic gradient methods:
-SAGA (implemented in :func:`copt.minimize_saga`) and SVRG (implemented in :func:`copt.minimize_svrg`). The problem solved in this case is the sum of a
+SAGA (implemented in :func:`copt.minimize_saga`) and SVRG (implemented in
+:func:`copt.minimize_svrg`). The problem solved in this case is the sum of a
 logistic regression and an L1 norm (sometimes referred to as sparse logistic)
 """
 import copt as cp
