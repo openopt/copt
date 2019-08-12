@@ -20,6 +20,23 @@ loss_funcs = [
 ]
 
 
+def test_fw_api():
+
+  # test that the algorithm does not fail if x0
+  # is a tuple
+  f = cp.utils.LogLoss(A, b, 1. / n_samples)
+  cb = cp.utils.Trace(f)
+  alpha = 1.
+  l1ball = cp.utils.L1Ball(alpha)
+  cp.minimize_frank_wolfe(
+      f.f_grad,
+      [0]*n_features,
+      l1ball.lmo,
+      tol=0,
+      lipschitz=f.lipschitz,
+      callback=cb)
+
+
 @pytest.mark.parametrize("loss_grad", loss_funcs)
 def test_fw_l1(loss_grad):
   """Test result of FW algorithm with L1 constraint."""

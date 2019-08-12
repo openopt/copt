@@ -34,35 +34,42 @@ def minimize_frank_wolfe(f_grad,
 
   Args:
     f_grad: callable
-        Takes as input the current iterate (a vector of same size as x0) and
-        returns the function value and gradient of the objective function.
-        It should accept the optional argument return_gradient, and when False
-        it should return only the function value.
+      Takes as input the current iterate (a vector of same size as x0) and
+      returns the function value and gradient of the objective function.
+      It should accept the optional argument return_gradient, and when False
+      it should return only the function value.
 
     x0 : array-like
-        Initial guess for solution.
+      Initial guess for solution.
 
     lmo: callable
-        Takes as input a vector u of same size as x0 and returns a solution to
-        the linear minimization oracle (defined above).
+      Takes as input a vector u of same size as x0 and returns a solution to
+      the linear minimization oracle (defined above).
 
     step_size: None or "adaptive" or "adaptive2" or callable
-        Step-size step_size to use. If None is used and keyword lipschitz
-        is not given or None, then it will use a decreasing step-size of the
-        form 2/(k+1) (described in [1]). If None is used and keyword lipschitz
-        is not None, then it will use the Demyanov-Rubinov step-size step_size
-        (variant 1 in [2]).
+      Step-size step_size to use. If None is used and keyword lipschitz
+      is not given or None, then it will use a decreasing step-size of the
+      form 2/(k+1) (described in [1]). If None is used and keyword lipschitz
+      is not None, then it will use the Demyanov-Rubinov step-size step_size
+      (variant 1 in [2]).
 
     lipschitz: None or float.
-        Estimate for the Lipschitz constant of the gradient.
+      Estimate for the Lipschitz constant of the gradient.
 
     max_iter: integer
+      Maximum number of iterations.
 
     tol: float
+      Tolerance of the stopping criterion. The algorithm will stop whenever
+      the Frank-Wolfe gap is below tol or the maximum number of iterations
+      is exceeded.
 
     callback: callable
+      Callback to execute at each iteration. If the callable returns False
+      then the algorithm with immediately return.
 
     verbose: int
+      Verbosity level.
 
 
   Returns:
@@ -137,7 +144,7 @@ def minimize_frank_wolfe(f_grad,
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
-        if (f_next - f_t) / cur_step_size >  - rho * g_t / 2:
+        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
           lipschitz_t *= 2.
           continue
         break
@@ -244,21 +251,24 @@ def max_active(grad, active_set, n_features, include_zero=True):
   return max_grad_active, max_grad_active_idx
 
 
-def minimize_pairwise_frank_wolfe_l1(f_grad,
-                    alpha,
-                    n_features,
-                    lipschitz=None,
-                    max_iter=1000,
-                    tol=1e-12,
-                    backtracking=True,
-                    callback=None,
-                    verbose=0):
+def minimize_pairwise_frank_wolfe(f_grad,
+                                  x0,
+                                  lmo,
+                                  lmo_active,
+                                  step_size=None,
+                                  lipschitz=None,
+                                  max_iter=200,
+                                  tol=1e-12,
+                                  callback=None,
+                                  verbose=0):
   """Pairwise FW on the L1 ball.
 
 .. warning::
     This feature is experimental, API is likely to change.
 
     """
+  x0 = np.asanyarray(x0)
+  n_features = x0.size
 
   x = np.zeros(n_features)
   if lipschitz is None:
