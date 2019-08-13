@@ -20,7 +20,7 @@ def minimize_frank_wolfe(f_grad,
                          verbose=0):
   r"""Frank-Wolfe algorithm.
 
-  Implements the Frank-Wolfe algorithm, see , see :ref:`_frank_wolfe` for
+  Implements the Frank-Wolfe algorithm, see , see :ref:`frank_wolfe` for
   a more detailed description.
 
   Args:
@@ -65,12 +65,12 @@ def minimize_frank_wolfe(f_grad,
 
   Returns:
     res : scipy.optimize.OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+      The optimization result represented as a
+      ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+      ``x`` the solution array, ``success`` a Boolean flag indicating if
+      the optimizer exited successfully and ``message`` which describes
+      the cause of the termination. See `scipy.optimize.OptimizeResult`
+      for a description of other attributes.
 
 
   References:

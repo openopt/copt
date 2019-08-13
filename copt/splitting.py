@@ -21,67 +21,70 @@ def minimize_three_split(f_grad,
                          h_Lipschitz=None):
   """Davis-Yin three operator splitting method.
 
-    This algorithm can solve problems of the form
+  This algorithm can solve problems of the form
 
-               minimize_x f(x) + g(x) + h(x)
+              minimize_x f(x) + g(x) + h(x)
 
-    where f is a smooth function and g is a (possibly non-smooth)
-    function for which the proximal operator is known.
+  where f is a smooth function and g is a (possibly non-smooth)
+  function for which the proximal operator is known.
 
-    Parameters
-    ----------
+  Args:
     f_grad: callable
-         Returns the function value and gradient of the objective function.
-         With return_gradient=False, returns only the function value.
+      Returns the function value and gradient of the objective function.
+      With return_gradient=False, returns only the function value.
+
+    x0 : array-like
+      Initial guess
 
     prox_1 : callable or None
-        prox_1(x, alpha, *args) returns the proximal operator of g at xa
-        with parameter alpha. Extra arguments can be passed by prox_1_args.
+      prox_1(x, alpha, *args) returns the proximal operator of g at xa
+      with parameter alpha.
 
-    y0 : array-like
-        Initial guess
+    prox_2 : callable or None
+      prox_2(x, alpha, *args) returns the proximal operator of g at xa
+      with parameter alpha.
 
-    backtracking : boolean
-        Whether to perform backtracking (i.e. line-search) to estimate
-        the step size.
+    tol: float
+      Tolerance of the stopping criterion.
 
     max_iter : int
-        Maximum number of iterations.
+      Maximum number of iterations.
+
+    line_search : boolean
+      Whether to perform line-search to estimate the step size.
 
     verbose : int
-        Verbosity level, from 0 (no output) to 2 (output on each iteration)
+      Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
     step_size : float
-        Starting value for the line-search procedure.
+      Starting value for the line-search procedure.
 
     callback : callable.
-        callback function (optional). Takes a single argument (x) with the
-        current coefficients in the algorithm. The algorithm will exit if
-        callback returns False.
+      callback function (optional). Takes a single argument (x) with the
+      current coefficients in the algorithm. The algorithm will exit if
+      callback returns False.
 
-    Returns
-    -------
+
+  Returns:
     res : OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+      The optimization result represented as a
+      ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+      ``x`` the solution array, ``success`` a Boolean flag indicating if
+      the optimizer exited successfully and ``message`` which describes
+      the cause of the termination. See `scipy.optimize.OptimizeResult`
+      for a description of other attributes.
 
-    References
-    ----------
-    * Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and its
-    optimization
-      applications." <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued
-      and Variational Analysis, 2017.
 
-    * Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator
-    Splitting."
-      <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th International
-      Conference
-      on Machine Learning, 2018.
-    """
+  References:
+    [1] Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and
+    its optimization applications."
+    <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued and Variational
+    Analysis, 2017.
+
+    [2] Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator
+    Splitting." <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th
+    International Conference on Machine Learning, 2018.
+  """
   success = False
   if not max_iter_backtracking > 0:
     raise ValueError('Line search iterations need to be greater than 0')
@@ -185,52 +188,49 @@ def minimize_primal_dual(f_grad,
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
 
-    Parameters
-    ----------
-    f_grad: callable
-         Returns the function value and gradient of the objective function.
-         It should accept the optional argument return_gradient, and when False
-         it should return only the function value.
+    Args:
+      f_grad: callable
+          Returns the function value and gradient of the objective function.
+          It should accept the optional argument return_gradient, and when False
+          it should return only the function value.
 
-    prox_1 : callable of the form prox_1(x, alpha)
-        prox_1(x, alpha) returns the proximal operator of g at x
-        with parameter alpha.
+      prox_1 : callable of the form prox_1(x, alpha)
+          prox_1(x, alpha) returns the proximal operator of g at x
+          with parameter alpha.
 
-    x0 : array-like
-        Initial guess of solution.
+      x0 : array-like
+          Initial guess of solution.
 
-    L : ndarray or sparse matrix
-        Linear operator inside the h term.
+      L : ndarray or sparse matrix
+          Linear operator inside the h term.
 
-    max_iter : int
-        Maximum number of iterations.
+      max_iter : int
+          Maximum number of iterations.
 
-    verbose : int
-        Verbosity level, from 0 (no output) to 2 (output on each iteration)
+      verbose : int
+          Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    callback : callable.
-        callback function (optional). Takes a single argument (x) with the
-        current coefficients in the algorithm. The algorithm will exit if
-        callback returns False.
+      callback : callable.
+          callback function (optional). Takes a single argument (x) with the
+          current coefficients in the algorithm. The algorithm will exit if
+          callback returns False.
 
-    Returns
-    -------
-    res : OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+    Returns:
+      res : OptimizeResult
+          The optimization result represented as a
+          ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+          ``x`` the solution array, ``success`` a Boolean flag indicating if
+          the optimizer exited successfully and ``message`` which describes
+          the cause of the termination. See `scipy.optimize.OptimizeResult`
+          for a description of other attributes.
 
     References
-    ----------
-    Condat, Laurent. "A primal-dual splitting method for convex optimization
-    involving Lipschitzian, proximable and linear composite terms." Journal of
-    Optimization Theory and Applications (2013).
+      Condat, Laurent. "A primal-dual splitting method for convex optimization
+      involving Lipschitzian, proximable and linear composite terms." Journal of
+      Optimization Theory and Applications (2013).
 
-    Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
-    first-order primal-dual algorithm." Mathematical Programming (2015)
+      Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
+      first-order primal-dual algorithm." Mathematical Programming (2015)
     """
   x = np.array(x0, copy=True)
   n_features = x.size

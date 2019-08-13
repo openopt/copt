@@ -31,6 +31,7 @@ At each iteration, the Frank-Wolfe algorithm selects the vertex :math:`\boldsymb
       \boldsymbol{x}_{t+1} = (1 - \gamma)\boldsymbol{x}_t + \gamma \boldsymbol{s}_t
 
 
+TODO: describe line-search
 
 .. .. image:: http://fa.bianp.net/images/2018/FW_iterates.png
 ..    :alt: FW iterates
@@ -83,3 +84,5 @@ Although the algorithm is more broadly applicable, this library's implementation
 .. topic:: References:
 
   .. [4] Lacoste-Julien, Simon, and Martin Jaggi. "On the global linear convergence of Frank-Wolfe optimization variants." Advances in Neural Information Processing Systems. 2015.
+
+  .. [5] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. `"Step-Size Adaptivity in Projection-Free Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
