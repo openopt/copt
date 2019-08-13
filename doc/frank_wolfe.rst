@@ -71,13 +71,13 @@ As the Frank-Wolfe algorithm, the Pairwise Frank-Wolfe [4]_ solves problems of t
 
 where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
 
-Although the algorithm is more broadly applicable, this library's implementation, :meth:`copt.minimize_pairwise_frank_wolfe_l1`, assumes that the domain :math:`\mathcal{D}` is the :math:`\ell_1` ball, that is, :math:`\mathcal{D} = \{x : \sum_i |x| \leq \alpha\}`, where :math:`\alpha` is a user-defined parameter.
+Although the algorithm is more broadly applicable, this library's implementation, :meth:`copt.minimize_pairwise_frank_wolfe`, assumes that the domain :math:`\mathcal{D}` is the :math:`\ell_1` ball, that is, :math:`\mathcal{D} = \{x : \sum_i |x| \leq \alpha\}`, where :math:`\alpha` is a user-defined parameter.
 
 
 .. autosummary::
    :toctree: generated/
 
-    copt.minimize_pairwise_frank_wolfe_l1
+    copt.minimize_pairwise_frank_wolfe
 
 
 .. topic:: References:
