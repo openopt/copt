@@ -12,10 +12,7 @@ The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ is a met
 .. math::
       \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
 
-where :math:`f` is a differentiable function for which we have access to its
-gradient and :math:`\mathcal{D}` is a compact set for which we have access to its
-linear minimization oracle (lmo), i.e., a routine that given a vector
-:math:`\bs{u}` returns a solution to
+where :math:`f` is a differentiable function for which we have access to its gradient and :math:`\mathcal{D}` is a compact set for which we have access to its linear minimization oracle (lmo). This is a routine that given a vector :math:`\bs{u}` returns a solution to
 
 .. math::
     \argmin_{\bs{x} \in D}\, \langle\bs{u}, \bs{x}\rangle~.

@@ -85,6 +85,12 @@ def minimize_frank_wolfe(f_grad,
     [3] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi.
     `"Step-Size Adaptivity in Projection-Free Optimization."
     <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
+
+
+  Examples
+  --------
+    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_stepsize.py`
+    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_vertex_overlap.py`
   """
   x0 = sparse.csr_matrix(x0).T
   if tol < 0:
