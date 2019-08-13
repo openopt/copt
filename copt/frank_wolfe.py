@@ -20,18 +20,8 @@ def minimize_frank_wolfe(f_grad,
                          verbose=0):
   r"""Frank-Wolfe algorithm.
 
-  This method for optimization problems of the form
-
-  .. math::
-      \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
-
-  where f is a differentiable function for which we have access to its
-  gradient and D is a compact set for which we have access to its
-  linear minimization oracle (lmo), i.e., a routine that given a vector
-  :math:`\bs{u}` returns a solution to
-
-  .. math::
-      \argmin_{\bs{x} \in D}\, \langle\bs{u}, \bs{x}\rangle
+  Implements the Frank-Wolfe algorithm, see , see :ref:`_frank_wolfe` for
+  a more detailed description.
 
   Args:
     f_grad: callable
