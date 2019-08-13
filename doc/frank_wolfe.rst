@@ -12,9 +12,16 @@ The Frank-Wolfe (FW) or conditional gradient algorithm [1]_, [2]_, [3]_ is a met
 .. math::
       \argmin_{\bs{x} \in \mathcal{D}} f(\bs{x})
 
-where :math:`f`. is differentiable and the domain :math:`\mathcal{D}` is a convex and compart set.
+where :math:`f` is a differentiable function for which we have access to its
+gradient and :math:`\mathcal{D}` is a compact set for which we have access to its
+linear minimization oracle (lmo), i.e., a routine that given a vector
+:math:`\bs{u}` returns a solution to
 
-Contrary to other constrained optimization algorithms like projected gradient descent, the Frank-Wolfe algorithm does not require access to a projection, hence why it is sometimes referred to as a projection-free algorithm. It instead relies on a routine that solves a linear problem over the domain. We refer to this routine as a linear minimization oracle (keyword argument lmo).
+.. math::
+    \argmin_{\bs{x} \in D}\, \langle\bs{u}, \bs{x}\rangle~.
+
+
+Contrary to other constrained optimization algorithms like projected gradient descent, the Frank-Wolfe algorithm does not require access to a projection, hence why it is sometimes referred to as a projection-free algorithm. It instead relies exclusively on the linear minimization oracle described above.
 
 The Frank-Wolfe algorithm is implemented in this library in the method :meth:`copt.minimize_frank_wolfe`. As most other methods it takes as argument an objective function to minimize, but unlike most other methods, it also requires to 
 

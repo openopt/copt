@@ -1,4 +1,5 @@
 """Frank-Wolfe and related algorithms."""
+import warnings
 from copt import utils
 import numpy as np
 from scipy import optimize
@@ -164,7 +165,9 @@ def minimize_frank_wolfe(f_grad,
           continue
         break
       else:
-        raise ValueError('Exhausted line search iterations in minimize_frank_wolfe')
+        warnings.warn(
+            "Exhausted line search iterations in minimize_frank_wolfe",
+            RuntimeWarning)
     elif step_size == "adaptive4":
       sigma = 0.7
       rho = 0.5
@@ -204,7 +207,7 @@ def minimize_frank_wolfe(f_grad,
           continue
         break
       else:
-        raise ValueError('Exhausted line search iterations in minimize_frank_wolfe')
+        raise ValueError("Exhausted line search iterations in minimize_frank_wolfe")
     elif step_size is None:
       # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
       if lipschitz_t is None:
