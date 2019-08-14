@@ -21,6 +21,7 @@ loss_funcs = [
 
 
 def test_fw_api():
+  """Check that FW takes the right arguments and raises the right exceptions."""
 
   # test that the algorithm does not fail if x0
   # is a tuple
@@ -35,6 +36,15 @@ def test_fw_api():
       tol=0,
       lipschitz=f.lipschitz,
       callback=cb)
+
+  # check that we riase an exception when the DR step-size is used
+  # but no lipschitz constant is given
+  with pytest.raises(ValueError):
+    cp.minimize_frank_wolfe(
+        f.f_grad,
+        [0]*n_features,
+        l1ball.lmo,
+        step_size="DR")
 
 
 @pytest.mark.parametrize("loss_grad", loss_funcs)

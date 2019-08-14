@@ -9,6 +9,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from tqdm import trange
 
 
+
 def minimize_frank_wolfe(f_grad,
                          x0,
                          lmo,
@@ -115,17 +116,18 @@ def minimize_frank_wolfe(f_grad,
       g_t = g_t[0]
     if g_t <= tol:
       break
-    d2_t = splinalg.norm(d_t)**2
+    d_t_norm = splinalg.norm(d_t)**2
     if hasattr(step_size, "__call__"):
-      cur_step_size = step_size(locals())
-      f_next, grad_next = f_grad(x + cur_step_size * d_t)
+      step_size_t = step_size(locals())
+      f_next, grad_next = f_grad(x + step_size_t * d_t)
     elif step_size == "adaptive":
       ratio_decrease = 0.999
       ratio_increase = 2
       for i in range(max_iter):
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        rhs = f_t - cur_step_size * g_t + 0.5 * (cur_step_size**2) * lipschitz_t * d2_t
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        rhs = f_t - step_size_t * g_t + \
+          0.5 * (step_size_t**2) * lipschitz_t * d_t_norm
+        f_next, grad_next = f_grad(x + step_size_t * d_t)
         if f_next <= rhs + 1e-6:
           if i == 0:
             lipschitz_t *= ratio_decrease
@@ -135,26 +137,26 @@ def minimize_frank_wolfe(f_grad,
     elif step_size == "adaptive2":
       rho = 0.2
       for i in range(max_iter):
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
-        if (f_next - f_t) / cur_step_size < - g_t / 2:
+        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_t * d_t)
+        if (f_next - f_t) / step_size_t < - g_t / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
-        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
           lipschitz_t *= 2.
           continue
         break
     elif step_size == "adaptive3":
       rho = 0.9
       for i in range(max_iter):
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
-        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_t * d_t)
+        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
           # sufficient decrease not met, increase Lipchitz constant
           lipschitz_t *= 2
           continue
-        if (f_next - f_t) / cur_step_size <= (rho / 2 - 1) * g_t:
+        if (f_next - f_t) / step_size_t <= (rho / 2 - 1) * g_t:
           # there's sufficient decrease but the quadratic approximation is not
           # good. We can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
@@ -168,13 +170,13 @@ def minimize_frank_wolfe(f_grad,
       sigma = 0.7
       rho = 0.5
       for i in range(max_iter):
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
-        if (f_next - f_t) / cur_step_size < - sigma * g_t / 2:
+        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_t * d_t)
+        if (f_next - f_t) / step_size_t < - sigma * g_t / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
-        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
           lipschitz_t *= 2.
           continue
         break
@@ -192,32 +194,36 @@ def minimize_frank_wolfe(f_grad,
 #       print(eta)
 
       for i in range(max_iter):
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
-        if (f_next - f_t) / cur_step_size < - sigma * g_t / 2:
+        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        f_next, grad_next = f_grad(x + step_size_t * d_t)
+        if (f_next - f_t) / step_size_t < - sigma * g_t / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t *= eta
           continue
-        if (f_next - f_t) / cur_step_size > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
           lipschitz_t *= tau
           continue
         break
+    
       else:
-        raise ValueError("Exhausted line search iterations in minimize_frank_wolfe")
+        raise ValueError(
+            "Exhausted line search iterations in minimize_frank_wolfe")
+    elif step_size == "DR":
+      # .. Demyanov-Rubinov step-size ..
+      if lipschitz is None:
+        raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
+      step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+      f_next, grad_next = f_grad(x + step_size_t * d_t)
     elif step_size is None:
-      # if we don't know the Lipschitz constant, the best we can do is the 2/(k+2) step-size
-      if lipschitz_t is None:
-        cur_step_size = 2. / (it+2)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
-      else:
-        # this is the case in which we know the Lipschitz constant
-        cur_step_size = min(g_t / (d2_t * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + cur_step_size * d_t)
+      # .. without knowledge of the Lipschitz constant ..
+      # .. we take the oblivious 2/(k+2) step-size ..
+      step_size_t = 2. / (it+2)
+      f_next, grad_next = f_grad(x + step_size_t * d_t)
     else:
       raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
       callback(locals())
-    x += cur_step_size * d_t
+    x += step_size_t * d_t
     pbar.set_postfix(tol=g_t, iter=it, L_t=lipschitz_t)
 
     f_t, grad = f_next, grad_next
@@ -318,13 +324,13 @@ def minimize_pairwise_frank_wolfe(f_grad,
     if g_t <= tol:
       break
 
-    d2_t = 2 * (alpha**2)
+    d_t_norm = 2 * (alpha**2)
     if backtracking:
       # because of the specific form of the update
       # we can achieve some extra efficiency this way
       for i in range(100):
         x_next = x.copy()
-        step_size = min(g_t / (d2_t * lipschitz_t), gamma_max)
+        step_size = min(g_t / (d_t_norm * lipschitz_t), gamma_max)
 
         x_next[idx_oracle % n_features] += step_size * mag_oracle
         x_next[idx_oracle_away % n_features] -= step_size * mag_away
@@ -332,7 +338,7 @@ def minimize_pairwise_frank_wolfe(f_grad,
         if step_size < 1e-7:
           break
         elif f_next - f_t <= -g_t * step_size + 0.5 * (step_size**
-                                                       2) * lipschitz_t * d2_t:
+                                                       2) * lipschitz_t * d_t_norm:
           if i == 0:
             lipschitz_t *= 0.999
           break
@@ -341,7 +347,7 @@ def minimize_pairwise_frank_wolfe(f_grad,
       # import pdb; pdb.set_trace()
     else:
       x_next = x.copy()
-      step_size = min(g_t / (d2_t * lipschitz_t), gamma_max)
+      step_size = min(g_t / (d_t_norm * lipschitz_t), gamma_max)
       x_next[idx_oracle %
              n_features] = x[idx_oracle % n_features] + step_size * mag_oracle
       x_next[idx_oracle_away %
