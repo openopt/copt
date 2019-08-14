@@ -135,18 +135,10 @@ def minimize_frank_wolfe(f_grad,
         else:
           lipschitz_t *= ratio_increase
     elif step_size == "adaptive2":
-      rho = 0.2
-      for i in range(max_iter):
-        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_t * d_t)
-        if (f_next - f_t) / step_size_t < - g_t / 2:
-          # we can decrease the Lipschitz / increase the step-size
-          lipschitz_t /= 1.5
-          continue
-        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
-          lipschitz_t *= 2.
-          continue
-        break
+      from .line_search import line_search_wolfe1
+      out = line_search_wolfe1(lambda z: f_grad(z)[0], lambda z: f_grad(z)[1], x.toarray().ravel(), d_t.toarray().ravel())
+      step_size_t = out[0]
+      f_next, grad_next = f_grad(x + step_size_t * d_t)
     elif step_size == "adaptive3":
       rho = 0.9
       for i in range(max_iter):

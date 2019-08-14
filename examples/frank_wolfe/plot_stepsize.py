@@ -21,7 +21,7 @@ datasets = [
 variants_fw = [
     ["adaptive", "adaptive step-size"],
     ["adaptive2", "adaptive2 step-size"],
-    ["adaptive3", "adaptive3 step-size"],
+    # ["adaptive3", "adaptive3 step-size"],
     [None, "Lipschitz step-size"]]
 
 for dataset_title, load_data in datasets:
