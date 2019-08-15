@@ -71,7 +71,7 @@ def test_fw_l1(loss_grad):
 
 def exact_ls(kw):
   def f_ls(gamma):
-    return kw["f_grad"](kw["x"] + gamma * kw["d_t"])[0]
+    return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
   ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
   return ls_sol.x
 
@@ -80,7 +80,7 @@ def exact_ls(kw):
 def test_fw_backtrack(obj, bt):
   """Test FW with different options of the line-search strategy."""
   f = obj(A, b, 1. / n_samples)
-  alpha = 1.
+  alpha = 2.
   traceball = cp.utils.TraceBall(alpha, (4, 4))
   opt = cp.minimize_frank_wolfe(
       f.f_grad,

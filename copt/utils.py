@@ -377,23 +377,20 @@ class L1Ball:
     def prox(self, x, step_size):
         return euclidean_proj_l1ball(x, self.alpha)
 
-    def lmo(self, u):
+    def lmo(self, u, x):
         """Solve the linear problem
         min_{||s||_1 <= alpha} <u, s>
         """
-        idx = np.argmax(np.abs(u))
-        fw_gap = self.alpha * np.sign(u[idx])
+        abs_u = np.abs(u)
+        idx = np.argmax(abs_u)
+        fw_gap = self.alpha * abs_u[idx]
 
-        def _lmo_update(x, step_size):
-          x[idx] += self.alpha * step_size
-          return x
-        
-        return _lmo_update,  fw_gap, norm_update
-        # s_data = np.array([mag])
-        # s_indices = np.array([idx], dtype=np.int32)
-        # s_indptr = np.array([0, 1], dtype=np.int32)
-        # return sparse.csr_matrix(
-        #     (s_data, s_indices, s_indptr), shape=(1, u.size)).T
+        assert fw_gap >= 0
+
+        update_direction = - x.copy()
+        update_direction[idx] += self.alpha * np.sign(u[idx])
+
+        return update_direction, fw_gap
 
 
 class GroupL1:
@@ -718,11 +715,13 @@ class TraceBall:
     def prox_factory(self):
         raise NotImplementedError
 
-    def lmo(self, x):
-        x = x.reshape(self.shape)
-        u, _, vt = splinalg.svds(x, k=1, maxiter=1000)
-        tmp = self.alpha * u.dot(vt).ravel()
-        return sparse.csr_matrix(tmp).T
+    def lmo(self, u, x):
+        u_mat = u.reshape(self.shape)
+        ut, _, vt = splinalg.svds(u_mat, k=1)
+        vertex = self.alpha * np.outer(ut, vt).ravel()
+        update_direction = vertex - x
+        fw_gap = np.dot(vertex, u)
+        return update_direction, fw_gap
 
 
 class TotalVariation2D:

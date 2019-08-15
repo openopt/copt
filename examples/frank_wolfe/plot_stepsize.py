@@ -47,14 +47,13 @@ for dataset_title, load_data in datasets:
         callback=cb,
         step_size=step_size,
         lipschitz=f.lipschitz,
-        max_iter=10,
     )
 
     plt.plot(cb.trace_time, cb.trace_fx, label=label, marker="^", markevery=10)
   # plt.yscale("log")
   plt.legend()
   plt.xlabel("Time (in seconds)")
-  plt.ylabel("FW gap")
+  plt.ylabel("Objective function")
   plt.title(dataset_title)
   plt.tight_layout()  # otherwise the right y-label is slightly clipped
   plt.grid()

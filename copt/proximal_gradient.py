@@ -103,15 +103,15 @@ def minimize_proximal_gradient(
       if hasattr(strategy, "__call__"):
         step_size_ = strategy(locals())
         x_next = prox(x - step_size_ * grad_fk, step_size_)
-        incr = x_next - x
+        update_direction = x_next - x
         f_next, grad_next = f_grad(x_next)
       elif strategy == "adaptive":
         x_next = prox(x - step_size_ * grad_fk, step_size_)
-        incr = x_next - x
+        update_direction = x_next - x
         step_size_ *= 1.1
         for _ in range(max_iter_backtracking):
           f_next, grad_next = f_grad(x_next)
-          rhs = fk + grad_fk.dot(incr) + incr.dot(incr) / (2.0 * step_size_)
+          rhs = fk + grad_fk.dot(update_direction) + update_direction.dot(update_direction) / (2.0 * step_size_)
           if f_next <= rhs:
             # .. step size found ..
             break
@@ -119,12 +119,12 @@ def minimize_proximal_gradient(
             # .. backtracking, reduce step size ..
             step_size_ *= backtracking_factor
             x_next = prox(x - step_size_ * grad_fk, step_size_)
-            incr = x_next - x
+            update_direction = x_next - x
         else:
           warnings.warn("Maxium number of line-search iterations reached")
       elif strategy == "fixed":
         x_next = prox(x - step_size_ * grad_fk, step_size_)
-        incr = x_next - x
+        update_direction = x_next - x
         f_next, grad_next = f_grad(x_next)
       else:
         raise ValueError("Step-size strategy not understood")
@@ -162,9 +162,9 @@ def minimize_proximal_gradient(
       x = prox(yk - current_step_size * grad_fk, current_step_size)
       if step_size == "adaptive":
         for _ in range(max_iter_backtracking):
-          incr = x - yk
+          update_direction = x - yk
           if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(
-              incr) + incr.dot(incr) / (2.0 * current_step_size):
+              update_direction) + update_direction.dot(update_direction) / (2.0 * current_step_size):
             # .. step size found ..
             break
           else:
