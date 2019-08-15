@@ -12,8 +12,6 @@ Welcome to copt!
    :target: https://github.com/openopt/copt/blob/master/LICENSE
 .. image:: https://badge.fury.io/py/copt.svg
     :target: https://badge.fury.io/py/copt
-.. image:: https://pypip.in/d/copt/badge.png
-    :target: https://crate.io/packages/copt/
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 
@@ -56,12 +54,6 @@ the easiest way to install copt is using ``pip`` ::
 Alternatively, you can install the latest development from github with the command::
 
     pip install git+https://github.com/openopt/copt.git
-
-
-.. warning::
-
-    TODO: mention examples or API
-
 
 
 
