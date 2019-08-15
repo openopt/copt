@@ -61,3 +61,4 @@ Alternatively, you can install the latest development from github with the comma
     loss_functions.rst
     auto_examples/index.rst
     datasets.rst
+    utils.rst
