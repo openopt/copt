@@ -12,7 +12,6 @@ by a single update with larger step-size.
 import copt as cp
 import matplotlib.pylab as plt
 import numpy as np
-from scipy.sparse import linalg as splinalg
 
 # datasets and their respective loading functions
 datasets = [
@@ -45,19 +44,20 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
 
     def trace(kw):
       """Store vertex overlap during execution of the algorithm."""
+      s_t = kw["update_direction"] - kw["x"]
       if dt_prev:
         # check if the vertex of this and the previous iterate
         # coincide. Since these might be sparse vectors, we use
         # sparse.linalg.norm to make the comparison
         prev_overlap = overlap[-1]
-        if splinalg.norm(dt_prev[0] - kw["s_t"]) == 0:
+        if np.linalg.norm(dt_prev[0] - s_t) == 0:
           overlap.append(prev_overlap + 1)
         else:
           overlap.append(prev_overlap)
-        dt_prev[0] = kw["s_t"]
+        dt_prev[0] = s_t
       else:
         overlap.append(0)
-        dt_prev.append(kw["s_t"])
+        dt_prev.append(s_t)
 
     if label.startswith("Frank-Wolfe"):
       cp.minimize_frank_wolfe(

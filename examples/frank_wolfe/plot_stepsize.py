@@ -19,13 +19,13 @@ datasets = [
     ]
 
 variants_fw = [
-    ["adaptive", "adaptive step-size"],
+    ["adaptive", "adaptive step-size", "s"],
     ["adaptive2", "adaptive2 step-size"],
     ["adaptive3", "adaptive3 step-size"],
     ["DR", "Lipschitz step-size"]]
 
-plt.figure()
 for dataset_title, load_data in datasets:
+  plt.figure()
   print("Running on the %s dataset" % dataset_title)
 
   X, y = load_data()
@@ -50,7 +50,6 @@ for dataset_title, load_data in datasets:
     )
 
     plt.plot(cb.trace_time, cb.trace_fx, label=label, marker="^", markevery=10)
-  # plt.yscale("log")
   plt.legend()
   plt.xlabel("Time (in seconds)")
   plt.ylabel("Objective function")
