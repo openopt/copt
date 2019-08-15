@@ -164,6 +164,7 @@ html_theme_options = {
     "fixed_sidebar": False,
     "travis_button": False,
     "logo_text_align": "center",
+    "github_banner": True
 }
 
 

@@ -10,11 +10,14 @@ Welcome to copt!
 .. image:: https://img.shields.io/github/license/openopt/copt
    :alt: Apache-2 license
    :target: https://github.com/openopt/copt/blob/master/LICENSE
+.. image:: https://badge.fury.io/py/copt.svg
+    :target: https://badge.fury.io/py/copt
+.. image:: https://pypip.in/d/copt/badge.png
+    :target: https://crate.io/packages/copt/
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 
 copt is a library for mathematical optimization written in pure Python.
-
 
 
 Philosophy
