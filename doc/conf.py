@@ -162,7 +162,7 @@ html_theme_options = {
     "github_repo": "copt",
     "github_button": True,
     "fixed_sidebar": False,
-    "travis_button": True,
+    "travis_button": False,
     "logo_text_align": "center",
 }
 

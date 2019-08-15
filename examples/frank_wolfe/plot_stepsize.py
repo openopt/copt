@@ -20,9 +20,9 @@ datasets = [
 
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    ["adaptive2", "adaptive2 step-size"],
-    ["adaptive3", "adaptive3 step-size"],
-    ["DR", "Lipschitz step-size"]]
+    ["adaptive2", "adaptive2 step-size", "^"],
+    ["adaptive3", "adaptive3 step-size", "+"],
+    ["DR", "Lipschitz step-size", "<"]]
 
 for dataset_title, load_data in datasets:
   plt.figure()
@@ -37,7 +37,7 @@ for dataset_title, load_data in datasets:
   f = cp.utils.LogLoss(X, y)
   x0 = np.zeros(n_features)
 
-  for step_size, label in variants_fw:
+  for step_size, label, marker in variants_fw:
 
     cb = cp.utils.Trace(f)
     cp.minimize_frank_wolfe(
@@ -49,7 +49,7 @@ for dataset_title, load_data in datasets:
         lipschitz=f.lipschitz,
     )
 
-    plt.plot(cb.trace_time, cb.trace_fx, label=label, marker="^", markevery=10)
+    plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker, markevery=10)
   plt.legend()
   plt.xlabel("Time (in seconds)")
   plt.ylabel("Objective function")
