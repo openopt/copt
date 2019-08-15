@@ -63,6 +63,9 @@ Alternatively, you can install the latest development from github with the comma
     TODO: mention examples or API
 
 
+
+
+
 .. toctree::
     :maxdepth: 2
     :hidden:
@@ -75,3 +78,4 @@ Alternatively, you can install the latest development from github with the comma
     auto_examples/index.rst
     datasets.rst
     utils.rst
+    citing.rst
