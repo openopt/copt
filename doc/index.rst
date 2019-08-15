@@ -44,6 +44,12 @@ Alternatively, you can install the latest development from github with the comma
 
     pip install git+https://github.com/openopt/copt.git
 
+
+.. warning::
+
+    TODO: mention examples or API
+
+
 .. toctree::
     :maxdepth: 2
     :hidden:

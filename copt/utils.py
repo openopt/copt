@@ -364,6 +364,7 @@ class L1Ball:
     This function is 0 if the sum of absolute values is less than or equal to
     alpha, and infinity otherwise.
     """
+
     def __init__(self, alpha):
         self.alpha = alpha
 
@@ -381,12 +382,18 @@ class L1Ball:
         min_{||s||_1 <= alpha} <u, s>
         """
         idx = np.argmax(np.abs(u))
-        mag = self.alpha * np.sign(u[idx])
-        s_data = np.array([mag])
-        s_indices = np.array([idx], dtype=np.int32)
-        s_indptr = np.array([0, 1], dtype=np.int32)
-        return sparse.csr_matrix(
-            (s_data, s_indices, s_indptr), shape=(1, u.size)).T
+        fw_gap = self.alpha * np.sign(u[idx])
+
+        def _lmo_update(x, step_size):
+          x[idx] += self.alpha * step_size
+          return x
+        
+        return _lmo_update,  fw_gap, norm_update
+        # s_data = np.array([mag])
+        # s_indices = np.array([idx], dtype=np.int32)
+        # s_indptr = np.array([0, 1], dtype=np.int32)
+        # return sparse.csr_matrix(
+        #     (s_data, s_indices, s_indptr), shape=(1, u.size)).T
 
 
 class GroupL1:

@@ -2,12 +2,11 @@
 import warnings
 from copt import utils
 import numpy as np
+from scipy import linalg
 from scipy import optimize
 from scipy import sparse
-from scipy.sparse import linalg as splinalg
 from sklearn.utils.extmath import safe_sparse_dot
 from tqdm import trange
-
 
 
 def minimize_frank_wolfe(f_grad,
@@ -93,7 +92,7 @@ def minimize_frank_wolfe(f_grad,
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_stepsize.py`
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_vertex_overlap.py`
   """
-  x0 = sparse.csr_matrix(x0).T
+  x0 =np.asarray(x0)
   if tol < 0:
     raise ValueError("Tol must be non-negative")
   x = x0.copy()
@@ -102,21 +101,15 @@ def minimize_frank_wolfe(f_grad,
 
   pbar = trange(max_iter, disable=(verbose == 0))
   f_t, grad = f_grad(x)
+  old_f_t = None
 
   it = 0
   for it in pbar:
-    s_t = lmo(-grad)
-    d_t = s_t - x
+    lmo_update, fw_gap = lmo(-grad)
 
-    g_t = -safe_sparse_dot(d_t.T, grad)
-    assert len(g_t) == 1
-    if sparse.issparse(g_t):
-      g_t = g_t[0, 0]
-    else:
-      g_t = g_t[0]
-    if g_t <= tol:
+    if fw_gap <= tol:
       break
-    d_t_norm = splinalg.norm(d_t)**2
+    d_t_norm = linalg.norm(d_t)**2
     if hasattr(step_size, "__call__"):
       step_size_t = step_size(locals())
       f_next, grad_next = f_grad(x + step_size_t * d_t)
@@ -124,8 +117,8 @@ def minimize_frank_wolfe(f_grad,
       ratio_decrease = 0.999
       ratio_increase = 2
       for i in range(max_iter):
-        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
-        rhs = f_t - step_size_t * g_t + \
+        step_size_t = min(fw_gap / (d_t_norm * lipschitz_t), 1)
+        rhs = f_t - step_size_t * fw_gap + \
           0.5 * (step_size_t**2) * lipschitz_t * d_t_norm
         f_next, grad_next = f_grad(x + step_size_t * d_t)
         if f_next <= rhs + 1e-6:
@@ -136,19 +129,26 @@ def minimize_frank_wolfe(f_grad,
           lipschitz_t *= ratio_increase
     elif step_size == "adaptive2":
       from .line_search import line_search_wolfe1
-      out = line_search_wolfe1(lambda z: f_grad(z)[0], lambda z: f_grad(z)[1], x.toarray().ravel(), d_t.toarray().ravel())
+      out = line_search_wolfe1(
+        lambda z: f_grad(z)[0],
+        lambda z: f_grad(z)[1], 
+        x.toarray().ravel(),
+        d_t.toarray().ravel(),
+        gfx=grad, old_fval=f_t,
+        old_old_fval=old_f_t
+        )
       step_size_t = out[0]
       f_next, grad_next = f_grad(x + step_size_t * d_t)
     elif step_size == "adaptive3":
       rho = 0.9
       for i in range(max_iter):
-        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        step_size_t = min(fw_gap / (d_t_norm * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * d_t)
-        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * fw_gap / 2:
           # sufficient decrease not met, increase Lipchitz constant
           lipschitz_t *= 2
           continue
-        if (f_next - f_t) / step_size_t <= (rho / 2 - 1) * g_t:
+        if (f_next - f_t) / step_size_t <= (rho / 2 - 1) * fw_gap:
           # there's sufficient decrease but the quadratic approximation is not
           # good. We can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
@@ -162,13 +162,13 @@ def minimize_frank_wolfe(f_grad,
       sigma = 0.7
       rho = 0.5
       for i in range(max_iter):
-        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        step_size_t = min(fw_gap / (d_t_norm * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * d_t)
-        if (f_next - f_t) / step_size_t < - sigma * g_t / 2:
+        if (f_next - f_t) / step_size_t < - sigma * fw_gap / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t /= 1.5
           continue
-        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * fw_gap / 2:
           lipschitz_t *= 2.
           continue
         break
@@ -176,7 +176,7 @@ def minimize_frank_wolfe(f_grad,
       sigma = 0.9
       rho = 0.4
       eps = .3
-      K = 2 * lipschitz_t * d_t_norm / g_t
+      K = 2 * lipschitz_t * d_t_norm / fw_gap
       M = max((K + sigma) / (K + rho), 1.)
       tau = M * (1 + eps)
       eta = (1 - eps) / M
@@ -186,13 +186,13 @@ def minimize_frank_wolfe(f_grad,
 #       print(eta)
 
       for i in range(max_iter):
-        step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+        step_size_t = min(fw_gap / (d_t_norm * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * d_t)
-        if (f_next - f_t) / step_size_t < - sigma * g_t / 2:
+        if (f_next - f_t) / step_size_t < - sigma * fw_gap / 2:
           # we can decrease the Lipschitz / increase the step-size
           lipschitz_t *= eta
           continue
-        if (f_next - f_t) / step_size_t > - rho * g_t / 2:
+        if (f_next - f_t) / step_size_t > - rho * fw_gap / 2:
           lipschitz_t *= tau
           continue
         break
@@ -204,7 +204,7 @@ def minimize_frank_wolfe(f_grad,
       # .. Demyanov-Rubinov step-size ..
       if lipschitz is None:
         raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
-      step_size_t = min(g_t / (d_t_norm * lipschitz_t), 1)
+      step_size_t = min(fw_gap / (d_t_norm * lipschitz_t), 1)
       f_next, grad_next = f_grad(x + step_size_t * d_t)
     elif step_size is None:
       # .. without knowledge of the Lipschitz constant ..
@@ -216,14 +216,15 @@ def minimize_frank_wolfe(f_grad,
     if callback is not None:
       callback(locals())
     x += step_size_t * d_t
-    pbar.set_postfix(tol=g_t, iter=it, L_t=lipschitz_t)
+    pbar.set_postfix(tol=fw_gap, iter=it, L_t=lipschitz_t)
 
+    old_f_t, old_grad = f_t, grad
     f_t, grad = f_next, grad_next
   if callback is not None:
     callback(locals())
   pbar.close()
   x_final = x.toarray().ravel()
-  return optimize.OptimizeResult(x=x_final, nit=it, certificate=g_t)
+  return optimize.OptimizeResult(x=x_final, nit=it, certificate=fw_gap)
 
 
 @utils.njit
@@ -311,9 +312,9 @@ def minimize_pairwise_frank_wolfe(f_grad,
       pbar.close()
       raise ValueError
 
-    g_t = grad[idx_oracle_away % n_features] * mag_away - \
+    fw_gap = grad[idx_oracle_away % n_features] * mag_away - \
           grad[idx_oracle % n_features] * mag_oracle
-    if g_t <= tol:
+    if fw_gap <= tol:
       break
 
     d_t_norm = 2 * (alpha**2)
@@ -322,14 +323,14 @@ def minimize_pairwise_frank_wolfe(f_grad,
       # we can achieve some extra efficiency this way
       for i in range(100):
         x_next = x.copy()
-        step_size = min(g_t / (d_t_norm * lipschitz_t), gamma_max)
+        step_size = min(fw_gap / (d_t_norm * lipschitz_t), gamma_max)
 
         x_next[idx_oracle % n_features] += step_size * mag_oracle
         x_next[idx_oracle_away % n_features] -= step_size * mag_away
         f_next, grad_next = f_grad(x_next)
         if step_size < 1e-7:
           break
-        elif f_next - f_t <= -g_t * step_size + 0.5 * (step_size**
+        elif f_next - f_t <= -fw_gap * step_size + 0.5 * (step_size**
                                                        2) * lipschitz_t * d_t_norm:
           if i == 0:
             lipschitz_t *= 0.999
@@ -339,7 +340,7 @@ def minimize_pairwise_frank_wolfe(f_grad,
       # import pdb; pdb.set_trace()
     else:
       x_next = x.copy()
-      step_size = min(g_t / (d_t_norm * lipschitz_t), gamma_max)
+      step_size = min(fw_gap / (d_t_norm * lipschitz_t), gamma_max)
       x_next[idx_oracle %
              n_features] = x[idx_oracle % n_features] + step_size * mag_oracle
       x_next[idx_oracle_away %
@@ -370,7 +371,7 @@ def minimize_pairwise_frank_wolfe(f_grad,
     if it % 100 == 0:
       all_lipschitz.append(lipschitz_t)
     pbar.set_postfix(
-        tol=g_t,
+        tol=fw_gap,
         gmax=gamma_max,
         gamma=step_size,
         L_t_mean=np.mean(all_lipschitz),
@@ -383,4 +384,4 @@ def minimize_pairwise_frank_wolfe(f_grad,
   if callback is not None:
     callback(locals())
   pbar.close()
-  return optimize.OptimizeResult(x=x, nit=it, certificate=g_t)
+  return optimize.OptimizeResult(x=x, nit=it, certificate=fw_gap)

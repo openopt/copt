@@ -31,17 +31,15 @@ def load_madelon(md5_check=True, subset='full'):
 
         https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
 
-    Parameters
-    ----------
-    md5_check: bool
+    Args:
+      md5_check: bool
         Whether to do an md5 check on the downloaded files.
 
-    Returns
-    -------
-    X : scipy.sparse CSR matrix, shape=(2600, 500)
-    y: numpy array
-        Labels, only takes values 0 or 1.
-    """
+    Returns:
+      X : scipy.sparse CSR matrix, shape=(2600, 500)
+      y: numpy array
+          Labels, only takes values 0 or 1.
+  """
   import h5py
   if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -249,7 +247,6 @@ def load_gisette():
   # original labels are [-1, 1], put into [0, 1]
   y += 1
   y /= 2
-  #y -= 1  # original labels are [1, 2]
   return X, y
 
 
@@ -298,16 +295,14 @@ def load_kdd12(md5_check=True, verbose=0):
 
         https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#kdd2012
 
-    Parameters
-    ----------
-    md5_check: bool
+    Args:
+      md5_check: bool
         Whether to do an md5 check on the downloaded files.
 
-    Returns
-    -------
-    X : scipy.sparse CSR matrix
-    y: numpy array
-        Labels, only takes values 0 or 1.
+    Returns:
+      X : scipy.sparse CSR matrix
+      y: numpy array
+          Labels, only takes values 0 or 1.
     """
   from sklearn import datasets  # lazy import
   import bz2
@@ -357,16 +352,14 @@ def load_criteo(md5_check=True):
 
         https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#criteo
 
-    Parameters
-    ----------
-    md5_check: bool
+    Args:
+      md5_check: bool
         Whether to do an md5 check on the downloaded files.
 
     Returns
-    -------
-    X : scipy.sparse CSR matrix
-    y: numpy array
-        Labels, only takes values 0 or 1.
+      X : scipy.sparse CSR matrix
+      y: numpy array
+          Labels, only takes values 0 or 1.
     """
   from sklearn import datasets  # lazy import
   if not os.path.exists(DATA_DIR):

@@ -2,7 +2,7 @@
 Loss and regularization functions
 =================================
 
-It is possible to your own functions. However, for convenience, the following are already defined and ready to use.
+These are some convenience functions that implement wior convenience, the following are already defined and ready to use.
 
 Smooth loss functions:
 
