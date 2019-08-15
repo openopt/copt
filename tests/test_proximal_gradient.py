@@ -46,7 +46,7 @@ def certificate(x, grad_x, prox):
 @pytest.mark.parametrize("penalty", penalty_funcs)
 def test_optimize(accelerated, loss, penalty):
   """Test a method on both the line_search and fixed step size strategy."""
-  max_iter = 2000
+  max_iter = 200
   for alpha in np.logspace(-1, 3, 3):
     obj = loss(A, b, alpha)
     if penalty is not None:
@@ -57,23 +57,21 @@ def test_optimize(accelerated, loss, penalty):
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
-        tol=1e-12,
         step_size="adaptive",
         max_iter=max_iter,
         accelerated=accelerated)
     grad_x = obj.f_grad(opt.x)[1]
-    assert certificate(opt.x, grad_x, prox) < 1e-6
+    assert certificate(opt.x, grad_x, prox) < 1e-5
 
     opt_2 = cp.minimize_proximal_gradient(
         obj.f_grad,
         np.zeros(n_features),
         prox=prox,
         max_iter=max_iter,
-        tol=1e-12,
         step_size=1 / obj.lipschitz,
         accelerated=accelerated)
     grad_2x = obj.f_grad(opt_2.x)[1]
-    assert certificate(opt_2.x, grad_2x, prox) < 1e-6
+    assert certificate(opt_2.x, grad_2x, prox) < 1e-5
 
 
 @pytest.mark.parametrize(
