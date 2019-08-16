@@ -133,10 +133,32 @@ def minimize_frank_wolfe(f_grad,
         x,
         update_direction,
         gfk=grad, old_fval=f_t,
-        old_old_fval=old_f_t
+        old_old_fval=old_f_t,
+        amax=1
         )
       step_size_t = out[0]
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
+      f_next = out[3]
+      grad_next = out[-1]
+    elif step_size == "adaptive2+":
+      if lipschitz_t is None:
+        raise ValueError
+      from .line_search import line_search_wolfe1
+      alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
+      out = line_search_wolfe1(
+        lambda z: f_grad(z)[0],
+        lambda z: f_grad(z)[1], 
+        x,
+        update_direction,
+        gfk=grad, old_fval=f_t,
+        old_old_fval=old_f_t,
+        alpha1=alpha1,
+        amax=1
+        )
+      step_size_t = out[0]
+      if step_size_t < 1:
+        lipschitz_t = certificate / (norm_update_direction * step_size_t)
+      f_next = out[3]
+      grad_next = out[-1]
     elif step_size == "adaptive3":
       rho = 0.9
       for i in range(max_iter):
@@ -194,10 +216,10 @@ def minimize_frank_wolfe(f_grad,
           lipschitz_t *= tau
           continue
         break
-    
+
       else:
-        raise ValueError(
-            "Exhausted line search iterations in minimize_frank_wolfe")
+        warnings.warn(
+            "Exhausted line search iterations in minimize_frank_wolfe", RuntimeWarning)
     elif step_size == "DR":
       # .. Demyanov-Rubinov step-size ..
       if lipschitz is None:

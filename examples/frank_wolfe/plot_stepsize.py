@@ -20,9 +20,11 @@ datasets = [
 
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    ["adaptive2", "adaptive2 step-size", "^"],
+    ["adaptive2", "scipy linesearch step-size", "^"],
+    ["adaptive2+", "linesearch+ step-size", "s"],
     ["adaptive3", "adaptive3 step-size", "+"],
     ["adaptive4", "adaptive4 step-size", "x"],
+    ["adaptive5", "adaptive5 step-size", ">"],
     ["DR", "Lipschitz step-size", "<"]]
 
 for dataset_title, load_data in datasets:
@@ -48,13 +50,16 @@ for dataset_title, load_data in datasets:
         callback=cb,
         step_size=step_size,
         lipschitz=f.lipschitz,
+        max_iter=1000
     )
 
-    plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker, markevery=10)
+    plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker,
+             markevery=10)
   plt.legend()
   plt.xlabel("Time (in seconds)")
   plt.ylabel("Objective function")
   plt.title(dataset_title)
   plt.tight_layout()  # otherwise the right y-label is slightly clipped
+  plt.xlim((0, 0.7 * cb.trace_time[-1]))  # for aesthetics
   plt.grid()
   plt.show()

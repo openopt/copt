@@ -5,8 +5,6 @@ import numpy as np
 from scipy.optimize import minpack2
 
 
-
-
 #------------------------------------------------------------------------------
 # Minpack's Wolfe line and scalar searches
 #------------------------------------------------------------------------------
@@ -14,7 +12,7 @@ from scipy.optimize import minpack2
 def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
                        old_fval=None, old_old_fval=None,
                        args=(), c1=1e-4, c2=0.9, amax=50, amin=1e-8,
-                       xtol=1e-14):
+                       xtol=1e-14, alpha1=None):
     """
     As `scalar_search_wolfe1` but do a line search to direction `pk`
 
@@ -78,14 +76,14 @@ def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
 
     stp, fval, old_fval = scalar_search_wolfe1(
             phi, derphi, old_fval, old_old_fval, derphi0,
-            c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol)
+            c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol, alpha1=alpha1)
 
     return stp, fc[0], gc[0], fval, old_fval, gval[0]
 
 
 def scalar_search_wolfe1(phi, derphi, phi0=None, old_phi0=None, derphi0=None,
                          c1=1e-4, c2=0.9,
-                         amax=50, amin=1e-8, xtol=1e-14):
+                         amax=50, amin=1e-8, xtol=1e-14, alpha1=None):
     """
     Scalar function search for alpha that satisfies strong Wolfe conditions
 
@@ -132,12 +130,13 @@ def scalar_search_wolfe1(phi, derphi, phi0=None, old_phi0=None, derphi0=None,
     if derphi0 is None:
         derphi0 = derphi(0.)
 
-    if old_phi0 is not None and derphi0 != 0:
-        alpha1 = min(1.0, 1.01*2*(phi0 - old_phi0)/derphi0)
-        if alpha1 < 0:
-            alpha1 = 1.0
-    else:
-        alpha1 = 1.0
+    if alpha1 is None:
+      if old_phi0 is not None and derphi0 != 0:
+          alpha1 = min(1.0, 1.01*2*(phi0 - old_phi0)/derphi0)
+          if alpha1 < 0:
+              alpha1 = 1.0
+      else:
+          alpha1 = 1.0
 
     phi1 = phi0
     derphi1 = derphi0
