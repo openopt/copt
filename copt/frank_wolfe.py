@@ -161,9 +161,9 @@ def minimize_frank_wolfe(f_grad,
       rho = 0.5
       for i in range(max_iter):
         step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_t * d_t)
+        f_next, grad_next = f_grad(x + step_size_t * update_direction)
         if (f_next - f_t) / step_size_t < - sigma * certificate / 2:
-          # we can decrease the Lipschitz / increase the step-size
+          # we can decrease the Lipschitz / increase the step-siPze
           lipschitz_t /= 1.5
           continue
         if (f_next - f_t) / step_size_t > - rho * certificate / 2:
