@@ -2,6 +2,9 @@
    :target: https://travis-ci.org/openopt/copt
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
+.. image:: https://img.shields.io/github/license/openopt/copt
+   :alt: Apache-2 license
+   :target: https://github.com/openopt/copt/blob/master/LICENSE
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 
@@ -54,7 +57,7 @@ The recommended way to work on the development versionis the following:
 
 1. Clone locally the github repo. This can be done with the command::
 
-  git clone https://github.com/openopt/copt.git
+    git clone https://github.com/openopt/copt.git
 
 This will create a copt directory.
 
@@ -62,6 +65,6 @@ This will create a copt directory.
 running the following command from the copt directory created with the
 previous step::
 
-  python setup.py develop
+    python setup.py develop
 
-Now you can run the tests with `py.test tests/`
+Now you can run the tests with :code:`py.test tests/`

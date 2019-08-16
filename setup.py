@@ -19,7 +19,7 @@ Operating System :: Unix
 
 setup(
     name='copt',
-    description='Proximal gradient descent algorithm in Python',
+    description='Library for composite optimization in Python',
     long_description=io.open('README.rst', encoding='utf-8').read(),
     version=copt.__version__,
     author='Fabian Pedregosa',
