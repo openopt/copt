@@ -137,6 +137,8 @@ def minimize_frank_wolfe(f_grad,
         amax=1
         )
       step_size_t = out[0]
+      if step_size_t is None:
+        step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
       f_next = out[3]
       grad_next = out[-1]
     elif step_size == "adaptive2+":
@@ -155,7 +157,9 @@ def minimize_frank_wolfe(f_grad,
         amax=1
         )
       step_size_t = out[0]
-      if step_size_t < 1:
+      if step_size_t is None:
+        step_size_t = alpha1
+      elif step_size_t < 1:
         lipschitz_t = certificate / (norm_update_direction * step_size_t)
       f_next = out[3]
       grad_next = out[-1]

@@ -11,8 +11,8 @@ from scipy.optimize import minpack2
 
 def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
                        old_fval=None, old_old_fval=None,
-                       args=(), c1=1e-4, c2=0.9, amax=50, amin=1e-8,
-                       xtol=1e-14, alpha1=None):
+                       args=(), c1=1e-4, c2=0.9, amax=1, amin=1e-8,
+                       xtol=1e-14, alpha1=None, maxiter=1000):
     """
     As `scalar_search_wolfe1` but do a line search to direction `pk`
 
@@ -76,14 +76,15 @@ def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
 
     stp, fval, old_fval = scalar_search_wolfe1(
             phi, derphi, old_fval, old_old_fval, derphi0,
-            c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol, alpha1=alpha1)
+            c1=c1, c2=c2, amax=amax, amin=amin, xtol=xtol, alpha1=alpha1,
+            maxiter=maxiter)
 
     return stp, fc[0], gc[0], fval, old_fval, gval[0]
 
 
 def scalar_search_wolfe1(phi, derphi, phi0=None, old_phi0=None, derphi0=None,
                          c1=1e-4, c2=0.9,
-                         amax=50, amin=1e-8, xtol=1e-14, alpha1=None):
+                         amax=50, amin=1e-8, xtol=1e-14, alpha1=None, maxiter=100):
     """
     Scalar function search for alpha that satisfies strong Wolfe conditions
 
@@ -144,7 +145,6 @@ def scalar_search_wolfe1(phi, derphi, phi0=None, old_phi0=None, derphi0=None,
     dsave = np.zeros((13,), float)
     task = b'START'
 
-    maxiter = 100
     for i in range(maxiter):
         stp, phi1, derphi1, task = minpack2.dcsrch(alpha1, phi1, derphi1,
                                                    c1, c2, xtol, task,

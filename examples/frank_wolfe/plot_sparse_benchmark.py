@@ -1,10 +1,10 @@
 # python3
 """
-Comparison of different step-sizes in Frank-Wolfe
-=================================================
+Benchmark of Frank-Wolfe variants for sparse logistic regression
+================================================================
 
-Speed of convergence of different step-size strategies
-and on 4 different classification datasets.
+Speed of convergence of different Frank-Wolfe variants on various
+problems with a logistic regression loss and a L1 ball constraint.
 """
 import copt as cp
 import matplotlib.pylab as plt
