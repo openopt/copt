@@ -8,7 +8,7 @@ python setup.py install
 cd doc
 make html
 if [ $? -eq 0 ]; then
-    wget https://storage.googleapis.com/tm-github-builds/build/success.svg _build/html/doc_status.svg
+    wget https://storage.googleapis.com/tm-github-builds/build/success.svg -o _build/html/doc_status.svg
 else
-    wget https://storage.googleapis.com/tm-github-builds/build/failure.svg _build/html/doc_status.svg
+    wget https://storage.googleapis.com/tm-github-builds/build/failure.svg -o _build/html/doc_status.svg
 fi
