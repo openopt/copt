@@ -15,7 +15,7 @@ C-OPT: composite optimization in Python
 C-OPT is an optimization library written in pure Python that follows the scipy.optimize API.
 
 
-[Docs](http://openopt.github.io/copt/) | [Examples](http://openopt.github.io/copt/auto_examples/index.html)
+`Docs <http://openopt.github.io/copt/>`_ | `Examples <http://openopt.github.io/copt/auto_examples/index.html>`_
 
 
 
