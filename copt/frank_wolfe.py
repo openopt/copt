@@ -5,6 +5,7 @@ import numpy as np
 from scipy import linalg
 from scipy import optimize
 from tqdm import trange
+from .line_search import line_search_wolfe1
 
 
 def minimize_frank_wolfe(f_grad,
@@ -144,7 +145,6 @@ def minimize_frank_wolfe(f_grad,
     elif step_size == "adaptive2+":
       if lipschitz_t is None:
         raise ValueError
-      from .line_search import line_search_wolfe1
       alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
       out = line_search_wolfe1(
         lambda z: f_grad(z)[0],
@@ -204,10 +204,6 @@ def minimize_frank_wolfe(f_grad,
       M = max((K + sigma) / (K + rho), 1.)
       tau = M * (1 + eps)
       eta = (1 - eps) / M
-
-#       print("Let's check multipliers")
-#       print(tau)
-#       print(eta)
 
       for i in range(max_iter):
         step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
