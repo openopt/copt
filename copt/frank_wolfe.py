@@ -127,7 +127,7 @@ def minimize_frank_wolfe(f_grad,
           break
         else:
           lipschitz_t *= ratio_increase
-    elif step_size == "adaptive2":
+    elif step_size == "adaptive_scipy":
       out = line_search.line_search_wolfe1(
         lambda z: f_grad(z)[0],
         lambda z: f_grad(z)[1], 
@@ -142,7 +142,7 @@ def minimize_frank_wolfe(f_grad,
         step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
       f_next = out[3]
       grad_next = out[-1]
-    elif step_size == "adaptive2+":
+    elif step_size == "adaptive_scipy+":
       if lipschitz_t is None:
         raise ValueError
       alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)

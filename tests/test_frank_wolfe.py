@@ -76,7 +76,7 @@ def exact_ls(kw):
   return ls_sol.x
 
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("bt", [None, "adaptive", "adaptive2", "adaptive3", exact_ls])
+@pytest.mark.parametrize("bt", [None, "adaptive", "adaptive_scipy", "adaptive_scipy+", "adaptive3", "adaptive4", "adaptive5", exact_ls])
 def test_fw_backtrack(obj, bt):
   """Test FW with different options of the line-search strategy."""
   f = obj(A, b, 1. / n_samples)

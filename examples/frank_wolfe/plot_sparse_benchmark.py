@@ -19,6 +19,8 @@ datasets = [
     ("Covtype", cp.datasets.load_covtype)
     ]
 
+
+
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
     ["adaptive2", "scipy linesearch step-size", "^"],
