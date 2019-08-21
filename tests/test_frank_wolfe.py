@@ -97,7 +97,6 @@ def test_fw_backtrack(obj, bt):
   grad_map = (opt.x - traceball.prox(opt.x - ss * grad, ss)) / ss
   assert np.linalg.norm(grad_map) < 1e-1
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("obj", loss_funcs)
 def test_pairwise_fw(obj):
   """Test the Pairwise FW method."""

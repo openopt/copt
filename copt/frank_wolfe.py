@@ -295,8 +295,14 @@ def minimize_pairwise_frank_wolfe(f_grad,
 
   it = 0
   for it in pbar:
+    # print(f_t)
     update_direction, idx_s, idx_v = \
       lmo_pairwise(-grad, x, active_set)
+    # import pdb; pdb.set_trace()
+    
+    norm_update_direction = linalg.norm(update_direction)**2
+    if norm_update_direction == 0:
+      raise RuntimeError('oh oh')
     certificate = np.dot(update_direction, -grad)
 
     # compute gamma_max
@@ -304,7 +310,6 @@ def minimize_pairwise_frank_wolfe(f_grad,
 
     if certificate <= tol:
       break
-    norm_update_direction = linalg.norm(update_direction)**2
     if hasattr(step_size, "__call__"):
       step_size_t = step_size(locals())
       f_next, grad_next = f_grad(x + step_size_t * update_direction)
@@ -314,15 +319,12 @@ def minimize_pairwise_frank_wolfe(f_grad,
         raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
       step_size_t = min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
       f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    elif step_size is None:
-      # .. without knowledge of the Lipschitz constant ..
-      # .. we take the oblivious 2/(k+2) step-size ..
-      step_size_t = 2. / (it+2)
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
     else:
       raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
       callback(locals())
+    x_prev = x.copy()
+    active_set_prev = active_set.copy()
     x += step_size_t * update_direction
     active_set[idx_s] += step_size_t
     active_set[idx_v] -= step_size_t

@@ -391,21 +391,24 @@ class L1Ball:
         return update_direction
 
     def lmo_pairwise(self, u, x, active_set):
+      # XXX do we actually need x?
       if np.any(active_set < 0):
         raise RuntimeError("active set coefficients cannot be negative")
 
       u2 = np.concatenate((u, -u))
       largest_coordinate = np.argmax(u2)
 
-      u2_active = ma.array(u2, mask=active_set == 0)
+      u2_active = ma.array(u2, mask=(active_set == 0))
       largest_active = np.argmax(-u2_active)
 
       update_direction = np.zeros_like(x)
+      sign_largest = 1 if largest_coordinate < len(u) else -1
       idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
-      update_direction[idx_largest] = self.alpha * np.sign(u[idx_largest])
+      update_direction[idx_largest] = self.alpha * sign_largest
 
       idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
-      update_direction[largest_active] = - self.alpha * np.sign(u[largest_active])
+      sign_active = 1 if largest_active < len(u) else -1
+      update_direction[idx_largest_active] -= self.alpha * sign_active
 
       return update_direction, largest_coordinate, largest_active
 
