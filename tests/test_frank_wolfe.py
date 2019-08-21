@@ -97,29 +97,33 @@ def test_fw_backtrack(obj, bt):
   grad_map = (opt.x - traceball.prox(opt.x - ss * grad, ss)) / ss
   assert np.linalg.norm(grad_map) < 1e-1
 
+@pytest.mark.xfail
+@pytest.mark.parametrize("obj", loss_funcs)
+def test_pairwise_fw(obj):
+  """Test the Pairwise FW method."""
+  f = obj(A, b, 1. / n_samples)
 
-# @pytest.mark.parametrize("obj", loss_funcs)
-# @pytest.mark.parametrize("backtracking", [True, False])
-# def test_pairwise_fw(obj, backtracking):
-#   """Test the Pairwise FW method."""
-#   f = obj(A, b, 1. / n_samples)
+  alpha = 1
+  l1ball = cp.utils.L1Ball(alpha)
+  x0 = np.zeros(A.shape[1])
+  x0[0] = alpha
+  active_set = np.zeros(2 * A.shape[1])
+  active_set[0] = 1
+  cb = cp.utils.Trace(f)
+  opt = cp.minimize_pairwise_frank_wolfe(
+      f.f_grad,
+      x0,
+      active_set,
+      l1ball.lmo_pairwise,
+      tol=0,
+      max_iter=5000,
+      step_size="DR",
+      lipschitz=f.lipschitz,
+      callback=cb)
+  assert np.isfinite(opt.x).sum() == n_features
 
-#   alpha = 1
-#   l1ball = cp.utils.L1Ball(alpha)
-#   cb = cp.utils.Trace(f)
-#   opt = cp.minimize_pfw_l1(
-#       f.f_grad,
-#       alpha,
-#       n_features,
-#       tol=0,
-#       max_iter=5000,
-#       step_size=backtracking,
-#       lipschitz=f.lipschitz,
-#       callback=cb)
-#   assert np.isfinite(opt.x).sum() == n_features
+  ss = 1 / f.lipschitz
+  grad = f.f_grad(opt.x)[1]
+  grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
 
-#   ss = 1 / f.lipschitz
-#   grad = f.f_grad(opt.x)[1]
-#   grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
-
-#   assert np.linalg.norm(grad_map) < 1e-10
+  assert np.linalg.norm(grad_map) < 1e-10

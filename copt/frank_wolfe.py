@@ -1,11 +1,11 @@
 """Frank-Wolfe and related algorithms."""
 import warnings
 from copt import utils
+from copt import line_search
 import numpy as np
 from scipy import linalg
 from scipy import optimize
 from tqdm import trange
-from .line_search import line_search_wolfe1
 
 
 def minimize_frank_wolfe(f_grad,
@@ -104,7 +104,8 @@ def minimize_frank_wolfe(f_grad,
 
   it = 0
   for it in pbar:
-    update_direction, certificate = lmo(-grad, x)
+    update_direction = lmo(-grad, x)
+    certificate = np.dot(update_direction, -grad)
 
     if certificate <= tol:
       break
@@ -127,8 +128,7 @@ def minimize_frank_wolfe(f_grad,
         else:
           lipschitz_t *= ratio_increase
     elif step_size == "adaptive2":
-      from .line_search import line_search_wolfe1
-      out = line_search_wolfe1(
+      out = line_search.line_search_wolfe1(
         lambda z: f_grad(z)[0],
         lambda z: f_grad(z)[1], 
         x,
@@ -146,7 +146,7 @@ def minimize_frank_wolfe(f_grad,
       if lipschitz_t is None:
         raise ValueError
       alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
-      out = line_search_wolfe1(
+      out = line_search.line_search_wolfe1(
         lambda z: f_grad(z)[0],
         lambda z: f_grad(z)[1], 
         x,
@@ -183,8 +183,8 @@ def minimize_frank_wolfe(f_grad,
             "Exhausted line search iterations in minimize_frank_wolfe",
             RuntimeWarning)
     elif step_size == "adaptive4":
-      sigma = 0.7
-      rho = 0.5
+      sigma = 0.9
+      rho = 0.4
       for i in range(max_iter):
         step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * update_direction)
@@ -246,32 +246,11 @@ def minimize_frank_wolfe(f_grad,
   return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
 
 
-@utils.njit
-def max_active(grad, active_set, n_features, include_zero=True):
-  """Find the index that most correlates with the gradient."""
-  max_grad_active = -np.inf
-  max_grad_active_idx = -1
-  for j in range(n_features):
-    if active_set[j] > 0:
-      if grad[j] > max_grad_active:
-        max_grad_active = grad[j]
-        max_grad_active_idx = j
-  for j in range(n_features, 2 * n_features):
-    if active_set[j] > 0:
-      if -grad[j % n_features] > max_grad_active:
-        max_grad_active = -grad[j % n_features]
-        max_grad_active_idx = j
-  if include_zero:
-    if max_grad_active < 0 and active_set[2 * n_features]:
-      max_grad_active = 0.
-      max_grad_active_idx = 2 * n_features
-  return max_grad_active, max_grad_active_idx
-
 
 def minimize_pairwise_frank_wolfe(f_grad,
                                   x0,
-                                  lmo,
-                                  lmo_active,
+                                  active_set,
+                                  lmo_pairwise,
                                   step_size=None,
                                   lipschitz=None,
                                   max_iter=200,
@@ -283,124 +262,74 @@ def minimize_pairwise_frank_wolfe(f_grad,
 .. warning::
     This feature is experimental, API is likely to change.
 
-    """
-  x0 = np.asanyarray(x0)
-  n_features = x0.size
 
-  x = np.zeros(n_features)
-  if lipschitz is None:
-    lipschitz_t = utils.init_lipschitz(f_grad, x)
-  else:
+  Design: LMO takes as input the active set (an array of shape
+  n_vertices).
+  
+  should return d_t, certificate, and both indices of the selected vertices.
+
+  How to pass the initialization of vertices?
+
+  :Args:
+    f_grad
+
+    x0
+
+    active_set : array-like
+        Decomposition of x0 in terms of the active set.
+  """
+  x0 = np.asanyarray(x0, dtype=np.float)
+  if tol < 0:
+    raise ValueError("Tol must be non-negative")
+  x = x0.copy()
+  if lipschitz is not None:
     lipschitz_t = lipschitz
-
-  active_set = np.zeros(2 * n_features + 1)
-  active_set[2 * n_features] = 1.
-  all_lipschitz = []
-  num_bad_steps = 0
-
-  # do a first FW step to
-  f_t, grad = f_grad(x)
+  # .. check active_set ..
+  if np.any(active_set < 0):
+    raise ValueError("active_set cannot contain negative entries")
+  if np.all(active_set == 0):
+    raise ValueError("active_set cannot be only zero")
 
   pbar = trange(max_iter, disable=(verbose == 0))
+  f_t, grad = f_grad(x)
+
   it = 0
   for it in pbar:
+    update_direction, idx_s, idx_v = \
+      lmo_pairwise(-grad, x, active_set)
+    certificate = np.dot(update_direction, -grad)
 
-    # FW oracle
-    idx_oracle = np.argmax(np.abs(grad))
-    if grad[idx_oracle] > 0:
-      idx_oracle += n_features
-    mag_oracle = alpha * np.sign(-grad[idx_oracle % n_features])
+    # compute gamma_max
+    max_step_size = active_set[idx_v]
 
-    # Away Oracle
-    _, idx_oracle_away = max_active(
-        grad, active_set, n_features, include_zero=False)
-
-    mag_away = alpha * np.sign(float(n_features - idx_oracle_away))
-
-    is_away_zero = False
-    if idx_oracle_away < 0 or active_set[2 * n_features] > 0 and grad[
-        idx_oracle_away % n_features] * mag_away < 0:
-      is_away_zero = True
-      mag_away = 0.
-      gamma_max = active_set[2 * n_features]
-    else:
-      assert grad[idx_oracle_away % n_features] * mag_away > grad.dot(x) - 1e-3
-      gamma_max = active_set[idx_oracle_away]
-
-    if gamma_max <= 0:
-      pbar.close()
-      raise ValueError
-
-    fw_gap = grad[idx_oracle_away % n_features] * mag_away - \
-          grad[idx_oracle % n_features] * mag_oracle
-    if fw_gap <= tol:
+    if certificate <= tol:
       break
-
-    norm_update_direction = 2 * (alpha**2)
-    if backtracking:
-      # because of the specific form of the update
-      # we can achieve some extra efficiency this way
-      for i in range(100):
-        x_next = x.copy()
-        step_size = min(fw_gap / (norm_update_direction * lipschitz_t), gamma_max)
-
-        x_next[idx_oracle % n_features] += step_size * mag_oracle
-        x_next[idx_oracle_away % n_features] -= step_size * mag_away
-        f_next, grad_next = f_grad(x_next)
-        if step_size < 1e-7:
-          break
-        elif f_next - f_t <= -fw_gap * step_size + 0.5 * (step_size**
-                                                       2) * lipschitz_t * norm_update_direction:
-          if i == 0:
-            lipschitz_t *= 0.999
-          break
-        else:
-          lipschitz_t *= 2
-      # import pdb; pdb.set_trace()
+    norm_update_direction = linalg.norm(update_direction)**2
+    if hasattr(step_size, "__call__"):
+      step_size_t = step_size(locals())
+      f_next, grad_next = f_grad(x + step_size_t * update_direction)
+    elif step_size == "DR":
+      # .. Demyanov-Rubinov step-size ..
+      if lipschitz is None:
+        raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
+      step_size_t = min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
+      f_next, grad_next = f_grad(x + step_size_t * update_direction)
+    elif step_size is None:
+      # .. without knowledge of the Lipschitz constant ..
+      # .. we take the oblivious 2/(k+2) step-size ..
+      step_size_t = 2. / (it+2)
+      f_next, grad_next = f_grad(x + step_size_t * update_direction)
     else:
-      x_next = x.copy()
-      step_size = min(fw_gap / (norm_update_direction * lipschitz_t), gamma_max)
-      x_next[idx_oracle %
-             n_features] = x[idx_oracle % n_features] + step_size * mag_oracle
-      x_next[idx_oracle_away %
-             n_features] = x[idx_oracle_away %
-                             n_features] - step_size * mag_away
-      f_next, grad_next = f_grad(x_next)
-
-    if lipschitz_t >= 1e10:
-      raise ValueError
-    # was it a drop step?
-    # x_t[idx_oracle] += step_size * mag_oracle
-    x = x_next
-    active_set[idx_oracle] += step_size
-    if is_away_zero:
-      active_set[2 * n_features] -= step_size
-    else:
-      active_set[idx_oracle_away] -= step_size
-    if active_set[idx_oracle_away] < 0:
-      raise ValueError
-    if active_set[idx_oracle] > 1:
-      raise ValueError
-
-    f_t, grad = f_next, grad_next
-
-    if gamma_max < 1 and step_size == gamma_max:
-      num_bad_steps += 1
-
-    if it % 100 == 0:
-      all_lipschitz.append(lipschitz_t)
-    pbar.set_postfix(
-        tol=fw_gap,
-        gmax=gamma_max,
-        gamma=step_size,
-        L_t_mean=np.mean(all_lipschitz),
-        L_t=lipschitz_t,
-        bad_steps_quot=(num_bad_steps) / (it + 1))
-
+      raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
       callback(locals())
+    x += step_size_t * update_direction
+    active_set[idx_s] += step_size_t
+    active_set[idx_v] -= step_size_t
+    pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
 
+    f_t, grad = f_next, grad_next
   if callback is not None:
     callback(locals())
   pbar.close()
-  return optimize.OptimizeResult(x=x, nit=it, certificate=fw_gap)
+  return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)

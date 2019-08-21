@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 from scipy import sparse
 from scipy import linalg
 from scipy import special
@@ -8,42 +9,42 @@ from sklearn.utils.extmath import safe_sparse_dot
 
 
 try:
-    from numba import njit
+  from numba import njit
 except ImportError:
-    from functools import wraps
+  from functools import wraps
 
-    def njit(*args, **kw):
-        if len(args) == 1 and len(kw)== 0 and hasattr(args[0], "__call__"):
-            func = args[0]
-            @wraps(func)
-            def inner_function(*args, **kwargs):
-                return func(*args, **kwargs)
-            return inner_function
-        else:
-            def inner_function(function):
-                @wraps(function)
-                def wrapper(*args, **kwargs):
-                    return function(*args, **kwargs)
-                return wrapper
-            return inner_function
+  def njit(*args, **kw):
+    if len(args) == 1 and len(kw)== 0 and hasattr(args[0], "__call__"):
+      func = args[0]
+      @wraps(func)
+      def inner_function(*args, **kwargs):
+        return func(*args, **kwargs)
+      return inner_function
+    else:
+      def inner_function(function):
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+          return function(*args, **kwargs)
+        return wrapper
+      return inner_function
 
 
 def safe_sparse_add(a, b):
-    if sparse.issparse(a) and sparse.issparse(b):
-        # both are sparse, keep the result sparse
-        return a + b
-    else:
-        # on of them is non-sparse, convert
-        # everything to dense.
-        if sparse.issparse(a):
-            a = a.toarray()
-            if a.ndim == 2 and b.ndim == 1:
-                b.ravel()
-        elif sparse.issparse(b):
-            b = b.toarray()
-            if b.ndim == 2 and a.ndim == 1:
-                b = b.ravel()
-        return a + b
+  if sparse.issparse(a) and sparse.issparse(b):
+    # both are sparse, keep the result sparse
+    return a + b
+  else:
+    # on of them is non-sparse, convert
+    # everything to dense.
+    if sparse.issparse(a):
+      a = a.toarray()
+      if a.ndim == 2 and b.ndim == 1:
+        b.ravel()
+    elif sparse.issparse(b):
+      b = b.toarray()
+      if b.ndim == 2 and a.ndim == 1:
+        b = b.ravel()
+    return a + b
 
 
 def parse_step_size(step_size):
@@ -382,15 +383,32 @@ class L1Ball:
         min_{||s||_1 <= alpha} <u, s>
         """
         abs_u = np.abs(u)
-        idx = np.argmax(abs_u)
-        fw_gap = self.alpha * abs_u[idx]
-
-        assert fw_gap >= 0
+        largest_coordinate = np.argmax(abs_u)
 
         update_direction = - x.copy()
-        update_direction[idx] += self.alpha * np.sign(u[idx])
+        update_direction[largest_coordinate] += self.alpha * np.sign(u[largest_coordinate])
 
-        return update_direction, fw_gap
+        return update_direction
+
+    def lmo_pairwise(self, u, x, active_set):
+      if np.any(active_set < 0):
+        raise RuntimeError("active set coefficients cannot be negative")
+
+      u2 = np.concatenate((u, -u))
+      largest_coordinate = np.argmax(u2)
+
+      u2_active = ma.array(u2, mask=active_set == 0)
+      largest_active = np.argmax(-u2_active)
+
+      update_direction = np.zeros_like(x)
+      idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
+      update_direction[idx_largest] = self.alpha * np.sign(u[idx_largest])
+
+      idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
+      update_direction[largest_active] = - self.alpha * np.sign(u[largest_active])
+
+      return update_direction, largest_coordinate, largest_active
+
 
 
 class GroupL1:
@@ -720,8 +738,7 @@ class TraceBall:
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
         update_direction = vertex - x
-        fw_gap = np.dot(vertex, u)
-        return update_direction, fw_gap
+        return update_direction
 
 
 class TotalVariation2D:
