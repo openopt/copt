@@ -295,14 +295,12 @@ def minimize_pairwise_frank_wolfe(f_grad,
 
   it = 0
   for it in pbar:
-    # print(f_t)
     update_direction, idx_s, idx_v = \
       lmo_pairwise(-grad, x, active_set)
-    # import pdb; pdb.set_trace()
     
     norm_update_direction = linalg.norm(update_direction)**2
     if norm_update_direction == 0:
-      raise RuntimeError('oh oh')
+      raise RuntimeError("Update direction cannot be zero")
     certificate = np.dot(update_direction, -grad)
 
     # compute gamma_max
@@ -323,8 +321,6 @@ def minimize_pairwise_frank_wolfe(f_grad,
       raise ValueError("Invalid option step_size=%s" % step_size)
     if callback is not None:
       callback(locals())
-    x_prev = x.copy()
-    active_set_prev = active_set.copy()
     x += step_size_t * update_direction
     active_set[idx_s] += step_size_t
     active_set[idx_v] -= step_size_t
