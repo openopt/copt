@@ -20,15 +20,15 @@ datasets = [
     ]
 
 
-
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    ["adaptive2", "scipy linesearch step-size", "^"],
-    ["adaptive2+", "linesearch+ step-size", "s"],
-    ["adaptive3", "adaptive3 step-size", "+"],
-    ["adaptive4", "adaptive4 step-size", "x"],
+    ["adaptive_scipy", "scipy linesearch step-size", "^"],
+    ["adaptive_scipy+", "linesearch+ step-size", "s"],
+    # ["adaptive3", "adaptive3 step-size", "+"],
+    # ["adaptive4", "adaptive4 step-size", "x"],
     ["adaptive5", "adaptive5 step-size", ">"],
-    ["DR", "Lipschitz step-size", "<"]]
+    ["DR", "Lipschitz step-size", "<"]
+    ]
 
 for dataset_title, load_data in datasets:
   plt.figure()
@@ -53,7 +53,7 @@ for dataset_title, load_data in datasets:
         callback=cb,
         step_size=step_size,
         lipschitz=f.lipschitz,
-        max_iter=1000
+        # max_iter=1000
     )
 
     plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker,
