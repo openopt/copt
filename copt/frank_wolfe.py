@@ -43,7 +43,7 @@ def _adaptive_step_size_scipy(f_grad, x, f_t, grad, old_f_t, lipschitz_t, certif
       )
   step_size_t = out[0]
   if step_size_t is None:
-    step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
+    step_size_t = min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
   f_next = out[3]
   grad_next = out[-1]
   return step_size_t, f_next, grad_next
@@ -329,8 +329,6 @@ def minimize_pairwise_frank_wolfe(f_grad,
       lmo_pairwise(-grad, x, active_set)
 
     norm_update_direction = linalg.norm(update_direction)**2
-    if norm_update_direction == 0:
-      raise RuntimeError("Update direction cannot be zero")
     certificate = np.dot(update_direction, -grad)
 
     # compute gamma_max
@@ -345,10 +343,14 @@ def minimize_pairwise_frank_wolfe(f_grad,
       lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
           f_grad, x, f_t, lipschitz_t, certificate, update_direction,
           norm_update_direction, max_step_size)
+      assert step_size_t >= 0
+      assert step_size_t <= max_step_size
     elif step_size == "adaptive_scipy":
       step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
           f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
           update_direction, norm_update_direction, max_step_size)
+      assert step_size_t >= 0
+      assert step_size_t <= max_step_size
     elif step_size == "DR":
       # .. Demyanov-Rubinov step-size ..
       if lipschitz is None:
