@@ -6,7 +6,7 @@ python:
 install:
 - pip install --upgrade -r requirements.txt
 - # the following are only needed for the examples and coverage tests
-- pip install python-coveralls scikit-image coverage pytest-sugar
+- pip install python-coveralls scikit-image coverage pytest-sugar pylint anybadge
 - py.test --version
 - python setup.py develop
 script:

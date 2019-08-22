@@ -1,6 +1,5 @@
 """Frank-Wolfe and related algorithms."""
 import warnings
-from copt import utils
 from copt import line_search
 import numpy as np
 from scipy import linalg
@@ -41,7 +40,7 @@ def _adaptive_step_size_scipy(f_grad, x, f_t, grad, old_f_t, lipschitz_t, certif
       gfk=grad, old_fval=f_t,
       old_old_fval=old_f_t,
       amax=max_step_size
-    )
+      )
   step_size_t = out[0]
   if step_size_t is None:
     step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
@@ -161,21 +160,22 @@ def minimize_frank_wolfe(f_grad,
           norm_update_direction, 1)
     elif step_size == "adaptive_scipy":
       step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
-          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate, update_direction, norm_update_direction, 1)
+          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
+          update_direction, norm_update_direction, 1)
     elif step_size == "adaptive_scipy+":
       if lipschitz_t is None:
         raise ValueError
       alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
       out = line_search.line_search_wolfe1(
-        lambda z: f_grad(z)[0],
-        lambda z: f_grad(z)[1], 
-        x,
-        update_direction,
-        gfk=grad, old_fval=f_t,
-        old_old_fval=old_f_t,
-        alpha1=alpha1,
-        amax=1
-        )
+          lambda z: f_grad(z)[0],
+          lambda z: f_grad(z)[1],
+          x,
+          update_direction,
+          gfk=grad, old_fval=f_t,
+          old_old_fval=old_f_t,
+          alpha1=alpha1,
+          amax=1
+          )
       step_size_t = out[0]
       if step_size_t is None:
         step_size_t = alpha1
@@ -257,7 +257,7 @@ def minimize_frank_wolfe(f_grad,
     x += step_size_t * update_direction
     pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
 
-    old_f_t, old_grad = f_t, grad
+    old_f_t = f_t
     f_t, grad = f_next, grad_next
   if callback is not None:
     callback(locals())
@@ -323,12 +323,11 @@ def minimize_pairwise_frank_wolfe(f_grad,
   f_t, grad = f_grad(x)
   old_f_t = None
 
-
   it = 0
   for it in pbar:
     update_direction, idx_s, idx_v = \
       lmo_pairwise(-grad, x, active_set)
-    
+
     norm_update_direction = linalg.norm(update_direction)**2
     if norm_update_direction == 0:
       raise RuntimeError("Update direction cannot be zero")
@@ -348,12 +347,14 @@ def minimize_pairwise_frank_wolfe(f_grad,
           norm_update_direction, max_step_size)
     elif step_size == "adaptive_scipy":
       step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
-          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate, update_direction, norm_update_direction, max_step_size)
+          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
+          update_direction, norm_update_direction, max_step_size)
     elif step_size == "DR":
       # .. Demyanov-Rubinov step-size ..
       if lipschitz is None:
         raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
-      step_size_t = _DR_step_size(lipschitz_t, certificate, norm_update_direction, max_step_size)
+      step_size_t = _DR_step_size(
+          lipschitz_t, certificate, norm_update_direction, max_step_size)
       f_next, grad_next = f_grad(x + step_size_t * update_direction)
     else:
       raise ValueError("Invalid option step_size=%s" % step_size)
@@ -364,7 +365,7 @@ def minimize_pairwise_frank_wolfe(f_grad,
     active_set[idx_v] -= step_size_t
     pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
 
-    old_f_t, old_grad = f_t, grad
+    old_f_t = f_t
     f_t, grad = f_next, grad_next
   if callback is not None:
     callback(locals())
