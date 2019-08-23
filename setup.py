@@ -29,5 +29,5 @@ setup(
     install_requires=['numpy', 'scipy', 'tqdm', 'sklearn', 'six',],
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     package_data={'copt': ['data/img1.csv']},
-    license='BSD'
+    license='Apache Software License'
 )
