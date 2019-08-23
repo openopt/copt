@@ -11,9 +11,9 @@ Welcome to copt!
    :alt: Apache-2 license
    :target: https://github.com/openopt/copt/blob/master/LICENSE
 .. image:: https://badge.fury.io/py/copt.svg
-    :target: https://badge.fury.io/py/copt
+   :target: https://badge.fury.io/py/copt
 .. image:: https://zenodo.org/badge/46262908.svg
-   :target: https://zenodo.org/badge/latestdoi/46262908
+   :target: citing.html
 .. image:: https://storage.googleapis.com/copt/pylint.svg
 
 
