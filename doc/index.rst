@@ -14,6 +14,8 @@ Welcome to copt!
     :target: https://badge.fury.io/py/copt
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
+.. image:: https://storage.googleapis.com/copt/pylint.svg
+
 
 copt is a library for mathematical optimization written in pure Python.
 
