@@ -20,3 +20,8 @@ steps:
 timeout: 50000s
 options:
  machineType: 'N1_HIGHCPU_8'
+
+artifacts:
+  objects:
+    location: 'gs://copt/'
+    paths: ['doc/_build/html/doc_status.svg']
