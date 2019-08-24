@@ -1,9 +1,9 @@
 """Proximal-gradient algorithms."""
+import warnings
 from copt import utils
 import numpy as np
 from scipy import optimize
 from tqdm import trange
-import warnings
 
 
 def minimize_proximal_gradient(
@@ -81,8 +81,9 @@ def minimize_proximal_gradient(
     raise ValueError("Line search iterations need to be greater than 0")
 
   if prox is None:
-    def prox(x, step_size):
+    def _prox(x, _):
       return x
+    prox = _prox
 
   step_size_, strategy = utils.parse_step_size(step_size)
   success = False
@@ -111,7 +112,8 @@ def minimize_proximal_gradient(
         step_size_ *= 1.1
         for _ in range(max_iter_backtracking):
           f_next, grad_next = f_grad(x_next)
-          rhs = fk + grad_fk.dot(update_direction) + update_direction.dot(update_direction) / (2.0 * step_size_)
+          rhs = fk + grad_fk.dot(update_direction) \
+              + update_direction.dot(update_direction) / (2.0 * step_size_)
           if f_next <= rhs:
             # .. step size found ..
             break

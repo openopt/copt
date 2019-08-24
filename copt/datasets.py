@@ -22,23 +22,31 @@ def load_img1(n_rows=20, n_cols=20):
 def load_madelon(md5_check=True, subset='full'):
   """Download and return the madelon dataset.
 
-    Properties:
-      n_samples: 2600
-      n_features: 500
+  Properties:
+    n_samples: 2600
+    n_features: 500
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
 
-    Args:
-      md5_check: bool
-        Whether to do an md5 check on the downloaded files.
 
-    Returns:
-      X : scipy.sparse CSR matrix, shape=(2600, 500)
-      y: numpy array
-          Labels, only takes values 0 or 1.
+  Args:
+    md5_check: bool
+      Whether to do an md5 check on the downloaded files.
+
+    subset: string
+      Can be one of 'full' for full dataset, 'train' for only the train set
+      or 'test' for only the test set.
+
+
+  Returns:
+    data: scipy.sparse CSR
+      Return data as CSR sparse matrix of shape=(2600, 500).
+
+    target: array of shape 2600
+      Labels, only takes values 0 or 1.
   """
   import h5py
   if not os.path.exists(DATA_DIR):
@@ -50,21 +58,21 @@ def load_madelon(md5_check=True, subset='full'):
     urllib.request.urlretrieve(url, file_path)
     print('Finished downloading')
   f = h5py.File(file_path, 'r')
-  X_train = np.asarray(f['X_train'])
-  y_train = np.array(f['y_train'])
+  data = np.asarray(f['X_train'])
+  target = np.array(f['y_train'])
 
   if subset == 'train':
-    return X_train, y_train
+    return data, target
 
-  X_test = np.asarray(f['X_test'])
-  y_test = np.array(f['y_test'])
+  data_test = np.asarray(f['X_test'])
+  target_test = np.array(f['y_test'])
 
   if subset == 'test':
-    return X_test, y_test
+    return data_test, target_test
   elif subset == 'full':
-    X = np.vstack((X_train, X_test))
-    y = np.concatenate((y_train, y_test))
-    return X, y
+    data_full = np.vstack((data, data_test))
+    target_full = np.concatenate((target, target_test))
+    return data_full, target_full
   else:
     raise ValueError(
         "subset '%s' not implemented, must be one of ('train', 'test', 'full')."
@@ -72,24 +80,26 @@ def load_madelon(md5_check=True, subset='full'):
 
 
 def load_rcv1(md5_check=True, subset='full'):
-  """
-    Download and return the RCV1 dataset.
+  """Download and return the RCV1 dataset.
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#rcv1.binary
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#rcv1.binary
 
-    Parameters
-    ----------
+  Args:
     md5_check: bool
-        Whether to do an md5 check on the downloaded files.
+      Whether to do an md5 check on the downloaded files.
 
-    Returns
-    -------
+    subset: string
+      Can be one of 'full' for full dataset, 'train' for only the train set
+      or 'test' for only the test set.
+
+  Returns:
     X : scipy.sparse CSR matrix
+
     y: numpy array
-        Labels, only takes values 0 or 1.
+      Labels, only takes values 0 or 1.
     """
   import h5py
   if not os.path.exists(DATA_DIR):
@@ -101,31 +111,33 @@ def load_rcv1(md5_check=True, subset='full'):
     urllib.request.urlretrieve(url, file_path)
     print('Finished downloading')
   f = h5py.File(file_path, 'r')
-  X_train_data = np.asarray(f['X_train.data'])
-  X_train_indices = np.array(f['X_train.indices'])
-  X_train_indptr = np.array(f['X_train.indptr'])
-  y_train = np.array(f['y_train'])
-  y_train = ((y_train + 1) // 2).astype(np.int)
+  data_train = np.asarray(f['X_train.data'])
+  data_train_indices = np.array(f['X_train.indices'])
+  data_train_indptr = np.array(f['X_train.indptr'])
+  target_train = np.array(f['y_train'])
+  target_train = ((target_train + 1) // 2).astype(np.int)
 
-  X_train = sparse.csr_matrix((X_train_data, X_train_indices, X_train_indptr))
+  data_train = sparse.csr_matrix(
+      (data_train, data_train_indices, data_train_indptr))
 
   if subset == 'train':
-    return X_train, y_train
+    return data_train, target_train
 
-  X_test_data = np.asarray(f['X_test.data'])
-  X_test_indices = np.array(f['X_test.indices'])
-  X_test_indptr = np.array(f['X_test.indptr'])
-  y_test = np.array(f['y_test'])
-  y_test = ((y_test + 1) // 2).astype(np.int)
+  data_test = np.asarray(f['X_test.data'])
+  data_test_indices = np.array(f['X_test.indices'])
+  data_test_indptr = np.array(f['X_test.indptr'])
+  target_test = np.array(f['y_test'])
+  target_test = ((target_test + 1) // 2).astype(np.int)
 
-  X_test = sparse.csr_matrix((X_test_data, X_test_indices, X_test_indptr))
+  data_test = sparse.csr_matrix(
+      (data_test, data_test_indices, data_test_indptr))
 
   if subset == 'test':
-    return X_test, y_test
+    return data_test, target_test
   elif subset == 'full':
-    X = sparse.vstack((X_train, X_test))
-    y = np.concatenate((y_train, y_test))
-    return X, y
+    data_full = sparse.vstack((data_train, data_test))
+    target_full = np.concatenate((target_train, target_test))
+    return data_full, target_full
   else:
     raise ValueError(
         "subset '%s' not implemented, must be one of ('train', 'test', 'full')."
@@ -135,22 +147,20 @@ def load_rcv1(md5_check=True, subset='full'):
 def load_url(md5_check=True):
   """Download and return the URL dataset.
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#url
 
-    Parameters
-    ----------
-    md5_check: bool
-        Whether to do an md5 check on the downloaded files.
+  Args:
+  md5_check: bool
+    Whether to do an md5 check on the downloaded files.
 
-    Returns
-    -------
+  Returns:
     X : scipy.sparse CSR matrix
     y: numpy array
         Labels, only takes values 0 or 1.
-    """
+  """
   from sklearn import datasets  # lazy import
   import bz2
   file_path = os.path.join(DATA_DIR, 'url_combined.bz2')
@@ -194,18 +204,18 @@ def load_url(md5_check=True):
 def load_covtype():
   """Download and return the covtype dataset.
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#covtype
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#covtype
 
 
-    Returns
-    -------
+  Returns:
     X : scipy.sparse CSR matrix
-    y: numpy array
-        Labels, only takes values 0 or 1.
-    """
+
+  y: numpy array
+    Labels, only takes values 0 or 1.
+  """
   from sklearn import datasets  # lazy import
   if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -290,20 +300,20 @@ def load_kdd10(md5_check=True):
 def load_kdd12(md5_check=True, verbose=0):
   """Download and return the KDD12 dataset.
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#kdd2012
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#kdd2012
 
-    Args:
-      md5_check: bool
-        Whether to do an md5 check on the downloaded files.
+  Args:
+    md5_check: bool
+      Whether to do an md5 check on the downloaded files.
 
-    Returns:
-      X : scipy.sparse CSR matrix
-      y: numpy array
-          Labels, only takes values 0 or 1.
-    """
+  Returns:
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 0 or 1.
+  """
   from sklearn import datasets  # lazy import
   import bz2
   file_path = os.path.join(DATA_DIR, 'kdd12.bz2')
@@ -347,20 +357,20 @@ def load_kdd12(md5_check=True, verbose=0):
 def load_criteo(md5_check=True):
   """Download and return the criteo dataset.
 
-    This is the binary classification version of the dataset as found in the
-    LIBSVM dataset project:
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
 
-        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#criteo
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#criteo
 
-    Args:
-      md5_check: bool
-        Whether to do an md5 check on the downloaded files.
+  Args:
+    md5_check: bool
+      Whether to do an md5 check on the downloaded files.
 
-    Returns
-      X : scipy.sparse CSR matrix
-      y: numpy array
-          Labels, only takes values 0 or 1.
-    """
+  Returns
+    X : scipy.sparse CSR matrix
+    y: numpy array
+        Labels, only takes values 0 or 1.
+  """
   from sklearn import datasets  # lazy import
   if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)

@@ -70,7 +70,7 @@ def minimize_frank_wolfe(f_grad,
       It should accept the optional argument return_gradient, and when False
       it should return only the function value.
 
-    x0 : array-like
+    x0: array-like
       Initial guess for solution.
 
     lmo: callable
@@ -115,8 +115,8 @@ def minimize_frank_wolfe(f_grad,
 
   References:
     [1] Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex
-    Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_ ICML
-    2013.
+    Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_
+    ICML 2013.
 
     [2] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
     <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_,
@@ -185,8 +185,9 @@ def minimize_frank_wolfe(f_grad,
       grad_next = out[-1]
     elif step_size == "adaptive3":
       rho = 0.9
-      for i in range(max_iter):
-        step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
+      for _ in range(max_iter):
+        step_size_t = min(
+            certificate / (norm_update_direction * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * update_direction)
         if (f_next - f_t) / step_size_t > - rho * certificate / 2:
           # sufficient decrease not met, increase Lipchitz constant
@@ -205,8 +206,9 @@ def minimize_frank_wolfe(f_grad,
     elif step_size == "adaptive4":
       sigma = 0.9
       rho = 0.4
-      for i in range(max_iter):
-        step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
+      for _ in range(max_iter):
+        step_size_t = min(
+            certificate / (norm_update_direction * lipschitz_t), 1)
         f_next, grad_next = f_grad(x + step_size_t * update_direction)
         if (f_next - f_t) / step_size_t < - sigma * certificate / 2:
           # we can decrease the Lipschitz / increase the step-siPze
@@ -239,7 +241,8 @@ def minimize_frank_wolfe(f_grad,
 
       else:
         warnings.warn(
-            "Exhausted line search iterations in minimize_frank_wolfe", RuntimeWarning)
+            "Exhausted line search iterations in minimize_frank_wolfe",
+            RuntimeWarning)
     elif step_size == "DR":
       if lipschitz is None:
         raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
