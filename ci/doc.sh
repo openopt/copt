@@ -10,7 +10,7 @@ cd doc
 make html
 if [ $? -eq 0 ]; then
     # set up a badge depending on the result of the build
-    anybadge --label=doc --value=passing --file=doc/_build/html/doc_status.svg passing=green failing=red
+    anybadge --label=doc --value=passing --file=_build/html/doc_status.svg passing=green failing=red
 else
-    anybadge --label=doc --value=failing --file=doc/_build/html/doc_status.svg passing=green failing=red
+    anybadge --label=doc --value=failing --file=_build/html/doc_status.svg passing=green failing=red
 fi
