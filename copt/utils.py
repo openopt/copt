@@ -60,44 +60,44 @@ def parse_step_size(step_size):
 
 
 class Trace:
-    def __init__(self, f=None, freq=1):
-        self.trace_x = []
-        self.trace_time = []
-        self.trace_fx = []
-        self.trace_step_size = []
-        self.start = datetime.now()
-        self._counter = 0
-        self.freq = int(freq)
-        self.f = f
+  def __init__(self, f=None, freq=1):
+    self.trace_x = []
+    self.trace_time = []
+    self.trace_fx = []
+    self.trace_step_size = []
+    self.start = datetime.now()
+    self._counter = 0
+    self.freq = int(freq)
+    self.f = f
 
-    def __call__(self, dl):
-        if self._counter % self.freq == 0:
-            if self.f is not None:
-                self.trace_fx.append(self.f(dl["x"]))
-            else:
-                self.trace_x.append(dl["x"].copy())
-            delta = (datetime.now() - self.start).total_seconds()
-            self.trace_time.append(delta)
-            self.trace_step_size.append(dl["step_size"])
-        self._counter += 1
+  def __call__(self, dl):
+    if self._counter % self.freq == 0:
+      if self.f is not None:
+        self.trace_fx.append(self.f(dl["x"]))
+      else:
+        self.trace_x.append(dl["x"].copy())
+      delta = (datetime.now() - self.start).total_seconds()
+      self.trace_time.append(delta)
+      self.trace_step_size.append(dl["step_size"])
+    self._counter += 1
 
 
 def init_lipschitz(f_grad, x0):
-    L0 = 1e-3
-    f0, grad0 = f_grad(x0)
-    if sparse.issparse(grad0) and not sparse.issparse(x0):
-        x0 = sparse.csc_matrix(x0).T
-    elif sparse.issparse(x0) and not sparse.issparse(grad0):
-        grad0 = sparse.csc_matrix(grad0).T
+  L0 = 1e-3
+  f0, grad0 = f_grad(x0)
+  if sparse.issparse(grad0) and not sparse.issparse(x0):
+    x0 = sparse.csc_matrix(x0).T
+  elif sparse.issparse(x0) and not sparse.issparse(grad0):
+    grad0 = sparse.csc_matrix(grad0).T
+  x_tilde = x0 - (1./L0)*grad0
+  f_tilde = f_grad(x_tilde)[0]
+  for _ in range(100):
+    if f_tilde <= f0:
+      break
+    L0 *= 10
     x_tilde = x0 - (1./L0)*grad0
     f_tilde = f_grad(x_tilde)[0]
-    for _ in range(100):
-        if f_tilde <= f0:
-            break
-        L0 *= 10
-        x_tilde = x0 - (1./L0)*grad0
-        f_tilde = f_grad(x_tilde)[0]
-    return L0
+  return L0
 
 
 def get_max_lipschitz(A, loss, alpha=0):

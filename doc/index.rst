@@ -26,7 +26,7 @@ Philosophy
 ----------
 
    * Modular, general-purpose optimization library.
-   * API similar to that of scipy.optimize.
+   * API that follows whenever possible that of scipy.optimize.
    * State of the art performance, with emphasis on large-scale optimization.
    * Few dependencies, pure Python library for easy deployment.
 
@@ -35,15 +35,22 @@ Optimization algorithms
 -----------------------
 .. autosummary::
 
-C-OPT contains implementations of different optimization methods. These are categorized as:
+copt contains implementations of different optimization methods. These are categorized as:
 
- * Proximal gradient: :meth:`proximal gradient descent <copt.minimize_proximal_gradient>`
+.. admonition:: Proximal-gradient
 
- * Proximal splitting: :meth:`three operator splitting <copt.minimize_three_split>`, :meth:`primal-dual hybrid gradient <copt.minimize_primal_dual>`
+  These are methods that combine the gradient of a smooth term with the proximal operator of a potentially non-smooth term.
+  They can be used to solve problems involving one or several non-smooth terms :ref:`read more ...<proximal_gradient>`
 
- * Frank-Wolfe: :meth:`Frank-Wolfe <copt.minimize_frank_wolfe>`, :meth:`Pairwise Frank-Wolfe <copt.minimize_pairwise_frank_wolfe>`
+.. admonition:: Frank-Wolfe
 
- * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_saga>`, :meth:`SVRG <copt.minimize_svrg>`, :meth:`variance-reduced three operator splitting <copt.minimize_vrtos>`
+    Frank-Wolfe (also known as conditional gradient and projection-free methods) are a family of methods XXXX
+
+
+.. admonition:: Stochastic Methods
+
+
+  * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_saga>`, :meth:`SVRG <copt.minimize_svrg>`, :meth:`variance-reduced three operator splitting <copt.minimize_vrtos>`
 
 
 Getting started
@@ -60,14 +67,15 @@ Alternatively, you can install the latest development from github with the comma
     pip install git+https://github.com/openopt/copt.git
 
 
+.. warning::
 
+    where to go from here?
 
 .. toctree::
     :maxdepth: 2
     :hidden:
 
     proximal_gradient.rst
-    proximal_splitting.rst
     frank_wolfe.rst
     incremental.rst
     loss_functions.rst
