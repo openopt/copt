@@ -8,7 +8,7 @@ Comparison of solvers with total variation regularization.
 import copt as cp
 import numpy as np
 from PIL import Image
-import pylab as plt
+import matplotlib.pyplot as plt
 from scipy import misc
 from scipy import sparse
 from scipy.sparse import linalg as splinalg

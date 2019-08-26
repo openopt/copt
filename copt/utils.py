@@ -122,138 +122,143 @@ def get_max_lipschitz(A, loss, alpha=0):
 
 
 class LogLoss:
-    """A class evaluation and derivatives of the logistic loss. The logistic loss function is defined as
+  r"""Logistic loss function.
 
-    .. math::
-        -\\frac{1}{n}\\sum_{i=1}^n b_i \\log(\\sigma(\\bs{a}_i^T \\bs{x})) + (1 - b_i) \\log(1 - \\sigma(\\bs{a}_i^T \\bs{x}))
+  The logistic loss function is defined as
 
-    where :math:`\\sigma` is the sigmoid function :math:`\\sigma(t) = 1/(1 + e^{-t})`
-        
-    The input vector b verifies :math:`0 \\leq b_i \\leq 1`. When it comes from
-    class labels, it should have the values 0 or 1.
+  .. math::
+      -\frac{1}{n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
+         + (1 - b_i) \log(1 - \sigma(\bs{a}_i^T \bs{x}))
 
-    References
-    ----------
+  where :math:`\sigma` is the sigmoid function
+  :math:`\sigma(t) = 1/(1 + e^{-t})`.
+
+  The input vector b verifies :math:`0 \leq b_i \leq 1`. When it comes from
+  class labels, it should have the values 0 or 1.
+
+  References:
     http://fa.bianp.net/drafts/derivatives_logistic.html
-    """
-    def __init__(self, A, b, alpha=0.):
-        if A is None:
-            A = sparse.eye(b.size, b.size, format="csr")
-        self.A = A
-        if np.max(b) > 1 or np.min(b) < 0:
-            raise ValueError("b can only contain values between 0 and 1 ")
-        if not A.shape[0] == b.size:
-            raise ValueError("Dimensions of A and b do not coincide")
-        self.b = b
-        self.alpha = alpha
-        self.intercept = False
-        self.name = "logloss"
+  """
 
-    def __call__(self, x):
-        return self.f_grad(x, return_gradient=False)
-
-    def _sigma(self, z, idx):
-        z0 = np.zeros_like(z)
-        tmp = np.exp(-z[idx])
-        z0[idx] = 1 / (1 + tmp)
-        tmp = np.exp(z[~idx])
-        z0[~idx] = tmp / (1 + tmp)
-        return z0
-
-    def f_grad(self, x, return_gradient=True):
-        if self.intercept:
-            x_, c = x[:-1], x[-1]
-        else:
-            x_, c = x, 0.
-        z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
-        tmp = np.zeros((2, self.A.shape[0]))
-        tmp[1] = -z
-        loss = np.mean((1 - self.b) * z + special.logsumexp(tmp, axis=0))
-        penalty = safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
-        loss += .5 * self.alpha * penalty
-
-        if not return_gradient:
-            return loss
-        
-        z0 = special.expit(z) - self.b
-        grad = safe_sparse_add(
-            self.A.T.dot(z0) / self.A.shape[0],
-            self.alpha * x_)
-        grad = np.asarray(grad).ravel()
-        grad_c = z0.mean()
-        if self.intercept:
-            return np.concatenate((grad, [grad_c]))
-
-        return loss, grad
-
-    def Hessian(self, x):
-        """Return a callable that performs dot products with the Hessian"""
-
-        n_samples, n_features = self.A.shape
-        if self.intercept:
-            x_, c = x[:-1], x[-1]
-        else:
-            x_, c = x, 0.
-
-        z = special.expit(safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c) 
-
-        # The mat-vec product of the Hessian
-        d = z * (1 - z)
-        if sparse.issparse(self.A):
-            dX = safe_sparse_dot(sparse.dia_matrix((d, 0),
-                                shape=(n_samples, n_samples)), self.A)
-        else:
-            # Precompute as much as possible
-            dX = d[:, np.newaxis] * self.A
-
-        if self.intercept:
-            # Calculate the double derivative with respect to intercept
-            # In the case of sparse matrices this returns a matrix object.
-            dd_intercept = np.squeeze(np.array(dX.sum(axis=0)))
-
-        def _Hs(s):
-            ret = np.empty_like(s)
-            ret[:n_features] = self.A.T.dot(dX.dot(s[:n_features]))
-            ret[:n_features] += self.alpha * s[:n_features]
-
-            # For the fit intercept case.
-            if self.intercept:
-                ret[:n_features] += s[-1] * dd_intercept
-                ret[-1] = dd_intercept.dot(s[:n_features])
-                ret[-1] += d.sum() * s[-1]
-            return ret / n_samples
-
-        return _Hs
-
-    @property
-    def partial_deriv(self):
-        @njit
-        def log_deriv(p, y):
-            # derivative of logistic loss
-            # same as in lightning (with minus sign)
-            if p > 0:
-                tmp = np.exp(-p)
-                phi = - tmp / (1. + tmp) + 1 - y
-            else:
-                tmp = np.exp(p)
-                phi = tmp / (1. + tmp) - y
-            return phi
-        return log_deriv
+  def __init__(self, A, b, alpha=0.):
+    if A is None:
+      A = sparse.eye(b.size, b.size, format="csr")
+    self.A = A
+    if np.max(b) > 1 or np.min(b) < 0:
+      raise ValueError("b can only contain values between 0 and 1 ")
+    if not A.shape[0] == b.size:
+      raise ValueError("Dimensions of A and b do not coincide")
+    self.b = b
+    self.alpha = alpha
+    self.intercept = False
 
 
+  def __call__(self, x):
+    return self.f_grad(x, return_gradient=False)
 
-    @property
-    def lipschitz(self):
-        s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
-        return 0.25 * (s * s) / self.A.shape[0] + self.alpha
+  def _sigma(self, z, idx):
+    z0 = np.zeros_like(z)
+    tmp = np.exp(-z[idx])
+    z0[idx] = 1 / (1 + tmp)
+    tmp = np.exp(z[~idx])
+    z0[~idx] = tmp / (1 + tmp)
+    return z0
+
+  def f_grad(self, x, return_gradient=True):
+    if self.intercept:
+      x_, c = x[:-1], x[-1]
+    else:
+      x_, c = x, 0.
+    z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
+    tmp = np.zeros((2, self.A.shape[0]))
+    tmp[1] = -z
+    loss = np.mean((1 - self.b) * z + special.logsumexp(tmp, axis=0))
+    penalty = safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
+    loss += .5 * self.alpha * penalty
+
+    if not return_gradient:
+      return loss
+
+    z0 = special.expit(z) - self.b
+    grad = safe_sparse_add(
+        self.A.T.dot(z0) / self.A.shape[0],
+        self.alpha * x_)
+    grad = np.asarray(grad).ravel()
+    grad_c = z0.mean()
+    if self.intercept:
+      return np.concatenate((grad, [grad_c]))
+
+    return loss, grad
+
+  def Hessian(self, x):
+    """Return a callable that performs dot products with the Hessian."""
+
+    n_samples, n_features = self.A.shape
+    if self.intercept:
+      x_, c = x[:-1], x[-1]
+    else:
+      x_, c = x, 0.
+
+    z = special.expit(safe_sparse_dot(
+        self.A, x_, dense_output=True).ravel() + c)
+
+    # The mat-vec product of the Hessian
+    d = z * (1 - z)
+    if sparse.issparse(self.A):
+      dX = safe_sparse_dot(sparse.dia_matrix((d, 0),
+                            shape=(n_samples, n_samples)), self.A)
+    else:
+        # Precompute as much as possible
+      dX = d[:, np.newaxis] * self.A
+
+    if self.intercept:
+      # Calculate the double derivative with respect to intercept
+      # In the case of sparse matrices this returns a matrix object.
+      dd_intercept = np.squeeze(np.array(dX.sum(axis=0)))
+
+    def _Hs(s):
+      ret = np.empty_like(s)
+      ret[:n_features] = self.A.T.dot(dX.dot(s[:n_features]))
+      ret[:n_features] += self.alpha * s[:n_features]
+
+      # For the fit intercept case.
+      if self.intercept:
+        ret[:n_features] += s[-1] * dd_intercept
+        ret[-1] = dd_intercept.dot(s[:n_features])
+        ret[-1] += d.sum() * s[-1]
+      return ret / n_samples
+
+    return _Hs
+
+  @property
+  def partial_deriv(self):
+      @njit
+      def log_deriv(p, y):
+          # derivative of logistic loss
+          # same as in lightning (with minus sign)
+          if p > 0:
+              tmp = np.exp(-p)
+              phi = - tmp / (1. + tmp) + 1 - y
+          else:
+              tmp = np.exp(p)
+              phi = tmp / (1. + tmp) - y
+          return phi
+      return log_deriv
 
 
-    @property
-    def max_lipschitz(self):
-        from sklearn.utils.extmath import row_norms
-        max_squared_sum = row_norms(self.A, squared=True).max()
 
-        return 0.25 * max_squared_sum + self.alpha
+  @property
+  def lipschitz(self):
+      s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+      return 0.25 * (s * s) / self.A.shape[0] + self.alpha
+
+
+  @property
+  def max_lipschitz(self):
+      from sklearn.utils.extmath import row_norms
+      max_squared_sum = row_norms(self.A, squared=True).max()
+
+      return 0.25 * max_squared_sum + self.alpha
 
 
 class SquareLoss:

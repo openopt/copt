@@ -4,11 +4,11 @@ Benchmark of Frank-Wolfe variants for sparse logistic regression
 ================================================================
 
 Speed of convergence of different Frank-Wolfe variants on various
-problems with a logistic regression loss (:meth:`cp.utils.LogLoss`)
-and a L1 ball constraint (:meth:`cp.utils.L1Ball`).
+problems with a logistic regression loss (:meth:`copt.utils.LogLoss`)
+and a L1 ball constraint (:meth:`copt.utils.L1Ball`).
 """
 import copt as cp
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
 import numpy as np
 
 # .. datasets and their loading functions ..

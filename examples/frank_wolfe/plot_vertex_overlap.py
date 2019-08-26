@@ -10,7 +10,7 @@ step-size, as it implies that the last two updates could have been replaced
 by a single update with larger step-size.
 """
 import copt as cp
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
 import numpy as np
 
 # datasets and their respective loading functions

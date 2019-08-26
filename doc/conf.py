@@ -68,10 +68,10 @@ sphinx_gallery_conf = {
     "doc_module": "copt",
     # path where to save gallery generated examples
     "gallery_dirs": "auto_examples",
-    'backreferences_dir': os.path.join('modules', 'generated'),
+    "backreferences_dir": os.path.join("modules", "generated"),
     "show_memory": True,
-    'reference_url': {
-        'copt': None}
+    "reference_url": {
+        "copt": None}
 }
 
 # Add any paths that contain templates here, relative to this directory.

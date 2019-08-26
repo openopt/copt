@@ -132,8 +132,8 @@ def minimize_frank_wolfe(f_grad,
 
   Examples
   --------
-    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_stepsize.py`
-    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_fw_vertex_overlap.py`
+    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
+    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
   """
   x0 = np.asanyarray(x0, dtype=np.float)
   if tol < 0:

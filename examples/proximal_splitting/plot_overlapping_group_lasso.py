@@ -9,10 +9,10 @@ References
 ----------
 This example is modeled after the experiments in `Adaptive Three Operator Splitting <https://arxiv.org/pdf/1804.02339.pdf>`_, Appendix E.3.
 """
-import numpy as np
-from sklearn import datasets, preprocessing
-import pylab as plt
 import copt as cp
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn import preprocessing
 
 np.random.seed(0)
 

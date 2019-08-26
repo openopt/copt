@@ -11,7 +11,7 @@ import copt as cp
 import jax
 from jax import numpy as np
 import numpy as onp
-import pylab as plt
+import matplotlib.pyplot as plt
 from sklearn import datasets
 
 # .. construct (random) dataset ..
