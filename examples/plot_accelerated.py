@@ -6,8 +6,8 @@ Speed of convergence comparison between gradient descent
 and Nesterov acceleration on a logistic regression problem.
 """
 import copt as cp
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # .. construct (random) dataset ..
 n_samples, n_features = 1000, 200

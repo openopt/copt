@@ -1,0 +1,82 @@
+\documentclass[twoside,11pt]{article}
+
+\usepackage[nohyperref, preprint]{jmlr2e}
+
+\usepackage{amsmath}
+% \usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{empheq}
+\usepackage{xcolor, color, colortbl}
+\usepackage{mdframed}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+\usepackage{enumitem}
+% For figures
+\usepackage{graphicx} % more modern
+
+
+
+\definecolor{mydarkblue}{rgb}{0,0.08,0.45}
+\usepackage[colorlinks=true,
+    linkcolor=mydarkblue,
+    citecolor=mydarkblue,
+    filecolor=mydarkblue,
+    urlcolor=mydarkblue,
+    pdfview=FitH]{hyperref}
+
+\graphicspath{{./figures/}}
+
+
+\jmlrheading{1}{2019}{1-48}{4/00}{10/00}{X}{Authors}
+
+% Short headings should be running head and authors last names
+
+\ShortHeadings{C-OPT: Constrained Optimization in Python}{Pedregosa}
+\firstpageno{1}
+
+
+\begin{document}
+
+\title{C-OPT: Constrained Optimization in Python}
+\author{\name Fabian Pedregosa \email pedregosa@google.com \\
+       \addr Google Research\\
+}
+\editor{}
+
+
+\maketitle
+
+
+\begin{abstract}
+Abstract
+\end{abstract}
+
+\begin{keywords}
+  optimization, python
+\end{keywords}
+
+\section{Introduction}
+
+
+\section{Project Vision}
+
+\paragraph{Code quality.}
+
+\paragraph{Bare-bones design and API.}
+
+\paragraph{Documentation.}
+
+\paragraph{Apache license.}
+
+
+\section{Underlying Technologies}
+
+\citep{virtanen2019scipy}
+
+\citep{pedregosa2011scikit}
+
+\bibliography{biblio}
+
+
+\end{document}
