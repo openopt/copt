@@ -3,7 +3,7 @@
 Citing
 ======
 
-If this software is useful for your research, please consider citing it as
+If you use this software in a scientific publication, please consider citing it as
 
 .. code::
 

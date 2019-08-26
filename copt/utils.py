@@ -329,39 +329,38 @@ class HuberLoss:
 
 
 class L1Norm:
-    """L1 norm, that is, the sum of absolute values:
-    
-    .. math::
-        \\alpha\\sum_i^d |x_i|
-    
-    Parameters
-    ----------
+  """L1 norm, that is, the sum of absolute values:
 
-    alpha: float
-        constant multiplying the L1 norm
-    
-    """
-    def __init__(self, alpha):
-        self.alpha = alpha
+  .. math::
+      \\alpha\\sum_i^d |x_i|
 
-    def __call__(self, x):
-        return self.alpha * np.abs(x).sum()
+  Args:
+  alpha: float
+      constant multiplying the L1 norm
 
-    def prox(self, x, step_size):
-        return np.fmax(x - self.alpha * step_size, 0) \
-                   - np.fmax(- x - self.alpha * step_size, 0)
+  """
 
-    def prox_factory(self, n_features):
-        alpha = self.alpha
+  def __init__(self, alpha):
+    self.alpha = alpha
 
-        @njit
-        def _prox_L1(x, i, indices, indptr, d, step_size):
-            for j in range(indptr[i], indptr[i+1]):
-                j_idx = indices[j]  # for L1 this is the same
-                a = x[j_idx] - alpha * d[j_idx] * step_size
-                b = - x[j_idx] - alpha * d[j_idx] * step_size
-                x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
-        return _prox_L1, sparse.eye(n_features, format="csr")
+  def __call__(self, x):
+      return self.alpha * np.abs(x).sum()
+
+  def prox(self, x, step_size):
+      return np.fmax(x - self.alpha * step_size, 0) \
+                  - np.fmax(- x - self.alpha * step_size, 0)
+
+  def prox_factory(self, n_features):
+      alpha = self.alpha
+
+      @njit
+      def _prox_L1(x, i, indices, indptr, d, step_size):
+          for j in range(indptr[i], indptr[i+1]):
+              j_idx = indices[j]  # for L1 this is the same
+              a = x[j_idx] - alpha * d[j_idx] * step_size
+              b = - x[j_idx] - alpha * d[j_idx] * step_size
+              x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
+      return _prox_L1, sparse.eye(n_features, format="csr")
 
 
 class L1Ball:
