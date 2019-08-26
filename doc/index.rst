@@ -29,7 +29,7 @@ Philosophy
 Contents
 -----------------------
 
-copt implements different optimization methods:
+The methods implements in copt can be categorized as:
 
 .. admonition:: Proximal-gradient
 
@@ -47,8 +47,8 @@ copt implements different optimization methods:
   :ref:`Read more ...<stochastic_methods>`.
 
 
-Getting started
----------------
+Installation
+------------
 
 If you already have a working installation of numpy and scipy,
 the easiest way to install copt is using ``pip`` ::
@@ -61,19 +61,22 @@ Alternatively, you can install the latest development from github with the comma
     pip install git+https://github.com/openopt/copt.git
 
 
-.. warning::
 
-    where to go from here?
+Where to go from here?
+----------------------
+
+To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_examples>` or browse through the module reference using the left side bar.
+
 
 .. toctree::
     :maxdepth: 2
     :hidden:
 
-    proximal_gradient.rst
-    frank_wolfe.rst
-    incremental.rst
-    loss_functions.rst
-    auto_examples/index.rst
-    datasets.rst
-    utils.rst
-    citing.rst
+    proximal_gradient
+    frank_wolfe
+    incremental
+    loss_functions
+    auto_examples/index
+    datasets
+    utils
+    citing
