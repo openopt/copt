@@ -38,7 +38,7 @@ The methods implements in copt can be categorized as:
 
 .. admonition:: Frank-Wolfe
 
-    Frank-Wolfe (also known as conditional gradient and projection-free methods) are a family of methods to solve constrained optimization problems. Contrary to proximal-gradient methods, they do not require access to the projection onto the constraint set (hence the name projection-free). :ref:`Read more ...<frank_wolfe>`
+    Frank-Wolfe, also known as conditional gradient and projection-free methods, are a family of methods to solve constrained optimization problems. Contrary to proximal-gradient methods, they do not require access to the projection onto the constraint set, hence the name projection-free. :ref:`Read more ...<frank_wolfe>`
 
 
 .. admonition:: Stochastic Methods
