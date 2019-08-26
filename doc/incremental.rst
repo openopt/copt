@@ -1,4 +1,4 @@
-.. _incremental_methods:
+.. _stochastic_methods:
 
 Incremental methods
 ======================

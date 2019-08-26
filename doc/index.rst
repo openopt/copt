@@ -9,13 +9,10 @@ Welcome to copt!
    :target: https://storage.googleapis.com/copt/index.html
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
-.. image:: https://img.shields.io/github/license/openopt/copt
-   :alt: Apache-2 license
-   :target: https://github.com/openopt/copt/blob/master/LICENSE
-.. image:: https://zenodo.org/badge/46262908.svg
-   :target: citing.html
 .. image:: https://storage.googleapis.com/copt/pylint.svg
    :target: https://storage.googleapis.com/copt/pylint.txt
+.. image:: https://zenodo.org/badge/46262908.svg
+   :target: citing.html
 
 copt is a library for mathematical optimization written in pure Python.
 
@@ -23,16 +20,16 @@ copt is a library for mathematical optimization written in pure Python.
 Philosophy
 ----------
 
-   * Modular, general-purpose optimization library.
-   * API that follows whenever possible that of scipy.optimize.
-   * State of the art performance, with emphasis on large-scale optimization.
-   * Few dependencies, pure Python library for easy deployment.
+  * State of the art implementation of classical optimization algorithms.
+  * API that follows whenever possible that of scipy.optimize.
+  * State of the art performance, with emphasis on large-scale optimization.
+  * Few dependencies, pure Python library for easy deployment.
 
 
 Contents
 -----------------------
 
-copt contains implementations of different optimization methods. These are categorized as:
+copt implements different optimization methods:
 
 .. admonition:: Proximal-gradient
 
@@ -41,13 +38,13 @@ copt contains implementations of different optimization methods. These are categ
 
 .. admonition:: Frank-Wolfe
 
-    Frank-Wolfe (also known as conditional gradient and projection-free methods) are a family of methods XXXX
+    Frank-Wolfe (also known as conditional gradient and projection-free methods) are a family of methods to solve constrained optimization problems. Contrary to proximal-gradient methods, they do not require access to the projection onto the constraint set (hence the name projection-free). :ref:`Read more ...<frank_wolfe>`
 
 
 .. admonition:: Stochastic Methods
 
-
-  * Variance-reduced stochastic methods: :meth:`SAGA <copt.minimize_saga>`, :meth:`SVRG <copt.minimize_svrg>`, :meth:`variance-reduced three operator splitting <copt.minimize_vrtos>`
+  Methods that can solve optimization problems with access only to a noisy evaluation of the objective.
+  :ref:`Read more ...<stochastic_methods>`.
 
 
 Getting started
