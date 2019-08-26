@@ -43,8 +43,11 @@ def _adaptive_step_size_scipy(f_grad, x, f_t, grad, old_f_t, lipschitz_t, certif
       )
   step_size_t = out[0]
   if step_size_t is None:
-    step_size_t = min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
+    tmp = certificate / (norm_update_direction * lipschitz_t)
+    step_size_t = min(tmp, max_step_size)
   f_next = out[3]
+  if not f_next <= f_t:
+    raise ValueError
   grad_next = out[-1]
   return step_size_t, f_next, grad_next
 
@@ -346,18 +349,23 @@ def minimize_pairwise_frank_wolfe(f_grad,
       lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
           f_grad, x, f_t, lipschitz_t, certificate, update_direction,
           norm_update_direction, max_step_size)
+      if step_size_t is None:
+        raise RuntimeError
       assert step_size_t >= 0
       assert step_size_t <= max_step_size
     elif step_size == "adaptive_scipy":
       step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
           f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
           update_direction, norm_update_direction, max_step_size)
+      if step_size_t is None:
+        raise RuntimeError
       assert step_size_t >= 0
       assert step_size_t <= max_step_size
     elif step_size == "DR":
       # .. Demyanov-Rubinov step-size ..
       if lipschitz is None:
-        raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
+        raise ValueError(
+            "lipschitz needs to be specified with step_size=\"DR\"")
       step_size_t = _DR_step_size(
           lipschitz_t, certificate, norm_update_direction, max_step_size)
       f_next, grad_next = f_grad(x + step_size_t * update_direction)
