@@ -5,17 +5,15 @@ Welcome to copt!
 
 .. image:: https://travis-ci.org/openopt/copt.svg?branch=master
    :target: https://travis-ci.org/openopt/copt
+.. image:: https://storage.googleapis.com/copt/doc_status.svg
+   :target: https://storage.googleapis.com/copt/index.html
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
 .. image:: https://img.shields.io/github/license/openopt/copt
    :alt: Apache-2 license
    :target: https://github.com/openopt/copt/blob/master/LICENSE
-.. image:: https://badge.fury.io/py/copt.svg
-   :target: https://badge.fury.io/py/copt
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: citing.html
-.. image:: https://storage.googleapis.com/copt/doc_status.svg
-   :target: https://storage.googleapis.com/copt/index.html
 .. image:: https://storage.googleapis.com/copt/pylint.svg
    :target: https://storage.googleapis.com/copt/pylint.txt
 
@@ -31,9 +29,8 @@ Philosophy
    * Few dependencies, pure Python library for easy deployment.
 
 
-Optimization algorithms
+Contents
 -----------------------
-.. autosummary::
 
 copt contains implementations of different optimization methods. These are categorized as:
 

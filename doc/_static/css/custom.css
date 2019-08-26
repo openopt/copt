@@ -1,0 +1,12 @@
+
+/* this makes inline code look prettier with a slight border around it */
+pre {
+  border: 1px solid #CCC;
+}
+
+div.admonition-proximal-gradient,
+div.admonition-frank-wolfe,
+div.admonition-stochastic-methods {
+  background-color: #d9edf7;
+  border-color: #bce8f1;
+}
