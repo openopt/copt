@@ -1,7 +1,9 @@
 .. _frank_wolfe:
 
-Frank-Wolfe and other projection-free algorithms
-================================================
+Frank-Wolfe
+===========
+
+This section describes the implementation of the Frank-Wolfe and other projection-free algorithms
 
 
 Frank-Wolfe

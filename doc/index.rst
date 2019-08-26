@@ -65,7 +65,7 @@ Alternatively, you can install the latest development from github with the comma
 Where to go from here?
 ----------------------
 
-To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_examples>` or browse through the module reference using the left side bar.
+To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_examples>` or browse through the module reference using the left navigation bar.
 
 
 .. toctree::
@@ -77,6 +77,5 @@ To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_exam
     incremental
     loss_functions
     auto_examples/index
-    datasets
     utils
     citing

@@ -1,7 +1,7 @@
 .. _general_examples:
 
-Examples
-========
+Example Gallery
+===============
 
 Miscellaneous examples
 ----------------------
