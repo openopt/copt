@@ -1,5 +1,8 @@
+Utility functions
+=================
+
 Datasets
-=========
+--------
 
 .. autosummary::
    :toctree: generated/
@@ -12,7 +15,7 @@ Datasets
     copt.datasets.load_madelon
 
 Misc
-====
+----
 
 .. autosummary::
    :toctree: generated/

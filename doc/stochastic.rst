@@ -1,6 +1,6 @@
 .. _stochastic_methods:
 
-Incremental methods
+Stochastic methods
 ======================
 
 .. autosummary::
@@ -9,3 +9,8 @@ Incremental methods
     copt.minimize_saga
     copt.minimize_svrg
     copt.minimize_vrtos
+
+
+.. topic:: Examples:
+
+   * :ref:`sphx_glr_auto_examples_plot_saga_vs_svrg.py`

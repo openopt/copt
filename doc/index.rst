@@ -74,7 +74,7 @@ To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_exam
 
     proximal_gradient
     frank_wolfe
-    incremental
+    stochastic
     loss_functions
     auto_examples/index
     utils
