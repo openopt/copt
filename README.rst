@@ -9,6 +9,7 @@
    :target: https://zenodo.org/badge/latestdoi/46262908
 .. image:: https://storage.googleapis.com/copt/pylint.svg
 .. image:: https://storage.googleapis.com/copt/doc_status.svg
+   :target: https://storage.googleapis.com/copt/
 
 C-OPT: composite optimization in Python
 =======================================
