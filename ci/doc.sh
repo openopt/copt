@@ -3,7 +3,7 @@
 mkdir -p _build/html/
 pip install -r requirements.txt
 pip install -U sphinx loky joblib sphinx_copybutton memory_profiler jax jaxlib anybadge
-# I need my fork of sphinx-gallery to run stuff in parallel
+# fork of sphinx-gallery to run examples in parallel
 pip install git+https://github.com/fabianp/sphinx-gallery.git
 python setup.py install
 cd doc
