@@ -8,11 +8,9 @@ from . import utils
 
 @utils.njit(nogil=True)
 def _support_matrix(A_indices, A_indptr, reverse_blocks_indices, n_blocks):
-  """
-    Compute the support matrix, used by variance-reduced algorithms.
+  """Compute the support matrix, used by variance-reduced algorithms.
 
-    Parameters
-    ----------
+  Args:
     A_indices, A_indptr: arrays-like
         Arrays representing the data matrix in CSR format.
 
@@ -22,18 +20,16 @@ def _support_matrix(A_indices, A_indptr, reverse_blocks_indices, n_blocks):
         Number of unique blocks in array blocks.
 
 
-    Notes
-    -----
-    BS stands for Block Support
+  Notes
+  -----
+  BS stands for Block Support
 
-    Returns
-    -------
+  Returns:
     Parameters of a CSR matrix representing the extended support. The returned
     vectors represent a sparse matrix of shape (n_samples, n_blocks),
     element (i, j) is one if j is in the extended support of f_i, zero
     otherwise.
-
-    """
+  """
   BS_indices = np.zeros(A_indices.size, dtype=np.int64)
   BS_indptr = np.zeros(A_indptr.size, dtype=np.int64)
   seen_blocks = np.zeros(n_blocks, dtype=np.int64)
@@ -277,9 +273,9 @@ def minimize_svrg(f_deriv,
           Verbosity level. True might print some messages.
 
       trace: bool
-          Whether to trace convergence of the function, useful for plotting and/or
-          debugging. If ye, the result will have extra members trace_func,
-          trace_time.
+          Whether to trace convergence of the function, useful for plotting
+          and/or debugging. If ye, the result will have extra members
+          trace_func, trace_time.
 
 
     Returns:
@@ -518,7 +514,7 @@ def minimize_vrtos(f_deriv,
       pass
 
   A = sparse.csr_matrix(A)
-  epoch_iteration = _factory_sparse_VRTOS(f_deriv, prox_1, prox_2, blocks_1,
+  epoch_iteration = _factory_sparse_vrtos(f_deriv, prox_1, prox_2, blocks_1,
                                           blocks_2, A, b, alpha, step_size)
 
   # .. memory terms ..
@@ -550,7 +546,7 @@ def minimize_vrtos(f_deriv,
       x=z, success=success, nit=it, certificate=certificate)
 
 
-def _factory_sparse_VRTOS(f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
+def _factory_sparse_vrtos(f_deriv, prox_1, prox_2, blocks_1, blocks_2, A, b,
                           alpha, gamma):
 
   A_data = A.data
