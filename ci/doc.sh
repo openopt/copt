@@ -11,7 +11,9 @@ make html
 rm _build/html/doc_status.svg
 if [ $? -eq 0 ]; then
     # set up a badge depending on the result of the build
+    echo "Building of documentation succeeded"
     anybadge --label=doc --value=passing --file=_build/html/doc_status.svg passing=green failing=red
 else
+    echo "Building of documentation failed"
     anybadge --label=doc --value=failing --file=_build/html/doc_status.svg passing=green failing=red
 fi
