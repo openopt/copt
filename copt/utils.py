@@ -346,429 +346,430 @@ class L1Norm:
     self.alpha = alpha
 
   def __call__(self, x):
-      return self.alpha * np.abs(x).sum()
+    return self.alpha * np.abs(x).sum()
 
   def prox(self, x, step_size):
-      return np.fmax(x - self.alpha * step_size, 0) \
-                  - np.fmax(- x - self.alpha * step_size, 0)
+    return np.fmax(x - self.alpha * step_size, 0) \
+           - np.fmax(- x - self.alpha * step_size, 0)
 
   def prox_factory(self, n_features):
-      alpha = self.alpha
+    alpha = self.alpha
 
-      @njit
-      def _prox_L1(x, i, indices, indptr, d, step_size):
-          for j in range(indptr[i], indptr[i+1]):
-              j_idx = indices[j]  # for L1 this is the same
-              a = x[j_idx] - alpha * d[j_idx] * step_size
-              b = - x[j_idx] - alpha * d[j_idx] * step_size
-              x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
-      return _prox_L1, sparse.eye(n_features, format="csr")
+    @njit
+    def _prox_L1(x, i, indices, indptr, d, step_size):
+      for j in range(indptr[i], indptr[i+1]):
+        j_idx = indices[j]  # for L1 this is the same
+        a = x[j_idx] - alpha * d[j_idx] * step_size
+        b = - x[j_idx] - alpha * d[j_idx] * step_size
+        x[j_idx] = np.fmax(a, 0) - np.fmax(b, 0)
+    return _prox_L1, sparse.eye(n_features, format="csr")
 
 
 class L1Ball:
-    """Indicator function over the L1 ball
+  """Indicator function over the L1 ball
 
-    This function is 0 if the sum of absolute values is less than or equal to
-    alpha, and infinity otherwise.
+  This function is 0 if the sum of absolute values is less than or equal to
+  alpha, and infinity otherwise.
+  """
+
+  def __init__(self, alpha):
+    self.alpha = alpha
+
+  def __call__(self, x):
+    if np.abs(x).sum() <= self.alpha:
+      return 0
+    else:
+      return np.infty
+
+  def prox(self, x, step_size):
+    return euclidean_proj_l1ball(x, self.alpha)
+
+  def lmo(self, u, x):
+    """Solve the linear problem
+    min_{||s||_1 <= alpha} <u, s>
     """
+    abs_u = np.abs(u)
+    largest_coordinate = np.argmax(abs_u)
 
-    def __init__(self, alpha):
-        self.alpha = alpha
+    update_direction = - x.copy()
+    update_direction[largest_coordinate] += self.alpha * np.sign(u[largest_coordinate])
 
-    def __call__(self, x):
-        if np.abs(x).sum() <= self.alpha:
-            return 0
-        else:
-            return np.infty
+    return update_direction
 
-    def prox(self, x, step_size):
-        return euclidean_proj_l1ball(x, self.alpha)
+  def lmo_pairwise(self, u, x, active_set):
+    # XXX do we actually need x?
+    if np.any(active_set < 0):
+      raise RuntimeError("active set coefficients cannot be negative")
 
-    def lmo(self, u, x):
-        """Solve the linear problem
-        min_{||s||_1 <= alpha} <u, s>
-        """
-        abs_u = np.abs(u)
-        largest_coordinate = np.argmax(abs_u)
+    u2 = np.concatenate((u, -u))
+    largest_coordinate = np.argmax(u2)
 
-        update_direction = - x.copy()
-        update_direction[largest_coordinate] += self.alpha * np.sign(u[largest_coordinate])
+    u2_active = ma.array(u2, mask=(active_set == 0))
+    largest_active = np.argmax(-u2_active)
 
-        return update_direction
+    update_direction = np.zeros_like(x)
+    sign_largest = 1 if largest_coordinate < len(u) else -1
+    idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
+    update_direction[idx_largest] = self.alpha * sign_largest
 
-    def lmo_pairwise(self, u, x, active_set):
-      # XXX do we actually need x?
-      if np.any(active_set < 0):
-        raise RuntimeError("active set coefficients cannot be negative")
+    idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
+    sign_active = 1 if largest_active < len(u) else -1
+    update_direction[idx_largest_active] -= self.alpha * sign_active
 
-      u2 = np.concatenate((u, -u))
-      largest_coordinate = np.argmax(u2)
-
-      u2_active = ma.array(u2, mask=(active_set == 0))
-      largest_active = np.argmax(-u2_active)
-
-      update_direction = np.zeros_like(x)
-      sign_largest = 1 if largest_coordinate < len(u) else -1
-      idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
-      update_direction[idx_largest] = self.alpha * sign_largest
-
-      idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
-      sign_active = 1 if largest_active < len(u) else -1
-      update_direction[idx_largest_active] -= self.alpha * sign_active
-
-      return update_direction, largest_coordinate, largest_active
-
+    return update_direction, largest_coordinate, largest_active
 
 
 class GroupL1:
-    """
-    Group Lasso penalty
+  """
+  Group Lasso penalty
 
-    Parameters
-    ----------
+  Parameters
+  ----------
 
-    alpha: float
-        Constat multiplying this loss
+  alpha: float
+      Constat multiplying this loss
 
-    blocks: list of lists
+  blocks: list of lists
 
-    """
-    def __init__(self, alpha, groups):
-        self.alpha = alpha
-        # groups need to be increasing
-        for i, g in enumerate(groups):
-            if not np.all(np.diff(g) == 1):
-                raise ValueError("Groups must be contiguous")
-            if i > 0 and groups[i-1][-1] >= g[0]:
-                raise ValueError("Groups must be increasing")
-        self.groups = groups
+  """
 
-    def __call__(self, x):
-        return self.alpha * np.sum(
-            [np.linalg.norm(x[g]) for g in self.groups])
+  def __init__(self, alpha, groups):
+    self.alpha = alpha
+    # groups need to be increasing
+    for i, g in enumerate(groups):
+      if not np.all(np.diff(g) == 1):
+        raise ValueError("Groups must be contiguous")
+      if i > 0 and groups[i-1][-1] >= g[0]:
+        raise ValueError("Groups must be increasing")
+    self.groups = groups
 
-    def prox(self, x, step_size):
-        out = x.copy()
-        for g in self.groups:
+  def __call__(self, x):
+    return self.alpha * np.sum(
+        [np.linalg.norm(x[g]) for g in self.groups])
 
-            norm = np.linalg.norm(x[g])
-            if norm > self.alpha * step_size:
-                out[g] -= step_size * self.alpha * out[g] / norm
-            else:
-                out[g] = 0
-        return out
+  def prox(self, x, step_size):
+    out = x.copy()
+    for g in self.groups:
 
-    def prox_factory(self, n_features):
-        B_data = np.zeros(n_features)
-        B_indices = np.arange(n_features, dtype=np.int32)
-        B_indptr = np.zeros(n_features + 1, dtype=np.int32)
+      norm = np.linalg.norm(x[g])
+      if norm > self.alpha * step_size:
+        out[g] -= step_size * self.alpha * out[g] / norm
+      else:
+        out[g] = 0
+    return out
 
-        feature_pointer = 0
-        block_pointer = 0
-        for g in self.groups:
-            while feature_pointer < g[0]:
-                # non-penalized feature
-                B_data[feature_pointer] = -1.
-                B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
-                feature_pointer += 1
-                block_pointer += 1
-            B_indptr[block_pointer + 1] = B_indptr[block_pointer]
-            for _ in g:
-                B_data[feature_pointer] = 1.
-                B_indptr[block_pointer + 1] += 1
-                feature_pointer += 1
-            block_pointer += 1
-        for _ in range(feature_pointer, n_features):
-                B_data[feature_pointer] = -1.
-                B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
-                feature_pointer += 1
-                block_pointer += 1
+  def prox_factory(self, n_features):
+    B_data = np.zeros(n_features)
+    B_indices = np.arange(n_features, dtype=np.int32)
+    B_indptr = np.zeros(n_features + 1, dtype=np.int32)
 
-        B_indptr = B_indptr[:block_pointer+1]
-        B = sparse.csr_matrix((B_data, B_indices, B_indptr))
-        alpha = self.alpha
+    feature_pointer = 0
+    block_pointer = 0
+    for g in self.groups:
+      while feature_pointer < g[0]:
+        # non-penalized feature
+        B_data[feature_pointer] = -1.
+        B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
+        feature_pointer += 1
+        block_pointer += 1
+      B_indptr[block_pointer + 1] = B_indptr[block_pointer]
+      for _ in g:
+        B_data[feature_pointer] = 1.
+        B_indptr[block_pointer + 1] += 1
+        feature_pointer += 1
+      block_pointer += 1
+    for _ in range(feature_pointer, n_features):
+      B_data[feature_pointer] = -1.
+      B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
+      feature_pointer += 1
+      block_pointer += 1
 
-        @njit
-        def _prox_gl(x, i, indices, indptr, d, step_size):
-            for b in range(indptr[i], indptr[i+1]):
-                h = indices[b]
-                if B_data[B_indices[B_indptr[h]]] <= 0:
-                    continue
-                ss = step_size * d[h]
-                norm = 0.
-                for j in range(B_indptr[h], B_indptr[h+1]):
-                    j_idx = B_indices[j]
-                    norm += x[j_idx] ** 2
-                norm = np.sqrt(norm)
-                if norm > alpha * ss:
-                    for j in range(B_indptr[h], B_indptr[h+1]):
-                        j_idx = B_indices[j]
-                        x[j_idx] *= (1 - alpha * ss / norm)
-                else:
-                    for j in range(B_indptr[h], B_indptr[h+1]):
-                        j_idx = B_indices[j]
-                        x[j_idx] = 0.
-        return _prox_gl, B
+    B_indptr = B_indptr[:block_pointer+1]
+    B = sparse.csr_matrix((B_data, B_indices, B_indptr))
+    alpha = self.alpha
+
+    @njit
+    def _prox_gl(x, i, indices, indptr, d, step_size):
+      for b in range(indptr[i], indptr[i+1]):
+        h = indices[b]
+        if B_data[B_indices[B_indptr[h]]] <= 0:
+          continue
+        ss = step_size * d[h]
+        norm = 0.
+        for j in range(B_indptr[h], B_indptr[h+1]):
+          j_idx = B_indices[j]
+          norm += x[j_idx] ** 2
+        norm = np.sqrt(norm)
+        if norm > alpha * ss:
+          for j in range(B_indptr[h], B_indptr[h+1]):
+            j_idx = B_indices[j]
+            x[j_idx] *= (1 - alpha * ss / norm)
+        else:
+          for j in range(B_indptr[h], B_indptr[h+1]):
+            j_idx = B_indices[j]
+            x[j_idx] = 0.
+    return _prox_gl, B
 
 
 class FusedLasso:
-    """
-    Fused Lasso penalty
+  """
+  Fused Lasso penalty
 
-    Parameters
-    ----------
+  Parameters
+  ----------
 
-    alpha: scalar
+  alpha: scalar
 
-    Examples
-    --------
-    """
-    def __init__(self, alpha):
-        self.alpha = alpha
+  Examples
+  --------
+  """
 
-    def __call__(self, x):
-        return self.alpha * np.sum(np.abs(np.diff(x)))
+  def __init__(self, alpha):
+    self.alpha = alpha
 
-    def prox(self, x, step_size):
-        # imported here to avoid circular imports
-        from copt import tv_prox
-        return tv_prox.prox_tv1d(x, step_size * self.alpha)
+  def __call__(self, x):
+    return self.alpha * np.sum(np.abs(np.diff(x)))
 
-    def prox_1_factory(self, n_features):
-        B_1_data = np.ones(n_features)
-        B_1_indices = np.arange(n_features, dtype=np.int32)
-        B_1_indptr = np.arange(0, n_features + 1, 2, dtype=np.int32)
-        if n_features % 2 == 1:
-            B_1_indptr = np.concatenate(
-                (B_1_indptr, [B_1_indptr[-1] + 1]))
-            B_1_data[-1] = -1
-        n_blocks = (n_features+1)//2
-        B_1 = sparse.csr_matrix(
-            (B_1_data, B_1_indices, B_1_indptr),
-            shape=(n_blocks, n_features))
-        alpha = self.alpha
+  def prox(self, x, step_size):
+    # imported here to avoid circular imports
+    from copt import tv_prox
+    return tv_prox.prox_tv1d(x, step_size * self.alpha)
 
-        @njit
-        def _prox_1_fl(x, i, indices, indptr, d, step_size):
-            for b in range(indptr[i], indptr[i+1]):
-                h = indices[b]
-                j_idx = B_1_indices[B_1_indptr[h]]
-                if B_1_data[j_idx] <= 0:
-                    continue
-                ss = step_size * d[h] * alpha
-                if x[j_idx] - ss >= x[j_idx+1] + ss:
-                    x[j_idx] -= ss
-                    x[j_idx+1] += ss
-                elif x[j_idx] + ss <= x[j_idx+1] - ss:
-                    x[j_idx] += ss
-                    x[j_idx+1] -= ss
-                else:
-                    avg = (x[j_idx] + x[j_idx+1])/2.
-                    x[j_idx] = avg
-                    x[j_idx+1] = avg
-        return _prox_1_fl, B_1
+  def prox_1_factory(self, n_features):
+    B_1_data = np.ones(n_features)
+    B_1_indices = np.arange(n_features, dtype=np.int32)
+    B_1_indptr = np.arange(0, n_features + 1, 2, dtype=np.int32)
+    if n_features % 2 == 1:
+      B_1_indptr = np.concatenate(
+          (B_1_indptr, [B_1_indptr[-1] + 1]))
+      B_1_data[-1] = -1
+    n_blocks = (n_features+1)//2
+    B_1 = sparse.csr_matrix(
+        (B_1_data, B_1_indices, B_1_indptr),
+        shape=(n_blocks, n_features))
+    alpha = self.alpha
 
-    def prox_2_factory(self, n_features):
-        B_2_data = np.ones(n_features)
-        B_2_indices = np.arange(n_features, dtype=np.int32)
-        _indptr = np.arange(1, n_features + 2, 2, dtype=np.int32)
-        B_2_indptr = np.concatenate(([0], _indptr))
-        B_2_data[0] = -1
-        if n_features % 2 == 0:
-            B_2_indptr[-1] -= 1
-            B_2_data[-1] = -1
-        n_blocks = n_features//2 + 1
-        B_2 = sparse.csr_matrix(
-            (B_2_data, B_2_indices, B_2_indptr),
-            shape=(n_blocks, n_features))
-        alpha = self.alpha
+    @njit
+    def _prox_1_fl(x, i, indices, indptr, d, step_size):
+      for b in range(indptr[i], indptr[i+1]):
+        h = indices[b]
+        j_idx = B_1_indices[B_1_indptr[h]]
+        if B_1_data[j_idx] <= 0:
+          continue
+        ss = step_size * d[h] * alpha
+        if x[j_idx] - ss >= x[j_idx+1] + ss:
+          x[j_idx] -= ss
+          x[j_idx+1] += ss
+        elif x[j_idx] + ss <= x[j_idx+1] - ss:
+          x[j_idx] += ss
+          x[j_idx+1] -= ss
+        else:
+          avg = (x[j_idx] + x[j_idx+1])/2.
+          x[j_idx] = avg
+          x[j_idx+1] = avg
+    return _prox_1_fl, B_1
 
-        @njit
-        def _prox_2_fl(x, i, indices, indptr, d, step_size):
-            for b in range(indptr[i], indptr[i+1]):
-                h = indices[b]
-                j_idx = B_2_indices[B_2_indptr[h]]
-                if B_2_data[j_idx] <= 0:
-                    continue
-                ss = step_size * d[h] * alpha
-                if x[j_idx] - ss >= x[j_idx+1] + ss:
-                    x[j_idx] -= ss
-                    x[j_idx+1] += ss
-                elif x[j_idx] + ss <= x[j_idx+1] - ss:
-                    x[j_idx] += ss
-                    x[j_idx+1] -= ss
-                else:
-                    avg = (x[j_idx] + x[j_idx+1])/2.
-                    x[j_idx] = avg
-                    x[j_idx+1] = avg
-        return _prox_2_fl, B_2
+  def prox_2_factory(self, n_features):
+    B_2_data = np.ones(n_features)
+    B_2_indices = np.arange(n_features, dtype=np.int32)
+    _indptr = np.arange(1, n_features + 2, 2, dtype=np.int32)
+    B_2_indptr = np.concatenate(([0], _indptr))
+    B_2_data[0] = -1
+    if n_features % 2 == 0:
+      B_2_indptr[-1] -= 1
+      B_2_data[-1] = -1
+    n_blocks = n_features//2 + 1
+    B_2 = sparse.csr_matrix(
+      (B_2_data, B_2_indices, B_2_indptr),
+      shape=(n_blocks, n_features))
+    alpha = self.alpha
+
+    @njit
+    def _prox_2_fl(x, i, indices, indptr, d, step_size):
+      for b in range(indptr[i], indptr[i+1]):
+        h = indices[b]
+        j_idx = B_2_indices[B_2_indptr[h]]
+        if B_2_data[j_idx] <= 0:
+          continue
+        ss = step_size * d[h] * alpha
+        if x[j_idx] - ss >= x[j_idx+1] + ss:
+          x[j_idx] -= ss
+          x[j_idx+1] += ss
+        elif x[j_idx] + ss <= x[j_idx+1] - ss:
+          x[j_idx] += ss
+          x[j_idx+1] -= ss
+        else:
+          avg = (x[j_idx] + x[j_idx+1])/2.
+          x[j_idx] = avg
+          x[j_idx+1] = avg
+    return _prox_2_fl, B_2
 
 
 class SimplexConstraint:
-    def __init__(self, s=1):
-        self.s = s
+  def __init__(self, s=1):
+    self.s = s
 
-    def prox(self, x, step_size):
-        return euclidean_proj_simplex(x, self.s)
+  def prox(self, x, step_size):
+    return euclidean_proj_simplex(x, self.s)
 
 
 def euclidean_proj_simplex(v, s=1.):
-    """ Compute the Euclidean projection on a positive simplex
-    Solves the optimisation problem (using the algorithm from [1]):
-        min_w 0.5 * || w - v ||_2^2 , s.t. \\sum_i w_i = s, w_i >= 0
-    Parameters
-    ----------
-    v: (n,) numpy array,
-       n-dimensional vector to project
-    s: float, optional, default: 1,
-       radius of the simplex
-    Returns
-    -------
-    w: (n,) numpy array,
-       Euclidean projection of v on the simplex
-    Notes
-    -----
-    The complexity of this algorithm is in O(n log(n)) as it involves sorting v.
-    Better alternatives exist for high-dimensional sparse vectors (cf. [1])
-    However, this implementation still easily scales to millions of dimensions.
-    References
-    ----------
-    [1] Efficient Projections onto the .1-Ball for Learning in High Dimensions
-        John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Tushar Chandra.
-        International Conference on Machine Learning (ICML 2008)
-        http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf
-    """
-    assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
-    n, = v.shape  # will raise ValueError if v is not 1-D
-    # check if we are already on the simplex
-    if v.sum() == s and np.alltrue(v >= 0):
-        # best projection: itself!
-        return v
-    # get the array of cumulative sums of a sorted (decreasing) copy of v
-    u = np.sort(v)[::-1]
-    cssv = np.cumsum(u)
-    # get the number of > 0 components of the optimal solution
-    rho = np.nonzero(u * np.arange(1, n+1) > (cssv - s))[0][-1]
-    # compute the Lagrange multiplier associated to the simplex constraint
-    theta = (cssv[rho] - s) / (rho + 1.0)
-    # compute the projection by thresholding v using theta
-    w = (v - theta).clip(min=0)
-    return w
+  r""" Compute the Euclidean projection on a positive simplex
+  Solves the optimisation problem (using the algorithm from [1]):
+      min_w 0.5 * || w - v ||_2^2 , s.t. \sum_i w_i = s, w_i >= 0
+  Parameters
+  ----------
+  v: (n,) numpy array,
+      n-dimensional vector to project
+  s: float, optional, default: 1,
+      radius of the simplex
+  Returns
+  -------
+  w: (n,) numpy array,
+      Euclidean projection of v on the simplex
+  Notes
+  -----
+  The complexity of this algorithm is in O(n log(n)) as it involves sorting v.
+  Better alternatives exist for high-dimensional sparse vectors (cf. [1])
+  However, this implementation still easily scales to millions of dimensions.
+  References
+  ----------
+  [1] Efficient Projections onto the .1-Ball for Learning in High Dimensions
+      John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Tushar Chandra.
+      International Conference on Machine Learning (ICML 2008)
+      http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf
+  """
+  assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
+  n, = v.shape  # will raise ValueError if v is not 1-D
+  # check if we are already on the simplex
+  if v.sum() == s and np.alltrue(v >= 0):
+    # best projection: itself!
+    return v
+  # get the array of cumulative sums of a sorted (decreasing) copy of v
+  u = np.sort(v)[::-1]
+  cssv = np.cumsum(u)
+  # get the number of > 0 components of the optimal solution
+  rho = np.nonzero(u * np.arange(1, n+1) > (cssv - s))[0][-1]
+  # compute the Lagrange multiplier associated to the simplex constraint
+  theta = (cssv[rho] - s) / (rho + 1.0)
+  # compute the projection by thresholding v using theta
+  w = (v - theta).clip(min=0)
+  return w
 
 
 def euclidean_proj_l1ball(v, s=1,):
-    """ Compute the Euclidean projection on a L1-ball
-    Solves the optimisation problem (using the algorithm from [1]):
-        min_w 0.5 * || w - v ||_2^2 , s.t. || w ||_1 <= s
-    Parameters
-    ----------
-    v: (n,) numpy array,
-       n-dimensional vector to project
-    s: float, optional, default: 1,
-       radius of the L1-ball
-    Returns
-    -------
-    w: (n,) numpy array,
-       Euclidean projection of v on the L1-ball of radius s
-    Notes
-    -----
-    Solves the problem by a reduction to the positive simplex case
-    See also
-    --------
-    euclidean_proj_simplex
-    """
-    assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
-    if len(v.shape) > 1: raise ValueError
-    # compute the vector of absolute values
-    u = np.abs(v)
-    # check if v is already a solution
-    if u.sum() <= s:
-        # L1-norm is <= s
-        return v
-    # v is not already a solution: optimum lies on the boundary (norm == s)
-    # project *u* on the simplex
-    w = euclidean_proj_simplex(u, s=s)
-    # compute the solution to the original problem on v
-    w *= np.sign(v)
-    return w
+  """ Compute the Euclidean projection on a L1-ball
+  Solves the optimisation problem (using the algorithm from [1]):
+      min_w 0.5 * || w - v ||_2^2 , s.t. || w ||_1 <= s
+  Parameters
+  ----------
+  v: (n,) numpy array,
+      n-dimensional vector to project
+  s: float, optional, default: 1,
+      radius of the L1-ball
+  Returns
+  -------
+  w: (n,) numpy array,
+      Euclidean projection of v on the L1-ball of radius s
+  Notes
+  -----
+  Solves the problem by a reduction to the positive simplex case
+  See also
+  --------
+  euclidean_proj_simplex
+  """
+  assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
+  if len(v.shape) > 1: raise ValueError
+  # compute the vector of absolute values
+  u = np.abs(v)
+  # check if v is already a solution
+  if u.sum() <= s:
+    # L1-norm is <= s
+    return v
+  # v is not already a solution: optimum lies on the boundary (norm == s)
+  # project *u* on the simplex
+  w = euclidean_proj_simplex(u, s=s)
+  # compute the solution to the original problem on v
+  w *= np.sign(v)
+  return w
 
 
 class TraceNorm:
-    """Trace (aka nuclear) norm, sum of singular values"""
-    is_separable = False
+  """Trace (aka nuclear) norm, sum of singular values"""
+  is_separable = False
 
-    def __init__(self, alpha, shape):
-        assert len(shape) == 2
-        self.shape = shape
-        self.alpha = alpha
+  def __init__(self, alpha, shape):
+    assert len(shape) == 2
+    self.shape = shape
+    self.alpha = alpha
 
-    def __call__(self, x):
-        X = x.reshape(self.shape)
-        return self.alpha * linalg.svdvals(X).sum()
+  def __call__(self, x):
+    X = x.reshape(self.shape)
+    return self.alpha * linalg.svdvals(X).sum()
 
-    def prox(self, x, step_size):
-        X = x.reshape(self.shape)
-        U, s, Vt = linalg.svd(X, full_matrices=False)
-        s_threshold = np.fmax(s - self.alpha * step_size, 0) \
-            - np.fmax(- s - self.alpha * step_size, 0)
-        return (U * s_threshold).dot(Vt).ravel()
+  def prox(self, x, step_size):
+    X = x.reshape(self.shape)
+    U, s, Vt = linalg.svd(X, full_matrices=False)
+    s_threshold = np.fmax(s - self.alpha * step_size, 0) \
+        - np.fmax(- s - self.alpha * step_size, 0)
+    return (U * s_threshold).dot(Vt).ravel()
 
-    def prox_factory(self):
-        raise NotImplementedError
+  def prox_factory(self):
+    raise NotImplementedError
 
 
 class TraceBall:
-    """Projection onto the trace (aka nuclear) norm, sum of singular values"""
-    is_separable = False
+  """Projection onto the trace (aka nuclear) norm, sum of singular values"""
+  is_separable = False
 
-    def __init__(self, alpha, shape):
-        assert len(shape) == 2
-        self.shape = shape
-        self.alpha = alpha
+  def __init__(self, alpha, shape):
+    assert len(shape) == 2
+    self.shape = shape
+    self.alpha = alpha
 
-    def __call__(self, x):
-        X = x.reshape(self.shape)
-        if linalg.svdvals(X).sum() <= self.alpha + np.finfo(np.float32).eps:
-            return 0
-        else:
-            return np.inf
+  def __call__(self, x):
+    X = x.reshape(self.shape)
+    if linalg.svdvals(X).sum() <= self.alpha + np.finfo(np.float32).eps:
+      return 0
+    else:
+      return np.inf
 
-    def prox(self, x, step_size):
-        X = x.reshape(self.shape)
-        U, s, Vt = linalg.svd(X, full_matrices=False)
-        s_threshold = euclidean_proj_l1ball(s, self.alpha)
-        return (U * s_threshold).dot(Vt).ravel()
+  def prox(self, x, step_size):
+    X = x.reshape(self.shape)
+    U, s, Vt = linalg.svd(X, full_matrices=False)
+    s_threshold = euclidean_proj_l1ball(s, self.alpha)
+    return (U * s_threshold).dot(Vt).ravel()
 
-    def prox_factory(self):
-        raise NotImplementedError
+  def prox_factory(self):
+    raise NotImplementedError
 
-    def lmo(self, u, x):
-        u_mat = u.reshape(self.shape)
-        ut, _, vt = splinalg.svds(u_mat, k=1)
-        vertex = self.alpha * np.outer(ut, vt).ravel()
-        update_direction = vertex - x
-        return update_direction
+  def lmo(self, u, x):
+    u_mat = u.reshape(self.shape)
+    ut, _, vt = splinalg.svds(u_mat, k=1)
+    vertex = self.alpha * np.outer(ut, vt).ravel()
+    update_direction = vertex - x
+    return update_direction
 
 
 class TotalVariation2D:
-    """2-dimensional Total Variation pseudo-norm"""
+  """2-dimensional Total Variation pseudo-norm"""
 
-    def __init__(self, alpha, shape, max_iter=100, tol=1e-6):
-        self.alpha = alpha
-        self.n_rows = shape[0]
-        self.n_cols = shape[1]
-        self.max_iter = max_iter
-        self.tol = tol
+  def __init__(self, alpha, shape, max_iter=100, tol=1e-6):
+    self.alpha = alpha
+    self.n_rows = shape[0]
+    self.n_cols = shape[1]
+    self.max_iter = max_iter
+    self.tol = tol
 
-    def __call__(self, x):
-        img = x.reshape((self.n_rows, self.n_cols))
-        tmp1 = np.abs(np.diff(img, axis=0))
-        tmp2 = np.abs(np.diff(img, axis=1))
-        return self.alpha * (tmp1.sum() + tmp2.sum())
+  def __call__(self, x):
+    img = x.reshape((self.n_rows, self.n_cols))
+    tmp1 = np.abs(np.diff(img, axis=0))
+    tmp2 = np.abs(np.diff(img, axis=1))
+    return self.alpha * (tmp1.sum() + tmp2.sum())
 
-    def prox(self, x, step_size):
-        # here to avoid circular imports
-        from copt import tv_prox
-        return tv_prox.prox_tv2d(
-            x, step_size * self.alpha, self.n_rows, self.n_cols,
-            max_iter=self.max_iter, tol=self.tol)
+  def prox(self, x, step_size):
+    # here to avoid circular imports
+    from copt import tv_prox
+    return tv_prox.prox_tv2d(
+        x, step_size * self.alpha, self.n_rows, self.n_cols,
+        max_iter=self.max_iter, tol=self.tol)
