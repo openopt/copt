@@ -10,8 +10,8 @@ function prox of object :meth:`copt.utils.GroupL1`.
 
 """
 import copt as cp
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import sparse
 
 np.random.seed(0)
