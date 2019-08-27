@@ -1,3 +1,4 @@
+# python3
 """Proximal-gradient algorithms."""
 import warnings
 from copt import utils
@@ -144,8 +145,9 @@ def minimize_proximal_gradient(
         success = True
         break
     else:
-      warnings.warn("minimize_proximal_gradient did not reach the desired tolerance level",
-                    RuntimeWarning)
+      warnings.warn(
+          "minimize_proximal_gradient did not reach the desired tolerance level",
+          RuntimeWarning)
   else:
     tk = 1
     # .. a while loop instead of a for loop ..
@@ -166,7 +168,8 @@ def minimize_proximal_gradient(
         for _ in range(max_iter_backtracking):
           update_direction = x - yk
           if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(
-              update_direction) + update_direction.dot(update_direction) / (2.0 * current_step_size):
+              update_direction) + update_direction.dot(update_direction) \
+              / (2.0 * current_step_size):
             # .. step size found ..
             break
           else:
@@ -195,8 +198,9 @@ def minimize_proximal_gradient(
 
       it += 1
     if it >= max_iter:
-      warnings.warn("minimize_proximal_gradient did not reach the desired tolerance level",
-                    RuntimeWarning)
+      warnings.warn(
+          "minimize_proximal_gradient did not reach the desired tolerance level",
+          RuntimeWarning)
 
   pbar.close()
   return optimize.OptimizeResult(

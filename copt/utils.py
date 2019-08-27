@@ -14,7 +14,7 @@ except ImportError:
   from functools import wraps
 
   def njit(*args, **kw):
-    if len(args) == 1 and len(kw)== 0 and hasattr(args[0], "__call__"):
+    if len(args) == 1 and len(kw) == 0 and hasattr(args[0], "__call__"):
       func = args[0]
       @wraps(func)
       def inner_function(*args, **kwargs):
@@ -101,24 +101,24 @@ def init_lipschitz(f_grad, x0):
 
 
 def get_max_lipschitz(A, loss, alpha=0):
-    """
-    XXX DEPRECATED
+  """
+  XXX DEPRECATED
 
-    Estimate the max Lipschitz constant (as appears in
-    many stochastic methods).
+  Estimate the max Lipschitz constant (as appears in
+  many stochastic methods).
 
-    A : array-like
+  A : array-like
 
-    loss : {"logloss", "square", "huber"}
-    """
-    from sklearn.utils.extmath import row_norms
-    max_squared_sum = row_norms(A, squared=True).max()
+  loss : {"logloss", "square", "huber"}
+  """
+  from sklearn.utils.extmath import row_norms
+  max_squared_sum = row_norms(A, squared=True).max()
 
-    if loss == "logloss":
-        return 0.25 * max_squared_sum + alpha
-    elif loss in ("huber", "square"):
-        raise NotImplementedError
+  if loss == "logloss":
+    return 0.25 * max_squared_sum + alpha
+  elif loss in ("huber", "square"):
     raise NotImplementedError
+  raise NotImplementedError
 
 
 class LogLoss:
@@ -151,7 +151,6 @@ class LogLoss:
     self.b = b
     self.alpha = alpha
     self.intercept = False
-
 
   def __call__(self, x):
     return self.f_grad(x, return_gradient=False)
@@ -205,8 +204,9 @@ class LogLoss:
     # The mat-vec product of the Hessian
     d = z * (1 - z)
     if sparse.issparse(self.A):
-      dX = safe_sparse_dot(sparse.dia_matrix((d, 0),
-                            shape=(n_samples, n_samples)), self.A)
+      dX = safe_sparse_dot(
+          sparse.dia_matrix((d, 0), shape=(n_samples, n_samples)),
+          self.A)
     else:
         # Precompute as much as possible
       dX = d[:, np.newaxis] * self.A
@@ -232,69 +232,71 @@ class LogLoss:
 
   @property
   def partial_deriv(self):
-      @njit
-      def log_deriv(p, y):
-          # derivative of logistic loss
-          # same as in lightning (with minus sign)
-          if p > 0:
-              tmp = np.exp(-p)
-              phi = - tmp / (1. + tmp) + 1 - y
-          else:
-              tmp = np.exp(p)
-              phi = tmp / (1. + tmp) - y
-          return phi
-      return log_deriv
-
+    @njit
+    def log_deriv(p, y):
+      # derivative of logistic loss
+      # same as in lightning (with minus sign)
+      if p > 0:
+        tmp = np.exp(-p)
+        phi = - tmp / (1. + tmp) + 1 - y
+      else:
+        tmp = np.exp(p)
+        phi = tmp / (1. + tmp) - y
+      return phi
+    return log_deriv
 
 
   @property
   def lipschitz(self):
-      s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
-      return 0.25 * (s * s) / self.A.shape[0] + self.alpha
+    s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+    return 0.25 * (s * s) / self.A.shape[0] + self.alpha
 
 
   @property
   def max_lipschitz(self):
-      from sklearn.utils.extmath import row_norms
-      max_squared_sum = row_norms(self.A, squared=True).max()
+    from sklearn.utils.extmath import row_norms
+    max_squared_sum = row_norms(self.A, squared=True).max()
 
-      return 0.25 * max_squared_sum + self.alpha
+    return 0.25 * max_squared_sum + self.alpha
 
 
 class SquareLoss:
-    """
-    A class evaluation and derivatives of the square loss, defined as
+  r"""Squared loss.
 
-        .. math::
-            \\frac{1}{n}\\|A x - b\\|^2~,
+  The Squared loss is defined as
 
-    where :math:`\\|\\cdot\\|` is the euclidean norm.
-    """
+  .. math::
+      \frac{1}{n}\|A x - b\|^2~,
 
-    def __init__(self, A, b, alpha=0):
-        if A is None:
-            A = sparse.eye(b.size, b.size, format="csr")
-        self.b = b
-        self.alpha = alpha
-        self.A = A
-        self.name = "square"
+  where :math:`\|\cdot\|` is the euclidean norm.
+  """
 
-    def __call__(self, x):
-        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
-        return 0.5 * (z * z).mean() + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
+  def __init__(self, A, b, alpha=0):
+    if A is None:
+      A = sparse.eye(b.size, b.size, format="csr")
+    self.b = b
+    self.alpha = alpha
+    self.A = A
+    self.name = "square"
 
-    def f_grad(self, x, return_gradient=True):
-        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
-        loss = 0.5 * (z * z).mean() + .5 * self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
-        if not return_gradient:
-            return loss
-        grad = safe_sparse_add(self.A.T.dot(z) / self.A.shape[0], self.alpha * x.T)
-        return loss, np.asarray(grad).ravel()
+  def __call__(self, x):
+    z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
+    pen = self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
+    return 0.5 * (z * z).mean() + 0.5 * pen
 
-    @property
-    def lipschitz(self):
-        s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
-        return (s * s) / self.A.shape[0] + self.alpha
+  def f_grad(self, x, return_gradient=True):
+    z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
+    pen = self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
+    loss = 0.5 * (z * z).mean() +  0.5 * pen
+    if not return_gradient:
+      return loss
+    grad = safe_sparse_add(self.A.T.dot(z) / self.A.shape[0], self.alpha * x.T)
+    return loss, np.asarray(grad).ravel()
+
+  @property
+  def lipschitz(self):
+    s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
+    return (s * s) / self.A.shape[0] + self.alpha
 
 
 class HuberLoss:
