@@ -21,7 +21,7 @@ where $f$ is a differentiable function for which we have access to its gradient 
     copt.minimize_proximal_gradient
 
 
-.. topic:: Examples:
+.. admonition:: Examples
 
   * :ref:`sphx_glr_auto_examples_plot_group_lasso.py`
 
@@ -49,7 +49,7 @@ where $f$ is a differentiable function for which we have access to its gradient 
   copt.minimize_primal_dual
 
 
-.. topic:: Examples:
+.. admonition:: Examples
 
    * :ref:`sphx_glr_auto_examples_proximal_splitting_plot_tv_deblurring.py`
 
@@ -80,7 +80,7 @@ where $f$ is a differentiable function for which we have access to its gradient 
 
 
 
-.. topic:: Examples:
+.. admonition:: Examples
 
    * :ref:`sphx_glr_auto_examples_proximal_splitting_plot_sparse_nuclear_norm.py`
    * :ref:`sphx_glr_auto_examples_proximal_splitting_plot_tv_deblurring.py`

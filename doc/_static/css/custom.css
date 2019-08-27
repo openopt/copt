@@ -6,7 +6,15 @@ pre {
 
 div.admonition-proximal-gradient,
 div.admonition-frank-wolfe,
-div.admonition-stochastic-methods {
+div.admonition-stochastic-methods,
+div.admonition-examples {
   background-color: #d9edf7;
   border-color: #bce8f1;
+}
+
+div.admonition-proximal-gradient a,
+div.admonition-frank-wolfe a,
+div.admonition-stochastic-methods a,
+div.admonition-examples a {
+  color: #3E4349;
 }

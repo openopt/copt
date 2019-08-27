@@ -34,11 +34,11 @@ The methods implements in copt can be categorized as:
 .. admonition:: Proximal-gradient
 
   These are methods that combine the gradient of a smooth term with the proximal operator of a potentially non-smooth term.
-  They can be used to solve problems involving one or several non-smooth terms :ref:`read more ...<proximal_gradient>`
+  They can be used to solve problems involving one or several non-smooth terms. :ref:`Read more ...<proximal_gradient>`
 
 .. admonition:: Frank-Wolfe
 
-    Frank-Wolfe, also known as conditional gradient and projection-free methods, are a family of methods to solve constrained optimization problems. Contrary to proximal-gradient methods, they do not require access to the projection onto the constraint set, hence the name projection-free. :ref:`Read more ...<frank_wolfe>`
+    Frank-Wolfe, also known as conditional gradient, are a family of methods to solve constrained optimization problems. Contrary to proximal-gradient methods, they don't require access to the projection onto the constraint set. :ref:`Read more ...<frank_wolfe>`
 
 
 .. admonition:: Stochastic Methods

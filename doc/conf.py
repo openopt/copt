@@ -201,7 +201,7 @@ html_css_files = [
 
 # If not "", a "Last updated on:" timestamp is inserted at every page bottom,
 # using the given strftime format.
-#html_last_updated_fmt = "%b %d, %Y"
+# html_last_updated_fmt = "%b %d, %Y"
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
@@ -230,7 +230,9 @@ html_css_files = [
 #html_show_sphinx = True
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
-#html_show_copyright = True
+from datetime import datetime
+now = datetime.now()
+html_show_copyright = copyright = str(now.year) + ', COPT developers. Updated on ' + now.strftime("%B %d, %Y")
 
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
