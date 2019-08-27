@@ -69,7 +69,7 @@ def minimize_saga(f_deriv,
                   tol=1e-6,
                   verbose=1,
                   callback=None):
-  """Stochastic average gradient augmented (SAGA) algorithm.
+  r"""Stochastic average gradient augmented (SAGA) algorithm.
 
     This algorithm can solve linearly-parametrized loss functions of the form
 
@@ -81,55 +81,52 @@ def minimize_saga(f_deriv,
         This function is experimental, API is likely to change.
 
 
-    Parameters
-    ----------
-    f
-        loss functions.
+    Args:
+      f
+          loss functions.
 
-    x0: np.ndarray or None, optional
-        Starting point for optimization.
+      x0: np.ndarray or None, optional
+          Starting point for optimization.
 
-    step_size: float or None, optional
-        Step size for the optimization. If None is given, this will be
-        estimated from the function f.
+      step_size: float or None, optional
+          Step size for the optimization. If None is given, this will be
+          estimated from the function f.
 
-    max_iter: int
-        Maximum number of passes through the data in the optimization.
+      max_iter: int
+          Maximum number of passes through the data in the optimization.
 
-    tol: float
-        Tolerance criterion. The algorithm will stop whenever the norm of the
-        gradient mapping (generalization of the gradient for nonsmooth
-        optimization) is below tol.
+      tol: float
+          Tolerance criterion. The algorithm will stop whenever the norm of the
+          gradient mapping (generalization of the gradient for nonsmooth
+          optimization) is below tol.
 
-    verbose: bool
-        Verbosity level. True might print some messages.
+      verbose: bool
+          Verbosity level. True might print some messages.
 
-    trace: bool
-        Whether to trace convergence of the function, useful for plotting
-        and/or debugging. If ye, the result will have extra members trace_func,
-        trace_time.
-
-
-    Returns
-    -------
-    opt: OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+      trace: bool
+          Whether to trace convergence of the function, useful for plotting
+          and/or debugging. If ye, the result will have extra members trace_func,
+          trace_time.
 
 
-    References
-    ----------
-    This variant of the SAGA algorithm is described in:
+    Returns:
+      opt: OptimizeResult
+          The optimization result represented as a
+          ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+          ``x`` the solution array, ``success`` a Boolean flag indicating if
+          the optimizer exited successfully and ``message`` which describes
+          the cause of the termination. See `scipy.optimize.OptimizeResult`
+          for a description of other attributes.
 
-    `"Breaking the Nonsmooth Barrier: A Scalable Parallel Method for Composite
-    Optimization."
-    <https://arxiv.org/pdf/1707.06468.pdf>`_, Fabian Pedregosa, Remi Leblond,
-    and Simon Lacoste-Julien. Advances in Neural Information Processing Systems
-    (NIPS) 2017.
+
+    References:
+      This variant of the SAGA algorithm is described in:
+
+      `"Breaking the Nonsmooth Barrier: A Scalable Parallel Method for Composite
+      Optimization."
+      <https://arxiv.org/pdf/1707.06468.pdf>`_, Fabian Pedregosa, Remi Leblond,
+      and Simon Lacoste-Julien. Advances in Neural Information Processing Systems
+      (NIPS) 2017.
     """
   # convert any input to CSR sparse matrix representation. In the future we
   # might want to implement also a version for dense data (numpy arrays) to
@@ -243,7 +240,7 @@ def minimize_svrg(f_deriv,
                   tol=1e-6,
                   verbose=False,
                   callback=None):
-  """Stochastic average gradient augmented (SAGA) algorithm.
+  r"""Stochastic average gradient augmented (SAGA) algorithm.
 
     The SAGA algorithm can solve optimization problems of the form
 
@@ -251,68 +248,65 @@ def minimize_svrg(f_deriv,
         ||x||_2^2 +
                                             + beta * ||x||_1
 
-    Parameters
-    ----------
-    f_deriv
-        derivative of f
+    Args:
+      f_deriv
+          derivative of f
 
-    x0: np.ndarray or None, optional
-        Starting point for optimization.
+      x0: np.ndarray or None, optional
+          Starting point for optimization.
 
-    step_size: float or None, optional
-        Step size for the optimization. If None is given, this will be
-        estimated from the function f.
+      step_size: float or None, optional
+          Step size for the optimization. If None is given, this will be
+          estimated from the function f.
 
-    n_jobs: int
-        Number of threads to use in the optimization. A number higher than 1
-        will use the Asynchronous SAGA optimization method described in
-        [Pedregosa et al., 2017]
+      n_jobs: int
+          Number of threads to use in the optimization. A number higher than 1
+          will use the Asynchronous SAGA optimization method described in
+          [Pedregosa et al., 2017]
 
-    max_iter: int
-        Maximum number of passes through the data in the optimization.
+      max_iter: int
+          Maximum number of passes through the data in the optimization.
 
-    tol: float
-        Tolerance criterion. The algorithm will stop whenever the norm of the
-        gradient mapping (generalization of the gradient for nonsmooth
-        optimization)
-        is below tol.
+      tol: float
+          Tolerance criterion. The algorithm will stop whenever the norm of the
+          gradient mapping (generalization of the gradient for nonsmooth
+          optimization)
+          is below tol.
 
-    verbose: bool
-        Verbosity level. True might print some messages.
+      verbose: bool
+          Verbosity level. True might print some messages.
 
-    trace: bool
-        Whether to trace convergence of the function, useful for plotting and/or
-        debugging. If ye, the result will have extra members trace_func,
-        trace_time.
-
-
-    Returns
-    -------
-    opt: OptimizeResult
-        The optimization result represented as a
-        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-        ``x`` the solution array, ``success`` a Boolean flag indicating if
-        the optimizer exited successfully and ``message`` which describes
-        the cause of the termination. See `scipy.optimize.OptimizeResult`
-        for a description of other attributes.
+      trace: bool
+          Whether to trace convergence of the function, useful for plotting and/or
+          debugging. If ye, the result will have extra members trace_func,
+          trace_time.
 
 
-    References
-    ----------
-    The SAGA algorithm was originally described in
+    Returns:
+      opt: OptimizeResult
+          The optimization result represented as a
+          ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+          ``x`` the solution array, ``success`` a Boolean flag indicating if
+          the optimizer exited successfully and ``message`` which describes
+          the cause of the termination. See `scipy.optimize.OptimizeResult`
+          for a description of other attributes.
 
-    Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
-    incremental gradient method with support for non-strongly convex composite
-    objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
-    Information Processing Systems. 2014.
 
-    The implemented has some improvements with respect to the original,
-    like support for sparse datasets and is described in
+    References:
+      The SAGA algorithm was originally described in
 
-    Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien.
-    "Breaking the Nonsmooth Barrier: A Scalable Parallel Method
-    for Composite Optimization." Advances in Neural Information
-    Processing Systems (NIPS) 2017.
+      Aaron Defazio, Francis Bach, and Simon Lacoste-Julien. `SAGA: A fast
+      incremental gradient method with support for non-strongly convex composite
+      objectives. <https://arxiv.org/abs/1407.0202>`_ Advances in Neural
+      Information Processing Systems. 2014.
+
+      The implemented has some improvements with respect to the original,
+      like support for sparse datasets and is described in
+
+      Fabian Pedregosa, Remi Leblond, and Simon Lacoste-Julien.
+      "Breaking the Nonsmooth Barrier: A Scalable Parallel Method
+      for Composite Optimization." Advances in Neural Information
+      Processing Systems (NIPS) 2017.
     """
   x = np.ascontiguousarray(x0).copy()
   n_samples, n_features = A.shape
@@ -429,7 +423,7 @@ def minimize_vrtos(f_deriv,
                    tol=1e-6,
                    callback=None,
                    verbose=0):
-  """Variance-reduced three operator splitting (VRTOS) algorithm.
+  r"""Variance-reduced three operator splitting (VRTOS) algorithm.
 
     The VRTOS algorithm can solve optimization problems of the form
 
