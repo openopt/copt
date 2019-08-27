@@ -119,9 +119,10 @@ Although the algorithm is more broadly applicable, this library's implementation
     copt.minimize_pairwise_frank_wolfe
 
 
+.. admonition:: Examples
+
+  * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark_pairwise.py`
+
 .. topic:: References:
 
   .. [LJ2015] Lacoste-Julien, Simon, and Martin Jaggi. `"On the global linear convergence of Frank-Wolfe optimization variants." <https://arxiv.org/pdf/1511.05932.pdf>`_ Advances in Neural Information Processing Systems. 2015.
-
-  .. [PANJ2018] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. `"Step-Size Adaptivity in Projection-Free Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
-
