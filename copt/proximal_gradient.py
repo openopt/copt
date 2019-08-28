@@ -20,7 +20,7 @@ def minimize_proximal_gradient(
     max_iter_backtracking=1000,
     backtracking_factor=0.6,
 ):
-  """Proximal gradient descent.
+    """Proximal gradient descent.
 
   Solves problems of the form
 
@@ -77,136 +77,144 @@ def minimize_proximal_gradient(
   Examples:
     * :ref:`sphx_glr_auto_examples_plot_group_lasso.py`
   """
-  x = x0
-  if not max_iter_backtracking > 0:
-    raise ValueError("Line search iterations need to be greater than 0")
+    x = x0
+    if not max_iter_backtracking > 0:
+        raise ValueError("Line search iterations need to be greater than 0")
 
-  if prox is None:
-    def _prox(x, _):
-      return x
-    prox = _prox
+    if prox is None:
 
-  step_size_, strategy = utils.parse_step_size(step_size)
-  success = False
-  certificate = np.NaN
+        def _prox(x, _):
+            return x
 
-  it = 1
-  # .. a while loop instead of a for loop ..
-  # .. allows for infinite or floating point max_iter ..
+        prox = _prox
 
-  if not accelerated:
-    fk, grad_fk = f_grad(x)
-    pbar = trange(max_iter, disable=(verbose == 0))
-    for it in pbar:
-      if callback is not None:
-        if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
-          break
-      # .. compute gradient and step size
-      if hasattr(strategy, "__call__"):
-        step_size_ = strategy(locals())
-        x_next = prox(x - step_size_ * grad_fk, step_size_)
-        update_direction = x_next - x
-        f_next, grad_next = f_grad(x_next)
-      elif strategy == "adaptive":
-        x_next = prox(x - step_size_ * grad_fk, step_size_)
-        update_direction = x_next - x
-        step_size_ *= 1.1
-        for _ in range(max_iter_backtracking):
-          f_next, grad_next = f_grad(x_next)
-          rhs = fk + grad_fk.dot(update_direction) \
-              + update_direction.dot(update_direction) / (2.0 * step_size_)
-          if f_next <= rhs:
-            # .. step size found ..
-            break
-          else:
-            # .. backtracking, reduce step size ..
-            step_size_ *= backtracking_factor
-            x_next = prox(x - step_size_ * grad_fk, step_size_)
-            update_direction = x_next - x
-        else:
-          warnings.warn("Maxium number of line-search iterations reached")
-      elif strategy == "fixed":
-        x_next = prox(x - step_size_ * grad_fk, step_size_)
-        update_direction = x_next - x
-        f_next, grad_next = f_grad(x_next)
-      else:
-        raise ValueError("Step-size strategy not understood")
-      certificate = np.linalg.norm((x - x_next) / step_size_)
-      x[:] = x_next
-      fk = f_next
-      grad_fk = grad_next
+    step_size_, strategy = utils.parse_step_size(step_size)
+    success = False
+    certificate = np.NaN
 
-      pbar.set_description("PGD")
-      pbar.set_postfix(tol=certificate, step_size=step_size_, iter=it)
-
-      if certificate < tol:
-        if verbose:
-          pbar.write("Achieved relative tolerance at iteration %s" % it)
-        success = True
-        break
-    else:
-      warnings.warn(
-          "minimize_proximal_gradient did not reach the desired tolerance level",
-          RuntimeWarning)
-  else:
-    tk = 1
+    it = 1
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
-    yk = x.copy()
-    xk_prev = x.copy()
-    pbar = trange(max_iter, disable=(verbose == 0))
-    for it in pbar:
-      if callback is not None:
-        if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
-          break
 
-      # .. compute gradient and step size
-      current_step_size = step_size_
-      grad_fk = f_grad(yk)[1]
-      x = prox(yk - current_step_size * grad_fk, current_step_size)
-      if step_size == "adaptive":
-        for _ in range(max_iter_backtracking):
-          update_direction = x - yk
-          if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(
-              update_direction) + update_direction.dot(update_direction) \
-              / (2.0 * current_step_size):
-            # .. step size found ..
-            break
-          else:
-            # .. backtracking, reduce step size ..
-            current_step_size *= backtracking_factor
-            x = prox(yk - current_step_size * grad_fk, current_step_size)
+    if not accelerated:
+        fk, grad_fk = f_grad(x)
+        pbar = trange(max_iter, disable=(verbose == 0))
+        for it in pbar:
+            if callback is not None:
+                if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
+                    break
+            # .. compute gradient and step size
+            if hasattr(strategy, "__call__"):
+                step_size_ = strategy(locals())
+                x_next = prox(x - step_size_ * grad_fk, step_size_)
+                update_direction = x_next - x
+                f_next, grad_next = f_grad(x_next)
+            elif strategy == "adaptive":
+                x_next = prox(x - step_size_ * grad_fk, step_size_)
+                update_direction = x_next - x
+                step_size_ *= 1.1
+                for _ in range(max_iter_backtracking):
+                    f_next, grad_next = f_grad(x_next)
+                    rhs = (
+                        fk
+                        + grad_fk.dot(update_direction)
+                        + update_direction.dot(update_direction) / (2.0 * step_size_)
+                    )
+                    if f_next <= rhs:
+                        # .. step size found ..
+                        break
+                    else:
+                        # .. backtracking, reduce step size ..
+                        step_size_ *= backtracking_factor
+                        x_next = prox(x - step_size_ * grad_fk, step_size_)
+                        update_direction = x_next - x
+                else:
+                    warnings.warn("Maxium number of line-search iterations reached")
+            elif strategy == "fixed":
+                x_next = prox(x - step_size_ * grad_fk, step_size_)
+                update_direction = x_next - x
+                f_next, grad_next = f_grad(x_next)
+            else:
+                raise ValueError("Step-size strategy not understood")
+            certificate = np.linalg.norm((x - x_next) / step_size_)
+            x[:] = x_next
+            fk = f_next
+            grad_fk = grad_next
+
+            pbar.set_description("PGD")
+            pbar.set_postfix(tol=certificate, step_size=step_size_, iter=it)
+
+            if certificate < tol:
+                if verbose:
+                    pbar.write("Achieved relative tolerance at iteration %s" % it)
+                success = True
+                break
         else:
-          warnings.warn("Maxium number of line-search iterations reached")
-      t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-      yk = x + ((tk - 1.) / t_next) * (x - xk_prev)
+            warnings.warn(
+                "minimize_proximal_gradient did not reach the desired tolerance level",
+                RuntimeWarning,
+            )
+    else:
+        tk = 1
+        # .. a while loop instead of a for loop ..
+        # .. allows for infinite or floating point max_iter ..
+        yk = x.copy()
+        xk_prev = x.copy()
+        pbar = trange(max_iter, disable=(verbose == 0))
+        for it in pbar:
+            if callback is not None:
+                if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
+                    break
 
-      x_prox = prox(x - current_step_size * f_grad(x)[1], current_step_size)
-      certificate = np.linalg.norm((x - x_prox) / step_size_)
-      tk = t_next
-      xk_prev = x.copy()
+            # .. compute gradient and step size
+            current_step_size = step_size_
+            grad_fk = f_grad(yk)[1]
+            x = prox(yk - current_step_size * grad_fk, current_step_size)
+            if step_size == "adaptive":
+                for _ in range(max_iter_backtracking):
+                    update_direction = x - yk
+                    if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(
+                        update_direction
+                    ) + update_direction.dot(update_direction) / (
+                        2.0 * current_step_size
+                    ):
+                        # .. step size found ..
+                        break
+                    else:
+                        # .. backtracking, reduce step size ..
+                        current_step_size *= backtracking_factor
+                        x = prox(yk - current_step_size * grad_fk, current_step_size)
+                else:
+                    warnings.warn("Maxium number of line-search iterations reached")
+            t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
+            yk = x + ((tk - 1.0) / t_next) * (x - xk_prev)
 
-      if verbose > 0:
-        print("Iteration %s, certificate: %s, step size: %s" %
-              (it, certificate, step_size_))
+            x_prox = prox(x - current_step_size * f_grad(x)[1], current_step_size)
+            certificate = np.linalg.norm((x - x_prox) / step_size_)
+            tk = t_next
+            xk_prev = x.copy()
 
-      if False and certificate < tol:
-        if verbose:
-          print("Achieved relative tolerance at iteration %s" % it)
-        success = True
-        break
+            if verbose > 0:
+                print(
+                    "Iteration %s, certificate: %s, step size: %s"
+                    % (it, certificate, step_size_)
+                )
 
-      it += 1
-    if it >= max_iter:
-      warnings.warn(
-          "minimize_proximal_gradient did not reach the desired tolerance level",
-          RuntimeWarning)
+            if False and certificate < tol:
+                if verbose:
+                    print("Achieved relative tolerance at iteration %s" % it)
+                success = True
+                break
 
-  pbar.close()
-  return optimize.OptimizeResult(
-      x=x,
-      success=success,
-      certificate=certificate,
-      nit=it,
-      step_size=step_size)
+            it += 1
+        if it >= max_iter:
+            warnings.warn(
+                "minimize_proximal_gradient did not reach the desired tolerance level",
+                RuntimeWarning,
+            )
+
+    pbar.close()
+    return optimize.OptimizeResult(
+        x=x, success=success, certificate=certificate, nit=it, step_size=step_size
+    )
 

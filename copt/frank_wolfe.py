@@ -8,60 +8,86 @@ from tqdm import trange
 
 
 def _DR_step_size(lipschitz_t, certificate, norm_update_direction, max_step_size):
-  # .. Demyanov-Rubinov step-size ..
-  return min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
+    # .. Demyanov-Rubinov step-size ..
+    return min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
 
 
 def _adaptive_step_size(
-    f_grad, x, f_t, lipschitz_t, certificate, update_direction,
-    norm_update_direction, max_step_size):
-  ratio_decrease = 0.999
-  ratio_increase = 2
-  for i in range(10):
-    step_size_t = min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
-    rhs = f_t - step_size_t * certificate + \
-      0.5 * (step_size_t**2) * lipschitz_t * norm_update_direction
-    f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    if f_next <= rhs + 1e-6:
-      if i == 0:
-        lipschitz_t *= ratio_decrease
-      break
-    else:
-      lipschitz_t *= ratio_increase
-  return lipschitz_t, step_size_t, f_next, grad_next
+    f_grad,
+    x,
+    f_t,
+    lipschitz_t,
+    certificate,
+    update_direction,
+    norm_update_direction,
+    max_step_size,
+):
+    ratio_decrease = 0.999
+    ratio_increase = 2
+    for i in range(10):
+        step_size_t = min(
+            certificate / (norm_update_direction * lipschitz_t), max_step_size
+        )
+        rhs = (
+            f_t
+            - step_size_t * certificate
+            + 0.5 * (step_size_t ** 2) * lipschitz_t * norm_update_direction
+        )
+        f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        if f_next <= rhs + 1e-6:
+            if i == 0:
+                lipschitz_t *= ratio_decrease
+            break
+        else:
+            lipschitz_t *= ratio_increase
+    return lipschitz_t, step_size_t, f_next, grad_next
 
 
-def _adaptive_step_size_scipy(f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate, update_direction, norm_update_direction, max_step_size):
-  out = line_search.line_search_wolfe1(
-      lambda z: f_grad(z)[0],
-      lambda z: f_grad(z)[1],
-      x,
-      update_direction,
-      gfk=grad, old_fval=f_t,
-      old_old_fval=old_f_t,
-      amax=max_step_size
-      )
-  step_size_t = out[0]
-  if step_size_t is None:
-    tmp = certificate / (norm_update_direction * lipschitz_t)
-    step_size_t = min(tmp, max_step_size)
-  f_next = out[3]
-  if not f_next <= f_t:
-    raise ValueError
-  grad_next = out[-1]
-  return step_size_t, f_next, grad_next
+def _adaptive_step_size_scipy(
+    f_grad,
+    x,
+    f_t,
+    grad,
+    old_f_t,
+    lipschitz_t,
+    certificate,
+    update_direction,
+    norm_update_direction,
+    max_step_size,
+):
+    out = line_search.line_search_wolfe1(
+        lambda z: f_grad(z)[0],
+        lambda z: f_grad(z)[1],
+        x,
+        update_direction,
+        gfk=grad,
+        old_fval=f_t,
+        old_old_fval=old_f_t,
+        amax=max_step_size,
+    )
+    step_size_t = out[0]
+    if step_size_t is None:
+        tmp = certificate / (norm_update_direction * lipschitz_t)
+        step_size_t = min(tmp, max_step_size)
+    f_next = out[3]
+    if not f_next <= f_t:
+        raise ValueError
+    grad_next = out[-1]
+    return step_size_t, f_next, grad_next
 
 
-def minimize_frank_wolfe(f_grad,
-                         x0,
-                         lmo,
-                         step_size=None,
-                         lipschitz=None,
-                         max_iter=200,
-                         tol=1e-12,
-                         callback=None,
-                         verbose=0):
-  r"""Frank-Wolfe algorithm.
+def minimize_frank_wolfe(
+    f_grad,
+    x0,
+    lmo,
+    step_size=None,
+    lipschitz=None,
+    max_iter=200,
+    tol=1e-12,
+    callback=None,
+    verbose=0,
+):
+    r"""Frank-Wolfe algorithm.
 
   Implements the Frank-Wolfe algorithm, see , see :ref:`frank_wolfe` for
   a more detailed description.
@@ -135,153 +161,180 @@ def minimize_frank_wolfe(f_grad,
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
   """
-  x0 = np.asanyarray(x0, dtype=np.float)
-  if tol < 0:
-    raise ValueError("Tol must be non-negative")
-  x = x0.copy()
-  if lipschitz is not None:
-    lipschitz_t = lipschitz
+    x0 = np.asanyarray(x0, dtype=np.float)
+    if tol < 0:
+        raise ValueError("Tol must be non-negative")
+    x = x0.copy()
+    if lipschitz is not None:
+        lipschitz_t = lipschitz
 
-  pbar = trange(max_iter, disable=(verbose == 0))
-  f_t, grad = f_grad(x)
-  old_f_t = None
+    pbar = trange(max_iter, disable=(verbose == 0))
+    f_t, grad = f_grad(x)
+    old_f_t = None
 
-  it = 0
-  for it in pbar:
-    update_direction = lmo(-grad, x)
-    certificate = np.dot(update_direction, -grad)
+    it = 0
+    for it in pbar:
+        update_direction = lmo(-grad, x)
+        certificate = np.dot(update_direction, -grad)
 
-    if certificate <= tol:
-      break
-    norm_update_direction = linalg.norm(update_direction)**2
-    if hasattr(step_size, "__call__"):
-      step_size_t = step_size(locals())
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    elif step_size == "adaptive":
-      lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
-          f_grad, x, f_t, lipschitz_t, certificate, update_direction,
-          norm_update_direction, 1)
-    elif step_size == "adaptive_scipy":
-      step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
-          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
-          update_direction, norm_update_direction, 1)
-    elif step_size == "adaptive_scipy+":
-      if lipschitz_t is None:
-        raise ValueError
-      alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
-      out = line_search.line_search_wolfe1(
-          lambda z: f_grad(z)[0],
-          lambda z: f_grad(z)[1],
-          x,
-          update_direction,
-          gfk=grad, old_fval=f_t,
-          old_old_fval=old_f_t,
-          alpha1=alpha1,
-          amax=1
-          )
-      step_size_t = out[0]
-      if step_size_t is None:
-        step_size_t = alpha1
-      elif step_size_t < 1:
-        lipschitz_t = certificate / (norm_update_direction * step_size_t)
-      f_next = out[3]
-      grad_next = out[-1]
-    elif step_size == "adaptive3":
-      rho = 0.9
-      for _ in range(max_iter):
-        step_size_t = min(
-            certificate / (norm_update_direction * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        if (f_next - f_t) / step_size_t > - rho * certificate / 2:
-          # sufficient decrease not met, increase Lipchitz constant
-          lipschitz_t *= 2
-          continue
-        if (f_next - f_t) / step_size_t <= (rho / 2 - 1) * certificate:
-          # there's sufficient decrease but the quadratic approximation is not
-          # good. We can decrease the Lipschitz / increase the step-size
-          lipschitz_t /= 1.5
-          continue
-        break
-      else:
-        warnings.warn(
-            "Exhausted line search iterations in minimize_frank_wolfe",
-            RuntimeWarning)
-    elif step_size == "adaptive4":
-      sigma = 0.9
-      rho = 0.4
-      for _ in range(max_iter):
-        step_size_t = min(
-            certificate / (norm_update_direction * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        if (f_next - f_t) / step_size_t < - sigma * certificate / 2:
-          # we can decrease the Lipschitz / increase the step-siPze
-          lipschitz_t /= 1.5
-          continue
-        if (f_next - f_t) / step_size_t > - rho * certificate / 2:
-          lipschitz_t *= 2.
-          continue
-        break
-    elif step_size == "adaptive5":
-      sigma = 0.9
-      rho = 0.4
-      eps = .3
-      K = 2 * lipschitz_t * norm_update_direction / certificate
-      M = max((K + sigma) / (K + rho), 1.)
-      tau = M * (1 + eps)
-      eta = (1 - eps) / M
+        if certificate <= tol:
+            break
+        norm_update_direction = linalg.norm(update_direction) ** 2
+        if hasattr(step_size, "__call__"):
+            step_size_t = step_size(locals())
+            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        elif step_size == "adaptive":
+            lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
+                f_grad,
+                x,
+                f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                1,
+            )
+        elif step_size == "adaptive_scipy":
+            step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
+                f_grad,
+                x,
+                f_t,
+                grad,
+                old_f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                1,
+            )
+        elif step_size == "adaptive_scipy+":
+            if lipschitz_t is None:
+                raise ValueError
+            alpha1 = min(certificate / (norm_update_direction * lipschitz_t), 1)
+            out = line_search.line_search_wolfe1(
+                lambda z: f_grad(z)[0],
+                lambda z: f_grad(z)[1],
+                x,
+                update_direction,
+                gfk=grad,
+                old_fval=f_t,
+                old_old_fval=old_f_t,
+                alpha1=alpha1,
+                amax=1,
+            )
+            step_size_t = out[0]
+            if step_size_t is None:
+                step_size_t = alpha1
+            elif step_size_t < 1:
+                lipschitz_t = certificate / (norm_update_direction * step_size_t)
+            f_next = out[3]
+            grad_next = out[-1]
+        elif step_size == "adaptive3":
+            rho = 0.9
+            for _ in range(max_iter):
+                step_size_t = min(
+                    certificate / (norm_update_direction * lipschitz_t), 1
+                )
+                f_next, grad_next = f_grad(x + step_size_t * update_direction)
+                if (f_next - f_t) / step_size_t > -rho * certificate / 2:
+                    # sufficient decrease not met, increase Lipchitz constant
+                    lipschitz_t *= 2
+                    continue
+                if (f_next - f_t) / step_size_t <= (rho / 2 - 1) * certificate:
+                    # there's sufficient decrease but the quadratic approximation is not
+                    # good. We can decrease the Lipschitz / increase the step-size
+                    lipschitz_t /= 1.5
+                    continue
+                break
+            else:
+                warnings.warn(
+                    "Exhausted line search iterations in minimize_frank_wolfe",
+                    RuntimeWarning,
+                )
+        elif step_size == "adaptive4":
+            sigma = 0.9
+            rho = 0.4
+            for _ in range(max_iter):
+                step_size_t = min(
+                    certificate / (norm_update_direction * lipschitz_t), 1
+                )
+                f_next, grad_next = f_grad(x + step_size_t * update_direction)
+                if (f_next - f_t) / step_size_t < -sigma * certificate / 2:
+                    # we can decrease the Lipschitz / increase the step-siPze
+                    lipschitz_t /= 1.5
+                    continue
+                if (f_next - f_t) / step_size_t > -rho * certificate / 2:
+                    lipschitz_t *= 2.0
+                    continue
+                break
+        elif step_size == "adaptive5":
+            sigma = 0.9
+            rho = 0.4
+            eps = 0.3
+            K = 2 * lipschitz_t * norm_update_direction / certificate
+            M = max((K + sigma) / (K + rho), 1.0)
+            tau = M * (1 + eps)
+            eta = (1 - eps) / M
 
-      for i in range(max_iter):
-        step_size_t = min(certificate / (norm_update_direction * lipschitz_t), 1)
-        f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        if (f_next - f_t) / step_size_t < - sigma * certificate / 2:
-          # we can decrease the Lipschitz / increase the step-size
-          lipschitz_t *= eta
-          continue
-        if (f_next - f_t) / step_size_t > - rho * certificate / 2:
-          lipschitz_t *= tau
-          continue
-        break
+            for i in range(max_iter):
+                step_size_t = min(
+                    certificate / (norm_update_direction * lipschitz_t), 1
+                )
+                f_next, grad_next = f_grad(x + step_size_t * update_direction)
+                if (f_next - f_t) / step_size_t < -sigma * certificate / 2:
+                    # we can decrease the Lipschitz / increase the step-size
+                    lipschitz_t *= eta
+                    continue
+                if (f_next - f_t) / step_size_t > -rho * certificate / 2:
+                    lipschitz_t *= tau
+                    continue
+                break
 
-      else:
-        warnings.warn(
-            "Exhausted line search iterations in minimize_frank_wolfe",
-            RuntimeWarning)
-    elif step_size == "DR":
-      if lipschitz is None:
-        raise ValueError("lipschitz needs to be specified with step_size=\"DR\"")
-      step_size_t = _DR_step_size(lipschitz_t, certificate, norm_update_direction, 1)
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    elif step_size is None:
-      # .. without knowledge of the Lipschitz constant ..
-      # .. we take the oblivious 2/(k+2) step-size ..
-      step_size_t = 2. / (it+2)
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    else:
-      raise ValueError("Invalid option step_size=%s" % step_size)
+            else:
+                warnings.warn(
+                    "Exhausted line search iterations in minimize_frank_wolfe",
+                    RuntimeWarning,
+                )
+        elif step_size == "DR":
+            if lipschitz is None:
+                raise ValueError('lipschitz needs to be specified with step_size="DR"')
+            step_size_t = _DR_step_size(
+                lipschitz_t, certificate, norm_update_direction, 1
+            )
+            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        elif step_size is None:
+            # .. without knowledge of the Lipschitz constant ..
+            # .. we take the oblivious 2/(k+2) step-size ..
+            step_size_t = 2.0 / (it + 2)
+            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        else:
+            raise ValueError("Invalid option step_size=%s" % step_size)
+        if callback is not None:
+            callback(locals())
+        x += step_size_t * update_direction
+        pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
+
+        old_f_t = f_t
+        f_t, grad = f_next, grad_next
     if callback is not None:
-      callback(locals())
-    x += step_size_t * update_direction
-    pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
-
-    old_f_t = f_t
-    f_t, grad = f_next, grad_next
-  if callback is not None:
-    callback(locals())
-  pbar.close()
-  return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
+        callback(locals())
+    pbar.close()
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
 
 
-def minimize_pairwise_frank_wolfe(f_grad,
-                                  x0,
-                                  active_set,
-                                  lmo_pairwise,
-                                  step_size=None,
-                                  lipschitz=None,
-                                  max_iter=200,
-                                  tol=1e-12,
-                                  callback=None,
-                                  verbose=0):
-  """Pairwise FW on the L1 ball.
+def minimize_pairwise_frank_wolfe(
+    f_grad,
+    x0,
+    active_set,
+    lmo_pairwise,
+    step_size=None,
+    lipschitz=None,
+    max_iter=200,
+    tol=1e-12,
+    callback=None,
+    verbose=0,
+):
+    """Pairwise FW on the L1 ball.
 
 .. warning::
     This feature is experimental, API is likely to change.
@@ -313,74 +366,90 @@ def minimize_pairwise_frank_wolfe(f_grad,
       for a description of other attributes.
 
   """
-  x0 = np.asanyarray(x0, dtype=np.float)
-  if tol < 0:
-    raise ValueError("Tol must be non-negative")
-  x = x0.copy()
-  if lipschitz is not None:
-    lipschitz_t = lipschitz
-  # .. check active_set ..
-  if np.any(active_set < 0):
-    raise ValueError("active_set cannot contain negative entries")
-  if np.all(active_set == 0):
-    raise ValueError("active_set cannot be only zero")
+    x0 = np.asanyarray(x0, dtype=np.float)
+    if tol < 0:
+        raise ValueError("Tol must be non-negative")
+    x = x0.copy()
+    if lipschitz is not None:
+        lipschitz_t = lipschitz
+    # .. check active_set ..
+    if np.any(active_set < 0):
+        raise ValueError("active_set cannot contain negative entries")
+    if np.all(active_set == 0):
+        raise ValueError("active_set cannot be only zero")
 
-  pbar = trange(max_iter, disable=(verbose == 0))
-  f_t, grad = f_grad(x)
-  old_f_t = None
+    pbar = trange(max_iter, disable=(verbose == 0))
+    f_t, grad = f_grad(x)
+    old_f_t = None
 
-  it = 0
-  for it in pbar:
-    update_direction, idx_s, idx_v = \
-      lmo_pairwise(-grad, x, active_set)
+    it = 0
+    for it in pbar:
+        update_direction, idx_s, idx_v = lmo_pairwise(-grad, x, active_set)
 
-    norm_update_direction = linalg.norm(update_direction)**2
-    certificate = np.dot(update_direction, -grad)
+        norm_update_direction = linalg.norm(update_direction) ** 2
+        certificate = np.dot(update_direction, -grad)
 
-    # compute gamma_max
-    max_step_size = active_set[idx_v]
+        # compute gamma_max
+        max_step_size = active_set[idx_v]
 
-    if certificate <= tol:
-      break
-    if hasattr(step_size, "__call__"):
-      step_size_t = step_size(locals())
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    elif step_size == "adaptive":
-      lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
-          f_grad, x, f_t, lipschitz_t, certificate, update_direction,
-          norm_update_direction, max_step_size)
-      if step_size_t is None:
-        raise RuntimeError
-      assert step_size_t >= 0
-      assert step_size_t <= max_step_size
-    elif step_size == "adaptive_scipy":
-      step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
-          f_grad, x, f_t, grad, old_f_t, lipschitz_t, certificate,
-          update_direction, norm_update_direction, max_step_size)
-      if step_size_t is None:
-        raise RuntimeError
-      assert step_size_t >= 0
-      assert step_size_t <= max_step_size
-    elif step_size == "DR":
-      # .. Demyanov-Rubinov step-size ..
-      if lipschitz is None:
-        raise ValueError(
-            "lipschitz needs to be specified with step_size=\"DR\"")
-      step_size_t = _DR_step_size(
-          lipschitz_t, certificate, norm_update_direction, max_step_size)
-      f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    else:
-      raise ValueError("Invalid option step_size=%s" % step_size)
+        if certificate <= tol:
+            break
+        if hasattr(step_size, "__call__"):
+            step_size_t = step_size(locals())
+            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        elif step_size == "adaptive":
+            lipschitz_t, step_size_t, f_next, grad_next = _adaptive_step_size(
+                f_grad,
+                x,
+                f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                max_step_size,
+            )
+            if step_size_t is None:
+                raise RuntimeError
+            assert step_size_t >= 0
+            assert step_size_t <= max_step_size
+        elif step_size == "adaptive_scipy":
+            step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
+                f_grad,
+                x,
+                f_t,
+                grad,
+                old_f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                max_step_size,
+            )
+            if step_size_t is None:
+                raise RuntimeError
+            assert step_size_t >= 0
+            assert step_size_t <= max_step_size
+        elif step_size == "DR":
+            # .. Demyanov-Rubinov step-size ..
+            if lipschitz is None:
+                raise ValueError('lipschitz needs to be specified with step_size="DR"')
+            step_size_t = _DR_step_size(
+                lipschitz_t, certificate, norm_update_direction, max_step_size
+            )
+            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        else:
+            raise ValueError("Invalid option step_size=%s" % step_size)
+        if callback is not None:
+            callback(locals())
+        x += step_size_t * update_direction
+        active_set[idx_s] += step_size_t
+        active_set[idx_v] -= step_size_t
+        pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
+
+        old_f_t = f_t
+        f_t, grad = f_next, grad_next
     if callback is not None:
-      callback(locals())
-    x += step_size_t * update_direction
-    active_set[idx_s] += step_size_t
-    active_set[idx_v] -= step_size_t
-    pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
+        callback(locals())
+    pbar.close()
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
 
-    old_f_t = f_t
-    f_t, grad = f_next, grad_next
-  if callback is not None:
-    callback(locals())
-  pbar.close()
-  return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)

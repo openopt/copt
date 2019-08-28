@@ -1,6 +1,6 @@
+from distutils.core import setup
 import copt
 import io
-from distutils.core import setup
 import setuptools
 
 CLASSIFIERS = """\
@@ -18,16 +18,16 @@ Operating System :: Unix
 """
 
 setup(
-    name='copt',
-    description='Library for composite optimization in Python',
-    long_description=io.open('README.rst', encoding='utf-8').read(),
+    name="copt",
+    description="Library for composite optimization in Python",
+    long_description=io.open("README.rst", encoding="utf-8").read(),
     version=copt.__version__,
-    author='Fabian Pedregosa',
-    author_email='f@bianp.net',
-    url='http://pypi.python.org/pypi/copt',
-    packages=['copt'],
-    install_requires=['numpy', 'scipy', 'tqdm', 'sklearn', 'six',],
-    classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
-    package_data={'copt': ['data/img1.csv']},
-    license='Apache Software License'
+    author="Fabian Pedregosa",
+    author_email="f@bianp.net",
+    url="http://pypi.python.org/pypi/copt",
+    packages=["copt"],
+    install_requires=["numpy", "scipy", "tqdm", "sklearn", "six"],
+    classifiers=[_f for _f in CLASSIFIERS.split("\n") if _f],
+    package_data={"copt": ["data/img1.csv"]},
+    license="Apache Software License",
 )
