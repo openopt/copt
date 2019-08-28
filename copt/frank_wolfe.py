@@ -7,7 +7,7 @@ from tqdm import trange
 from copt import line_search
 
 
-def _DR_step_size(lipschitz_t, certificate, norm_update_direction, max_step_size):
+def _dr_step_size(lipschitz_t, certificate, norm_update_direction, max_step_size):
     # .. Demyanov-Rubinov step-size ..
     return min(certificate / (norm_update_direction * lipschitz_t), max_step_size)
 
@@ -66,13 +66,14 @@ def _adaptive_step_size_scipy(
         amax=max_step_size,
     )
     step_size_t = out[0]
+    f_next = out[3]
+    grad_next = out[-1]
     if step_size_t is None:
         tmp = certificate / (norm_update_direction * lipschitz_t)
         step_size_t = min(tmp, max_step_size)
-    f_next = out[3]
-    if not f_next <= f_t:
+        f_next, grad_next = f_grad(x + step_size_t * update_direction)
+    if f_next > f_t:
         raise ValueError
-    grad_next = out[-1]
     return step_size_t, f_next, grad_next
 
 
@@ -298,7 +299,7 @@ def minimize_frank_wolfe(
         elif step_size == "DR":
             if lipschitz is None:
                 raise ValueError('lipschitz needs to be specified with step_size="DR"')
-            step_size_t = _DR_step_size(
+            step_size_t = _dr_step_size(
                 lipschitz_t, certificate, norm_update_direction, 1
             )
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
@@ -425,6 +426,7 @@ def minimize_pairwise_frank_wolfe(
                 norm_update_direction,
                 max_step_size,
             )
+            assert f_next == f_grad(x + step_size_t * update_direction)[0]
             if step_size_t is None:
                 raise RuntimeError
             assert step_size_t >= 0
@@ -433,7 +435,7 @@ def minimize_pairwise_frank_wolfe(
             # .. Demyanov-Rubinov step-size ..
             if lipschitz is None:
                 raise ValueError('lipschitz needs to be specified with step_size="DR"')
-            step_size_t = _DR_step_size(
+            step_size_t = _dr_step_size(
                 lipschitz_t, certificate, norm_update_direction, max_step_size
             )
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
