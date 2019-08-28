@@ -342,7 +342,7 @@ def minimize_pairwise_frank_wolfe(
 
   Design: LMO takes as input the active set (an array of shape
   n_vertices).
-  
+
   should return d_t, certificate, and both indices of the selected vertices.
 
   How to pass the initialization of vertices?
@@ -452,4 +452,3 @@ def minimize_pairwise_frank_wolfe(
         callback(locals())
     pbar.close()
     return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
-
