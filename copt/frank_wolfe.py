@@ -1,10 +1,10 @@
 """Frank-Wolfe and related algorithms."""
 import warnings
-from copt import line_search
 import numpy as np
 from scipy import linalg
 from scipy import optimize
 from tqdm import trange
+from copt import line_search
 
 
 def _DR_step_size(lipschitz_t, certificate, norm_update_direction, max_step_size):
