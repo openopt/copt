@@ -217,4 +217,3 @@ def minimize_proximal_gradient(
     return optimize.OptimizeResult(
         x=x, success=success, certificate=certificate, nit=it, step_size=step_size
     )
-

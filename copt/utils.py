@@ -796,4 +796,3 @@ class TotalVariation2D:
             max_iter=self.max_iter,
             tol=self.tol,
         )
-

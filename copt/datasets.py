@@ -419,4 +419,3 @@ def load_criteo(md5_check=True):
         X = sparse.csr_matrix((X_data, X_indices, X_indptr))
         y = np.load(data_target)
     return X, y
-

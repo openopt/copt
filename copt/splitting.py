@@ -331,4 +331,3 @@ def minimize_primal_dual(
 
     pbar.close()
     return optimize.OptimizeResult(x=y, success=success, nit=it, certificate=norm_incr)
-

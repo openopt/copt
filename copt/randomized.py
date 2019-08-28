@@ -703,4 +703,3 @@ def _factory_sparse_vrtos(
             memory_gradient[i] = grad_i
 
     return epoch_iteration_template
-
