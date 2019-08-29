@@ -376,12 +376,53 @@ def minimize_pairwise_frank_wolfe(
   How to pass the initialization of vertices?
 
   :Args:
-    f_grad
+    f_grad: callable
+      Takes as input the current iterate (a vector of same size as x0) and
+      returns the function value and gradient of the objective function.
+      It should accept the optional argument return_gradient, and when False
+      it should return only the function value.
 
-    x0
+    x0: array-like
+      Initial guess for solution.
 
-    active_set : array-like
-        Decomposition of x0 in terms of the active set.
+    lmo_pairwise: callable
+      Takes as input a vector u of same size as x0 and returns a solution to
+      the linear minimization oracle (defined above).
+
+    step_size: None or "adaptive" or "adaptive2" or callable
+      Step-size step_size to use. If None is used and keyword lipschitz
+      is not given or None, then it will use a decreasing step-size of the
+      form 2/(k+1) (described in [1]). If None is used and keyword lipschitz
+      is not None, then it will use the Demyanov-Rubinov step-size step_size
+      (variant 1 in [2]).
+
+    lipschitz: None or float.
+      Estimate for the Lipschitz constant of the gradient.
+
+    max_iter: integer
+      Maximum number of iterations.
+
+    tol: float
+      Tolerance of the stopping criterion. The algorithm will stop whenever
+      the Frank-Wolfe gap is below tol or the maximum number of iterations
+      is exceeded.
+
+    callback: callable
+      Callback to execute at each iteration. If the callable returns False
+      then the algorithm with immediately return.
+
+    verbose: int
+      Verbosity level.
+
+
+  Returns:
+    res : scipy.optimize.OptimizeResult
+      The optimization result represented as a
+      ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+      ``x`` the solution array, ``success`` a Boolean flag indicating if
+      the optimizer exited successfully and ``message`` which describes
+      the cause of the termination. See `scipy.optimize.OptimizeResult`
+      for a description of other attributes.
 
 
   Returns:
