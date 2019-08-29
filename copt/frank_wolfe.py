@@ -24,7 +24,8 @@ def _adaptive_step_size(
 ):
     ratio_decrease = 0.999
     ratio_increase = 2
-    for i in range(10):
+    max_iter = 10
+    for i in range(max_iter):
         step_size_t = min(
             certificate / (norm_update_direction * lipschitz_t), max_step_size
         )
@@ -72,8 +73,6 @@ def _adaptive_step_size_scipy(
         tmp = certificate / (norm_update_direction * lipschitz_t)
         step_size_t = min(tmp, max_step_size)
         f_next, grad_next = f_grad(x + step_size_t * update_direction)
-    if f_next > f_t:
-        raise ValueError
     return step_size_t, f_next, grad_next
 
 
@@ -97,7 +96,7 @@ def _adaptive_step_size_panj(
     M = max((K + sigma) / (K + rho), 1.0)
     tau = M * (1 + eps)
     eta = (1 - eps) / M
-
+    max_iter = 10
     for i in range(max_iter):
         step_size_t = min(
             certificate / (norm_update_direction * lipschitz_t), max_step_size
