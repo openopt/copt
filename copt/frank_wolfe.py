@@ -122,9 +122,9 @@ def minimize_frank_wolfe(
     f_grad,
     x0,
     lmo,
-    step_size=None,
+    step_size="adaptive_scipy",
     lipschitz=None,
-    max_iter=200,
+    max_iter=400,
     tol=1e-12,
     callback=None,
     verbose=0,
@@ -329,7 +329,7 @@ def minimize_frank_wolfe(
                 lipschitz_t, certificate, norm_update_direction, 1
             )
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        elif step_size is None:
+        elif step_size == "oblivious":
             # .. without knowledge of the Lipschitz constant ..
             # .. we take the oblivious 2/(k+2) step-size ..
             step_size_t = 2.0 / (it + 2)
@@ -386,7 +386,7 @@ def minimize_pairwise_frank_wolfe(
 
     lmo_pairwise: callable
       Takes as input a vector u of same size as x0 and returns a solution to
-      the linear minimization oracle (defined above).
+      the pairwise linear minimization oracle (see doc).
 
     step_size: None or "adaptive" or "adaptive2" or callable
       Step-size step_size to use. If None is used and keyword lipschitz
