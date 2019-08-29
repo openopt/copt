@@ -83,7 +83,7 @@ def exact_ls(kw):
         "adaptive_scipy+",
         "adaptive3",
         "adaptive4",
-        "adaptive5",
+        "panj",
         exact_ls,
     ],
 )
@@ -121,7 +121,9 @@ def exact_ls_pairwise(kw):
 
 
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("step_size", ["DR", "adaptive", exact_ls_pairwise])
+@pytest.mark.parametrize(
+    "step_size", ["DR", "adaptive", "panj", "adaptive_scipy", exact_ls_pairwise]
+)
 def test_pairwise_fw(obj, step_size):
     """Test the Pairwise FW method."""
     f = obj(A, b, 1.0 / n_samples)

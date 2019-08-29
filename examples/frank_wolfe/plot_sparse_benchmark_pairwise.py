@@ -26,7 +26,7 @@ variants_fw = [
     # ["adaptive2+", "linesearch+ step-size", "s"],
     # ["adaptive3", "adaptive3 step-size", "+"],
     # ["adaptive4", "adaptive4 step-size", "x"],
-    # ["adaptive5", "adaptive5 step-size", ">"],
+    ["panj", "adaptive5 step-size", ">"],
     ["DR", "Lipschitz step-size", "<"],
 ]
 

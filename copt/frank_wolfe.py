@@ -77,6 +77,48 @@ def _adaptive_step_size_scipy(
     return step_size_t, f_next, grad_next
 
 
+def _adaptive_step_size_panj(
+    f_grad,
+    x,
+    f_t,
+    grad,
+    old_f_t,
+    lipschitz_t,
+    certificate,
+    update_direction,
+    norm_update_direction,
+    max_step_size,
+):
+
+    sigma = 0.9
+    rho = 0.4
+    eps = 0.3
+    K = 2 * lipschitz_t * norm_update_direction / certificate
+    M = max((K + sigma) / (K + rho), 1.0)
+    tau = M * (1 + eps)
+    eta = (1 - eps) / M
+
+    for i in range(max_iter):
+        step_size_t = min(
+            certificate / (norm_update_direction * lipschitz_t), max_step_size
+        )
+        f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        if (f_next - f_t) / step_size_t < -sigma * certificate / 2:
+            # we can decrease the Lipschitz / increase the step-size
+            lipschitz_t *= eta
+            continue
+        if (f_next - f_t) / step_size_t > -rho * certificate / 2:
+            lipschitz_t *= tau
+            continue
+        break
+    else:
+        warnings.warn(
+            "Exhausted line search iterations in minimize_frank_wolfe", RuntimeWarning
+        )
+
+    return step_size_t, f_next, grad_next
+
+
 def minimize_frank_wolfe(
     f_grad,
     x0,
@@ -268,34 +310,19 @@ def minimize_frank_wolfe(
                     lipschitz_t *= 2.0
                     continue
                 break
-        elif step_size == "adaptive5":
-            sigma = 0.9
-            rho = 0.4
-            eps = 0.3
-            K = 2 * lipschitz_t * norm_update_direction / certificate
-            M = max((K + sigma) / (K + rho), 1.0)
-            tau = M * (1 + eps)
-            eta = (1 - eps) / M
-
-            for i in range(max_iter):
-                step_size_t = min(
-                    certificate / (norm_update_direction * lipschitz_t), 1
-                )
-                f_next, grad_next = f_grad(x + step_size_t * update_direction)
-                if (f_next - f_t) / step_size_t < -sigma * certificate / 2:
-                    # we can decrease the Lipschitz / increase the step-size
-                    lipschitz_t *= eta
-                    continue
-                if (f_next - f_t) / step_size_t > -rho * certificate / 2:
-                    lipschitz_t *= tau
-                    continue
-                break
-
-            else:
-                warnings.warn(
-                    "Exhausted line search iterations in minimize_frank_wolfe",
-                    RuntimeWarning,
-                )
+        elif step_size == "panj":
+            step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
+                f_grad,
+                x,
+                f_t,
+                grad,
+                old_f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                1,
+            )
         elif step_size == "DR":
             if lipschitz is None:
                 raise ValueError('lipschitz needs to be specified with step_size="DR"')
@@ -431,6 +458,19 @@ def minimize_pairwise_frank_wolfe(
                 raise RuntimeError
             assert step_size_t >= 0
             assert step_size_t <= max_step_size
+        elif step_size == "panj":
+            step_size_t, f_next, grad_next = _adaptive_step_size_panj(
+                f_grad,
+                x,
+                f_t,
+                grad,
+                old_f_t,
+                lipschitz_t,
+                certificate,
+                update_direction,
+                norm_update_direction,
+                max_step_size,
+            )
         elif step_size == "DR":
             # .. Demyanov-Rubinov step-size ..
             if lipschitz is None:
