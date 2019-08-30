@@ -169,15 +169,26 @@ class LogLoss:
         z0[~idx] = tmp / (1 + tmp)
         return z0
 
+    def logsig(self, x):
+        """Compute log(1 / (1 + exp(-t))) component-wise."""
+        out = np.zeros_like(x)
+        idx0 = x < -33
+        out[idx0] = x[idx0]
+        idx1 = (x >= -33) & (x < -18)
+        out[idx1] = x[idx1] - np.exp(x[idx1])
+        idx2 = (x >= -18) & (x < 37)
+        out[idx2] = -np.log1p(np.exp(-x[idx2]))
+        idx3 = x >= 37
+        out[idx3] = -np.exp(-x[idx3])
+        return out
+
     def f_grad(self, x, return_gradient=True):
         if self.intercept:
             x_, c = x[:-1], x[-1]
         else:
             x_, c = x, 0.0
         z = safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c
-        tmp = np.zeros((2, self.A.shape[0]))
-        tmp[1] = -z
-        loss = np.mean((1 - self.b) * z + special.logsumexp(tmp, axis=0))
+        loss = np.mean((1 - self.b) * z - self.logsig(z))
         penalty = safe_sparse_dot(x_.T, x_, dense_output=True).ravel()[0]
         loss += 0.5 * self.alpha * penalty
 
