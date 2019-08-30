@@ -15,21 +15,21 @@ import copt as cp
 # .. last value si the regularization parameter ..
 # .. which has been chosen to give 10% feature sparsity ..
 datasets = [
-    ("Gisette", cp.datasets.load_gisette),
-    ("RCV1", cp.datasets.load_rcv1),
-    ("Madelon", cp.datasets.load_madelon),
-    ("Covtype", cp.datasets.load_covtype, 100.0),
+    ("Gisette", cp.datasets.load_gisette, 3e3),
+    ("RCV1", cp.datasets.load_rcv1, 1e4),
+    ("Madelon", cp.datasets.load_madelon, 20.0),
+    ("Covtype", cp.datasets.load_covtype, 200.0),
 ]
 
 
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    ["adaptive_scipy", "scipy linesearch step-size", "^"],
     # ["adaptive2+", "linesearch+ step-size", "s"],
     # ["adaptive3", "adaptive3 step-size", "+"],
     # ["adaptive4", "adaptive4 step-size", "x"],
     ["panj", "panj step-size", ">"],
     ["DR", "Lipschitz step-size", "<"],
+    ["adaptive_scipy", "scipy linesearch step-size", "^"],
 ]
 
 for dataset_title, load_data, alpha in datasets:
