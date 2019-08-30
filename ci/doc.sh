@@ -7,7 +7,7 @@ pip install -U sphinx loky joblib sphinx_copybutton memory_profiler jax jaxlib a
 pip install git+https://github.com/fabianp/sphinx-gallery.git
 python setup.py install
 cd doc
-make html
+make html > doc_log.txt
 if [ $? -eq 0 ]; then
     # set up a badge depending on the result of the build
     echo "Building of documentation succeeded"
