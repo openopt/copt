@@ -310,7 +310,7 @@ def minimize_frank_wolfe(
                     continue
                 break
         elif step_size == "panj":
-            step_size_t, f_next, grad_next = _adaptive_step_size_scipy(
+            step_size_t, f_next, grad_next = _adaptive_step_size_panj(
                 f_grad,
                 x,
                 f_t,
