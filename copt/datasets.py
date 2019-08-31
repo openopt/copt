@@ -4,7 +4,8 @@ import os
 import numpy as np
 from scipy import misc
 from scipy import sparse
-from six.moves import urllib
+import urllib
+from sklearn import preprocessing
 
 DATA_DIR = os.environ.get(
     "COPT_DATA_DIR", os.path.join(os.path.expanduser("~"), "copt_data")
@@ -20,35 +21,38 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
-def load_madelon(md5_check=True, subset="full"):
+def load_madelon(md5_check=True, subset="full", standardize=True):
     """Download and return the madelon dataset.
 
-  Properties:
-    n_samples: 2600
-    n_features: 500
+    Properties:
+        n_samples: 2600
+        n_features: 500
 
-  This is the binary classification version of the dataset as found in the
-  LIBSVM dataset project:
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
 
-      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
-
-
-  Args:
-    md5_check: bool
-      Whether to do an md5 check on the downloaded files.
-
-    subset: string
-      Can be one of 'full' for full dataset, 'train' for only the train set
-      or 'test' for only the test set.
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#madelon
 
 
-  Returns:
-    data: scipy.sparse CSR
-      Return data as CSR sparse matrix of shape=(2600, 500).
+    Args:
+        md5_check: bool
+            Whether to do an md5 check on the downloaded files.
 
-    target: array of shape 2600
-      Labels, only takes values 0 or 1.
-  """
+        subset: string
+            Can be one of 'full' for full dataset, 'train' for only the train set
+            or 'test' for only the test set.
+
+        standardize: boolean
+            If True, each feature will have zero mean and unit variance.
+
+
+    Returns:
+        data: scipy.sparse CSR
+            Return data as CSR sparse matrix of shape=(2600, 500).
+
+        target: array of shape 2600
+            Labels, only takes values 0 or 1.
+    """
     import h5py
 
     if not os.path.exists(DATA_DIR):
@@ -60,26 +64,29 @@ def load_madelon(md5_check=True, subset="full"):
         urllib.request.urlretrieve(url, file_path)
         print("Finished downloading")
     f = h5py.File(file_path, "r")
-    data = np.asarray(f["X_train"])
-    target = np.array(f["y_train"])
+    data_train = np.asarray(f["X_train"])
+    target_train = np.array(f["y_train"])
 
     if subset == "train":
-        return data, target
+        data, target = data_train, target_train
 
     data_test = np.asarray(f["X_test"])
     target_test = np.array(f["y_test"])
 
     if subset == "test":
-        return data_test, target_test
+        data, target = data_test, target_test
     elif subset == "full":
-        data_full = np.vstack((data, data_test))
-        target_full = np.concatenate((target, target_test))
-        return data_full, target_full
+        data_full = np.vstack((data_train, data_test))
+        target_full = np.concatenate((target_train, target_test))
+        data, target = data_full, target_full
     else:
         raise ValueError(
             "subset '%s' not implemented, must be one of ('train', 'test', 'full')."
             % subset
         )
+    if standardize:
+        data = preprocessing.StandardScaler().fit_transform(data)
+    return data, target
 
 
 def load_rcv1(md5_check=True, subset="full"):
@@ -235,19 +242,22 @@ def load_covtype():
     return X, y
 
 
-def load_gisette():
+def load_gisette(standardize=True):
     """Download and return the covtype dataset.
 
-  This is the binary classification version of the dataset as found in the
-  LIBSVM dataset project:
+    This is the binary classification version of the dataset as found in the
+    LIBSVM dataset project:
 
-      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#gisette
+        https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#gisette
 
+    :Args:
+        standardize: boolean
+        If True, each feature will have zero mean and unit variance.
 
-  Returns:
-    X : scipy.sparse CSR matrix
-    y: numpy array
-        Labels, only takes values 0 or 1.
+    Returns:
+        data : scipy.sparse CSR matrix
+        target: numpy array
+            Labels, only takes values 0 or 1.
   """
     from sklearn import datasets  # lazy import
 
@@ -261,8 +271,11 @@ def load_gisette():
         print("Finished downloading")
     X, y = datasets.load_svmlight_file(file_name)
     # original labels are [-1, 1], put into [0, 1]
+    X = X.toarray()  # the dataset is not really sparse
     y += 1
     y /= 2
+    if standardize:
+        X = preprocessing.StandardScaler().fit_transform(X)
     return X, y
 
 

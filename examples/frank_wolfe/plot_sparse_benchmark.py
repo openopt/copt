@@ -13,8 +13,8 @@ import numpy as np
 
 # .. datasets and their loading functions ..
 datasets = [
-    ("Gisette", cp.datasets.load_gisette),
-    ("RCV1", cp.datasets.load_rcv1),
+    # ("Gisette", cp.datasets.load_gisette),
+    # ("RCV1", cp.datasets.load_rcv1),
     ("Madelon", cp.datasets.load_madelon),
     ("Covtype", cp.datasets.load_covtype),
 ]
