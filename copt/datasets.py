@@ -52,6 +52,10 @@ def load_madelon(md5_check=True, subset="full", standardize=True):
 
         target: array of shape 2600
             Labels, only takes values 0 or 1.
+    
+    Examples:
+        * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
+        * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
     """
     import h5py
 

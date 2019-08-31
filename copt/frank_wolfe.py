@@ -198,8 +198,7 @@ def minimize_frank_wolfe(
     <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
 
 
-  Examples
-  --------
+  Examples:
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
   """
@@ -433,6 +432,8 @@ def minimize_pairwise_frank_wolfe(
       the cause of the termination. See `scipy.optimize.OptimizeResult`
       for a description of other attributes.
 
+  Examples:
+    * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark_pairwise.py`
   """
     x0 = np.asanyarray(x0, dtype=np.float)
     if tol < 0:
