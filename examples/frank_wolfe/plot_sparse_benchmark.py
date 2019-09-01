@@ -13,10 +13,10 @@ import numpy as np
 
 # .. datasets and their loading functions ..
 datasets = [
-    # ("Gisette", cp.datasets.load_gisette),
-    # ("RCV1", cp.datasets.load_rcv1),
-    ("Madelon", cp.datasets.load_madelon),
-    ("Covtype", cp.datasets.load_covtype),
+    ("Gisette", cp.datasets.load_gisette, 6e3),
+    ("RCV1", cp.datasets.load_rcv1, 2e4),
+    ("Madelon", cp.datasets.load_madelon, 20.0),
+    ("Covtype", cp.datasets.load_covtype, 200.0),
 ]
 
 
@@ -30,7 +30,7 @@ variants_fw = [
     ["DR", "Lipschitz step-size", "<"],
 ]
 
-for dataset_title, load_data in datasets:
+for dataset_title, load_data, alpha in datasets:
     plt.figure()
     print("Running on the %s dataset" % dataset_title)
 
@@ -39,7 +39,7 @@ for dataset_title, load_data in datasets:
 
     # the size of the constraint set. We set it to
     # (for example) n_features / 2
-    l1_ball = cp.utils.L1Ball(n_features / 2.0)
+    l1_ball = cp.utils.L1Ball(alpha)
     f = cp.utils.LogLoss(X, y)
     x0 = np.zeros(n_features)
 

@@ -182,6 +182,18 @@ class LogLoss:
         out[idx3] = -np.exp(-x[idx3])
         return out
 
+    def expit_b(self, x, b):
+        """Compute sigmoid(x) - b."""
+        idx = x < 0
+        out = np.zeros_like(x)
+        exp_x = np.exp(x[idx])
+        b_idx = b[idx]
+        out[idx] = ((1 - b_idx) * exp_x - b_idx) / (1 + exp_x)
+        exp_nx = np.exp(-x[~idx])
+        b_nidx = b[~idx]
+        out[~idx] = ((1 - b_nidx) - b_nidx * exp_nx) / (1 + exp_nx)
+        return out
+
     def f_grad(self, x, return_gradient=True):
         if self.intercept:
             x_, c = x[:-1], x[-1]
@@ -195,10 +207,11 @@ class LogLoss:
         if not return_gradient:
             return loss
 
-        z0 = special.expit(z) - self.b
-        grad = safe_sparse_add(self.A.T.dot(z0) / self.A.shape[0], self.alpha * x_)
+        z0_b = self.expit_b(z, self.b)
+
+        grad = safe_sparse_add(self.A.T.dot(z0_b) / self.A.shape[0], self.alpha * x_)
         grad = np.asarray(grad).ravel()
-        grad_c = z0.mean()
+        grad_c = z0_b.mean()
         if self.intercept:
             return np.concatenate((grad, [grad_c]))
 

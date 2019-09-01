@@ -39,8 +39,6 @@ for dataset_title, load_data, alpha in datasets:
     X, y = load_data()
     n_samples, n_features = X.shape
 
-    # the size of the constraint set. We set it to
-    # (for example) n_features / 2
     l1_ball = cp.utils.L1Ball(alpha)
     f = cp.utils.LogLoss(X, y)
     x0 = np.zeros(n_features)

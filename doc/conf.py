@@ -231,7 +231,7 @@ html_show_copyright = copyright = (
     str(now.year)
     + ', <a href="https://github.com/openopt/copt/graphs/contributors">COPT developers</a>. Updated on '
     + now.strftime("%B %d, %Y")
-    + '. <a href="https://storage.googleapis.com/copt/index.html">Development version</a>'
+    + ' | <a href="https://storage.googleapis.com/copt/index.html">Development version</a>'
 )
 
 # If true, an OpenSearch description file will be output, and all pages will
