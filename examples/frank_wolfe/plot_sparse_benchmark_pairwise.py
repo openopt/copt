@@ -15,10 +15,10 @@ import copt as cp
 # .. last value si the regularization parameter ..
 # .. which has been chosen to give 10% feature sparsity ..
 datasets = [
-    ("Gisette", cp.datasets.load_gisette, 6e3),
-    ("RCV1", cp.datasets.load_rcv1, 2e4),
-    ("Madelon", cp.datasets.load_madelon, 20.0),
-    ("Covtype", cp.datasets.load_covtype, 200.0),
+    ("Gisette", cp.datasets.load_gisette, 1e4),
+    ("RCV1", cp.datasets.load_rcv1, 1e3),
+    ("Madelon", cp.datasets.load_madelon, 1e3),
+    ("Covtype", cp.datasets.load_covtype, 1e3),
 ]
 
 

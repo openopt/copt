@@ -249,6 +249,11 @@ def load_covtype():
 def load_gisette(standardize=True):
     """Download and return the covtype dataset.
 
+    Properties:
+        n_samples: 6000 + 1000 (testing)
+        n_features: 5000
+
+
     This is the binary classification version of the dataset as found in the
     LIBSVM dataset project:
 
