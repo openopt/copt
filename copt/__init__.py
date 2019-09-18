@@ -1,5 +1,5 @@
 """COPT: composite optimization in Python."""
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 from . import datasets
 from . import tv_prox
