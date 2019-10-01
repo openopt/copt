@@ -2,6 +2,8 @@
 import hashlib
 import os
 import urllib
+import tarfile
+
 import numpy as np
 from scipy import misc
 from scipy import sparse
@@ -27,48 +29,45 @@ def load_img1(n_rows=20, n_cols=20):
     return misc.imresize(grid, (n_rows, n_cols))
 
 
-def _load_hdf5(name, subset, data_dir):
+def _load_dataset(name, subset, data_dir):
     """Low level driver to download and return dataset"""
-
-    if name not in ["rcv1", "gisette", "madelon", "covtype"]:
-        raise ValueError("I don't know how to fetch dataset %s" % name)
-    try:
-        import h5py
-    except ImportError:
-        raise ImportError(
-            "h5py is necessary for the dataset loading routines."
-            + "Please install it to use this functionality."
-        )
 
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
-    file_path = os.path.join(data_dir, "%s.hdf5" % name)
+    file_path = os.path.join(data_dir, "%s.tar.gz" % name)
     if not os.path.exists(file_path):
         print("%s dataset is not present in data folder. Downloading it ..." % name)
-        url = "https://storage.googleapis.com/copt/datasets/%s.hdf5" % name
+        url = "https://storage.googleapis.com/copt/datasets/%s.tar.gz" % name
         urllib.request.urlretrieve(url, file_path)
         print("Finished downloading")
-    if HAS_TF:
-        f = gfile.GFile(file_path, "rb")
-    else:
-        f = open(file_path, "rb")
-    f_h5 = h5py.File(f, "r")
-    data_train = np.asarray(f_h5["X_train.data"])
-    data_train_indices = np.array(f_h5["X_train.indices"])
-    data_train_indptr = np.array(f_h5["X_train.indptr"])
-    target_train = np.array(f_h5["y_train"])
 
-    data_train = sparse.csr_matrix((data_train, data_train_indices, data_train_indptr))
+        tar = tarfile.open(file_path)
+        tar.extractall(data_dir)
+
+    if HAS_TF:
+        file_loader = gfile.GFile
+    else:
+        file_loader = open
+    dataset_dir = os.path.join(data_dir, name)
+
+    tmp_train = []
+    for fname in ("X_train.data", "X_train.indices", "X_train.indptr", "y_train"):
+        with file_loader(os.path.join(dataset_dir, "%s.npy" % fname), "rb") as f:
+            tmp_train.append(np.load(f))
+
+    data_train = sparse.csr_matrix((tmp_train[0], tmp_train[1], tmp_train[2]))
+    target_train = tmp_train[3]
 
     if subset == "train":
         retval = (data_train, target_train)
     else:
-        data_test = np.asarray(f_h5["X_test.data"])
-        data_test_indices = np.array(f_h5["X_test.indices"])
-        data_test_indptr = np.array(f_h5["X_test.indptr"])
-        target_test = np.array(f_h5["y_test"])
+        for fname in ("X_test.data", "X_test.indices", "X_test.indptr", "y_test"):
+            tmp_test = []
+            with file_loader(os.path.join(dataset_dir, "%s.npy" % fname), "rb") as f:
+                tmp_test.append(np.load(f))
 
-        data_test = sparse.csr_matrix((data_test, data_test_indices, data_test_indptr))
+        data_test = sparse.csr_matrix((tmp_test[0], tmp_test[1], tmp_test[2]))
+        target_test = tmp_test[3]
 
         if subset == "test":
             retval = (data_test, target_test)
@@ -82,7 +81,6 @@ def _load_hdf5(name, subset, data_dir):
                 "subset '%s' not implemented, must be one of ('train', 'test', 'full')."
                 % subset
             )
-    f.close()
     return retval
 
 
@@ -122,7 +120,7 @@ def load_madelon(subset="full", data_dir=DATA_DIR):
         * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
         * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
     """
-    return _load_hdf5("madelon", subset, data_dir)
+    return _load_dataset("madelon", subset, data_dir)
 
 
 def load_rcv1(subset="full", data_dir=DATA_DIR):
@@ -152,7 +150,7 @@ def load_rcv1(subset="full", data_dir=DATA_DIR):
         y: numpy array
         Labels, only takes values 0 or 1.
     """
-    return _load_hdf5("rcv1", subset, data_dir)
+    return _load_dataset("rcv1", subset, data_dir)
 
 
 def load_url(md5_check=True):
@@ -228,7 +226,7 @@ def load_covtype(data_dir=DATA_DIR):
     y: numpy array
         Labels, only takes values 0 or 1.
     """
-    return _load_hdf5("covtype", "train", data_dir)
+    return _load_dataset("covtype", "train", data_dir)
     from sklearn import datasets  # lazy import
 
     if not os.path.exists(DATA_DIR):
@@ -271,7 +269,7 @@ def load_gisette(subset="full", data_dir=DATA_DIR):
         target: numpy array
             Labels, only takes values 0 or 1.
   """
-    return _load_hdf5("gisette", subset, data_dir)
+    return _load_dataset("gisette", subset, data_dir)
 
 
 def load_kdd10(md5_check=True):
@@ -407,7 +405,7 @@ def load_criteo(md5_check=True):
         print("Finished downloading")
         if md5_check:
             h = hashlib.md5(open(file_path, "rb").read()).hexdigest()
-            if not h == "d852b491d1b3afa26c1e7b49594ffc3e":
+            if h != "d852b491d1b3afa26c1e7b49594ffc3e":
                 print("MD5 hash do not coincide")
                 print("Removing file and re-downloading")
                 os.remove(file_path)
