@@ -14,12 +14,36 @@ import copt as cp
 # .. datasets and their loading functions ..
 # .. last value si the regularization parameter ..
 # .. which has been chosen to give 10% feature sparsity ..
-datasets = [
-    ("Gisette", cp.datasets.load_gisette, 1e4),
-    ("RCV1", cp.datasets.load_rcv1, 1e3),
-    ("Madelon", cp.datasets.load_madelon, 1e3),
-    ("Covtype", cp.datasets.load_covtype, 1e3),
-]
+datasets = (
+    {
+        "name": "RCV1",
+        "loader": cp.datasets.load_rcv1,
+        "alpha": 1e3,
+        "max_iter": 500,
+        "f_star": 0.3114744279728717,
+    },
+    {
+        "name": "gisette",
+        "loader": cp.datasets.load_gisette,
+        "alpha": 1e4,
+        "max_iter": 500,
+        "f_star": 2.293654421822428,
+    },
+    {
+        "name": "madelon",
+        "loader": cp.datasets.load_madelon,
+        "alpha": 1e4,
+        "max_iter": 500,
+        "f_star": 0.0,
+    },
+    {
+        "name": "covtype",
+        "loader": cp.datasets.load_covtype,
+        "alpha": 1e4,
+        "max_iter": 500,
+        "f_star": 0,
+    },
+)
 
 
 variants_fw = [
@@ -27,22 +51,23 @@ variants_fw = [
     # ["adaptive2+", "linesearch+ step-size", "s"],
     # ["adaptive3", "adaptive3 step-size", "+"],
     # ["adaptive4", "adaptive4 step-size", "x"],
-    ["panj", "panj step-size", ">"],
     ["DR", "Lipschitz step-size", "<"],
     ["adaptive_scipy", "scipy linesearch step-size", "^"],
+    ["panj", "panj step-size", ">"],
 ]
 
-for dataset_title, load_data, alpha in datasets:
+for d in datasets:
     plt.figure()
-    print("Running on the %s dataset" % dataset_title)
+    print("Running on the %s dataset" % d["name"])
 
-    X, y = load_data()
+    X, y = d["loader"]()
+    print(X.shape)
     n_samples, n_features = X.shape
 
-    l1_ball = cp.utils.L1Ball(alpha)
+    l1_ball = cp.utils.L1Ball(d["alpha"])
     f = cp.utils.LogLoss(X, y)
     x0 = np.zeros(n_features)
-    x0[0] = alpha
+    x0[0] = d["alpha"]  # start from a (random) vertex
     active_set = np.zeros(n_features * 2)
     active_set[0] = 1
 
@@ -57,17 +82,25 @@ for dataset_title, load_data, alpha in datasets:
             callback=cb,
             step_size=step_size,
             lipschitz=f.lipschitz,
-            max_iter=1000,
+            max_iter=d["max_iter"],
+            verbose=True,
             tol=0,
         )
 
-        plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker, markevery=10)
+        plt.plot(
+            cb.trace_time,
+            np.array(cb.trace_fx) - d["f_star"],
+            label=label,
+            marker=marker,
+            markevery=10,
+        )
 
     print("Sparsity of solution: %s" % np.mean(np.abs(sol.x) > 1e-8))
+    print(f(sol.x))
     plt.legend()
     plt.xlabel("Time (in seconds)")
     plt.ylabel("Objective function")
-    plt.title(dataset_title)
+    plt.title(d["name"])
     plt.tight_layout()  # otherwise the right y-label is slightly clipped
     #    plt.xlim((0, 0.7 * cb.trace_time[-1]))  # for aesthetics
     plt.grid()

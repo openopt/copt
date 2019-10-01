@@ -96,8 +96,8 @@ def _adaptive_step_size_panj(
     M = max((K + sigma) / (K + rho), 1.0)
     tau = M * (1 + eps)
     eta = (1 - eps) / M
-    max_iter = 10
-    for i in range(max_iter):
+    max_iter = 100
+    for _ in range(max_iter):
         step_size_t = min(
             certificate / (norm_update_direction * lipschitz_t), max_step_size
         )
