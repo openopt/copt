@@ -1,5 +1,4 @@
 from distutils.core import setup
-import copt
 import io
 import setuptools
 
@@ -21,7 +20,7 @@ setup(
     name="copt",
     description="Library for composite optimization in Python",
     long_description=io.open("README.rst", encoding="utf-8").read(),
-    version=copt.__version__,
+    version="0.7.4",
     author="Fabian Pedregosa",
     author_email="f@bianp.net",
     url="http://pypi.python.org/pypi/copt",

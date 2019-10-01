@@ -1,5 +1,5 @@
 """COPT: composite optimization in Python."""
-__version__ = "0.7.3"
+__version__ = "0.7.4"  # if you modify this, change it also in setup.py
 
 from . import datasets
 from . import tv_prox
