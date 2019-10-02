@@ -32,27 +32,53 @@ def load_img1(n_rows=20, n_cols=20):
 def _load_dataset(name, subset, data_dir):
     """Low level driver to download and return dataset"""
 
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    file_path = os.path.join(data_dir, "%s.tar.gz" % name)
-    if not os.path.exists(file_path):
-        print("%s dataset is not present in data folder. Downloading it ..." % name)
-        url = "https://storage.googleapis.com/copt/datasets/%s.tar.gz" % name
-        urllib.request.urlretrieve(url, file_path)
-        print("Finished downloading")
-
-        tar = tarfile.open(file_path)
-        tar.extractall(data_dir)
-
     if HAS_TF:
+        file_exists = gfile.exists
+        makedirs = gfile.makedirs
         file_loader = gfile.GFile
     else:
+        file_exists = os.path.exists
+        makedirs = os.makedirs
         file_loader = open
     dataset_dir = os.path.join(data_dir, name)
+    files_train = (
+        "X_train.data.npy",
+        "X_train.indices.npy",
+        "X_train.indptr.npy",
+        "y_train.npy",
+    )
+    if not np.all(
+        [file_exists(os.path.join(dataset_dir, fname)) for fname in files_train]
+    ):
+        makedirs(dataset_dir)
+        print(
+            "%s dataset is not present in the folder %s. Downloading it ..."
+            % (name, dataset_dir)
+        )
+        url = "https://storage.googleapis.com/copt/datasets/%s.tar.gz" % name
+        local_filename, _ = urllib.request.urlretrieve(url)
+        print("Finished downloading")
+
+        tar = tarfile.open(local_filename)
+        for member in tar.getmembers():
+            f_orig = tar.extractfile(member)
+            if f_orig is None:
+                continue
+
+            print("Extracting data to %s" % os.path.join(data_dir, member.name))
+            f_dest = file_loader(os.path.join(data_dir, member.name), "wb")
+            chunk = 5000
+            while True:
+                data = f_orig.read(chunk)
+                if not data:
+                    break
+                f_dest.write(data)
+            f_dest.close()
+            f_orig.close()
 
     tmp_train = []
-    for fname in ("X_train.data", "X_train.indices", "X_train.indptr", "y_train"):
-        with file_loader(os.path.join(dataset_dir, "%s.npy" % fname), "rb") as f:
+    for fname in files_train:
+        with file_loader(os.path.join(dataset_dir, fname), "rb") as f:
             tmp_train.append(np.load(f))
 
     data_train = sparse.csr_matrix((tmp_train[0], tmp_train[1], tmp_train[2]))
@@ -61,9 +87,14 @@ def _load_dataset(name, subset, data_dir):
     if subset == "train":
         retval = (data_train, target_train)
     else:
-        for fname in ("X_test.data", "X_test.indices", "X_test.indptr", "y_test"):
-            tmp_test = []
-            with file_loader(os.path.join(dataset_dir, "%s.npy" % fname), "rb") as f:
+        tmp_test = []
+        for fname in (
+            "X_test.data.npy",
+            "X_test.indices.npy",
+            "X_test.indptr.npy",
+            "y_test.npy",
+        ):
+            with file_loader(os.path.join(dataset_dir, fname), "rb") as f:
                 tmp_test.append(np.load(f))
 
         data_test = sparse.csr_matrix((tmp_test[0], tmp_test[1], tmp_test[2]))
