@@ -20,7 +20,7 @@ setup(
     name="copt",
     description="Library for composite optimization in Python",
     long_description=io.open("README.rst", encoding="utf-8").read(),
-    version="0.8.0",
+    version="0.8.1",
     author="Fabian Pedregosa",
     author_email="f@bianp.net",
     url="http://pypi.python.org/pypi/copt",
