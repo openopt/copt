@@ -74,20 +74,7 @@ def exact_ls(kw):
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize(
-    "bt",
-    [
-        "DR",
-        "adaptive",
-        "adaptive_scipy",
-        "adaptive_scipy+",
-        "adaptive3",
-        "adaptive4",
-        "panj",
-        "oblivious",
-        exact_ls,
-    ],
-)
+@pytest.mark.parametrize("bt", ["DR", "adaptive", "oblivious", exact_ls])
 def test_fw_backtrack(obj, bt, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
@@ -124,7 +111,7 @@ def exact_ls_pairwise(kw):
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", loss_funcs)
 @pytest.mark.parametrize(
-    "step_size", ["DR", "adaptive", "panj", "adaptive_scipy", exact_ls_pairwise]
+    "step_size", ["DR", "adaptive", "adaptive_scipy", exact_ls_pairwise]
 )
 def test_pairwise_fw(obj, step_size, alpha):
     """Test the Pairwise FW method."""

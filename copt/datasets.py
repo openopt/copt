@@ -258,19 +258,24 @@ def load_covtype(data_dir=DATA_DIR):
         Labels, only takes values 0 or 1.
     """
     return _load_dataset("covtype", "train", data_dir)
-    from sklearn import datasets  # lazy import
 
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    file_name = os.path.join(DATA_DIR, "covtype.libsvm.binary.scale.bz2")
-    if not os.path.exists(file_name):
-        print("Covtype dataset is not present in data folder. Downloading it ...")
-        url = "https://s3-eu-west-1.amazonaws.com/copt.bianp.net/datasets/covtype.libsvm.binary.scale.bz2"
-        urllib.request.urlretrieve(url, file_name)
-        print("Finished downloading")
-    X, y = datasets.load_svmlight_file(file_name)
-    y -= 1  # original labels are [1, 2]
-    return X, y
+
+def load_news20(data_dir=DATA_DIR):
+    """Download and return the covtype dataset.
+
+  This is the binary classification version of the dataset as found in the
+  LIBSVM dataset project:
+
+      https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html#news20.binary
+
+
+  Returns:
+    X : scipy.sparse CSR matrix
+
+    y: numpy array
+        Labels, only takes values 0 or 1.
+    """
+    return _load_dataset("news20", "train", data_dir)
 
 
 def load_gisette(subset="full", data_dir=DATA_DIR):
