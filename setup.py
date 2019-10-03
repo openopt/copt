@@ -6,7 +6,7 @@ CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
 Intended Audience :: Science/Research
 Intended Audience :: Developers
-License :: OSI Approved :: Apache Software License
+License :: OSI Approved
 Programming Language :: Python
 Programming Language :: Python :: 2
 Programming Language :: Python :: 3
@@ -28,5 +28,5 @@ setup(
     install_requires=["numpy", "scipy", "tqdm", "sklearn", "six"],
     classifiers=[_f for _f in CLASSIFIERS.split("\n") if _f],
     package_data={"copt": ["data/img1.csv"]},
-    license="Apache Software License",
+    license="New BSD License",
 )
