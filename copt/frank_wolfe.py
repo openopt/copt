@@ -168,7 +168,4 @@ def minimize_frank_wolfe(
     if callback is not None:
         callback(locals())
     pbar.close()
-    print(update_direction)
-    return optimize.OptimizeResult(
-        x=x, nit=it, certificate=certificate, update_direction=update_direction
-    )
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
