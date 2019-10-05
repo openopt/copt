@@ -2,9 +2,6 @@
    :target: https://travis-ci.org/openopt/copt
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
-.. image:: https://img.shields.io/github/license/openopt/copt
-   :alt: New BSD license
-   :target: https://github.com/openopt/copt/blob/master/LICENSE
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 .. image:: https://storage.googleapis.com/copt/doc_status.svg
