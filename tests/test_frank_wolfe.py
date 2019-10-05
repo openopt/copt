@@ -1,8 +1,8 @@
 """Tests for the Frank-Wolfe algorithm."""
-import copt as cp
 import numpy as np
 import pytest
 from scipy import optimize
+import copt as cp
 
 np.random.seed(0)
 n_samples, n_features = 20, 16
@@ -14,7 +14,7 @@ b = A.dot(w) + np.random.randn(n_samples)
 # greater than 1
 b = np.abs(b / np.max(np.abs(b)))
 
-loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss]
+LOSS_FUNCS = [cp.utils.LogLoss, cp.utils.SquareLoss]
 
 
 def test_fw_api():
@@ -42,7 +42,7 @@ def test_fw_api():
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
-@pytest.mark.parametrize("loss_grad", loss_funcs)
+@pytest.mark.parametrize("loss_grad", LOSS_FUNCS)
 def test_fw_l1(loss_grad, alpha):
     """Test result of FW algorithm with L1 constraint."""
     f = loss_grad(A, b, 1.0 / n_samples)
@@ -73,9 +73,9 @@ def exact_ls(kw):
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
-@pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize("bt", ["DR", "adaptive", "oblivious", exact_ls])
-def test_fw_backtrack(obj, bt, alpha):
+@pytest.mark.parametrize("obj", LOSS_FUNCS)
+@pytest.mark.parametrize("step_size", ["DR", "adaptive", "oblivious", exact_ls])
+def test_fw_backtrack(obj, step_size, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
     traceball = cp.utils.TraceBall(alpha, (4, 4))
@@ -85,7 +85,7 @@ def test_fw_backtrack(obj, bt, alpha):
         traceball.lmo,
         tol=0,
         lipschitz=f.lipschitz,
-        step_size=bt,
+        step_size=step_size,
         max_iter=1000,
     )
     assert np.isfinite(opt.x).sum() == n_features
@@ -109,10 +109,8 @@ def exact_ls_pairwise(kw):
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
-@pytest.mark.parametrize("obj", loss_funcs)
-@pytest.mark.parametrize(
-    "step_size", ["DR", "adaptive", "adaptive_scipy", exact_ls_pairwise]
-)
+@pytest.mark.parametrize("obj", LOSS_FUNCS)
+@pytest.mark.parametrize("step_size", ["DR", "adaptive", exact_ls_pairwise])
 def test_pairwise_fw(obj, step_size, alpha):
     """Test the Pairwise FW method."""
     f = obj(A, b, 1.0 / n_samples)
@@ -120,13 +118,10 @@ def test_pairwise_fw(obj, step_size, alpha):
     l1ball = cp.utils.L1Ball(alpha)
     x0 = np.zeros(A.shape[1])
     x0[0] = alpha
-    active_set = np.zeros(2 * A.shape[1])
-    active_set[0] = 1
     cb = cp.utils.Trace(f)
-    opt = cp.minimize_pairwise_frank_wolfe(
+    opt = cp.minimize_frank_wolfe(
         f.f_grad,
         x0,
-        active_set,
         l1ball.lmo_pairwise,
         step_size=step_size,
         lipschitz=f.lipschitz,

@@ -429,29 +429,58 @@ class L1Ball:
             u[largest_coordinate]
         )
 
-        return update_direction
+        return update_direction, 1
 
-    def lmo_pairwise(self, u, x, active_set):
-        # XXX do we actually need x?
-        if np.any(active_set < 0):
-            raise RuntimeError("active set coefficients cannot be negative")
+    def lmo_pairwise(self, u, x):
+        abs_u = np.abs(u)
+        largest_coordinate = np.argmax(abs_u)
 
-        u2 = np.concatenate((u, -u))
-        largest_coordinate = np.argmax(u2)
+        update_direction = np.zeros_like(u)
+        update_direction[largest_coordinate] += self.alpha * np.sign(
+            u[largest_coordinate]
+        )
 
-        u2_active = ma.array(u2, mask=(active_set == 0))
-        largest_active = np.argmax(-u2_active)
+        u_active = -u * np.sign(x)
+        ma_u_active = ma.array(u_active, mask=(u_active == 0))
+        largest_active = np.argmax(ma_u_active)
+        if largest_active == largest_coordinate:
+            # .. if s and v are the same vertex ..
+            # .. take a FW step ..
+            update_direction -= x
+            max_step_size = 1.0
+        if u_active[largest_active] > 0:
+            update_direction[largest_active] -= self.alpha * np.sign(x[largest_active])
+            max_step_size = np.abs(x[largest_active]) / self.alpha
+        else:
+            # the zero vertex wins
+            max_step_size = max(self.alpha - np.sum(np.abs(x)), 0) / self.alpha
+            if max_step_size == 0:
+                # .. early termination ..
+                update_direction[:] = 0
 
-        update_direction = np.zeros_like(x)
-        sign_largest = 1 if largest_coordinate < len(u) else -1
-        idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
-        update_direction[idx_largest] = self.alpha * sign_largest
+        return update_direction, max_step_size
 
-        idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
-        sign_active = 1 if largest_active < len(u) else -1
-        update_direction[idx_largest_active] -= self.alpha * sign_active
+    # def lmo_away(self, u, x):
+    #     raise NotImplementedError
+    #     u2 = active_set = np.concatenate((u, -u))
+    #     active_set = np.concatenate((x > 0, x < 0))
+    #     largest_coordinate = np.argmax(u2)
 
-        return update_direction, largest_coordinate, largest_active
+    #     u2_active = ma.array(u2, mask=(active_set == 0))
+    #     largest_active = np.argmax(-u2_active)
+
+    #     update_direction = np.zeros_like(x)
+    #     sign_largest = 1 if largest_coordinate < len(u) else -1
+    #     idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
+    #     update_direction[idx_largest] = self.alpha * sign_largest
+
+    #     idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
+    #     sign_active = 1 if largest_active < len(u) else -1
+    #     update_direction[idx_largest_active] -= self.alpha * sign_active
+
+    #     max_step_size = active_set[largest_active]
+
+    #     return update_direction, max_step_size
 
 
 class GroupL1:
@@ -789,7 +818,7 @@ class TraceBall:
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
         update_direction = vertex - x
-        return update_direction
+        return update_direction, 1
 
 
 class TotalVariation2D:

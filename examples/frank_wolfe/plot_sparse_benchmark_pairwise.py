@@ -48,19 +48,14 @@ datasets = (
 
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    # ["adaptive2+", "linesearch+ step-size", "s"],
-    # ["adaptive3", "adaptive3 step-size", "+"],
-    # ["adaptive4", "adaptive4 step-size", "x"],
     ["DR", "Lipschitz step-size", "<"],
-    ["adaptive_scipy", "scipy linesearch step-size", "^"],
-    ["panj", "panj step-size", ">"],
 ]
 
 for d in datasets:
     plt.figure()
     print("Running on the %s dataset" % d["name"])
 
-    X, y = d["loader"](data_dir="/cns/li-d/home/pedregosa/copt_data/")
+    X, y = d["loader"]()
     print(X.shape)
     n_samples, n_features = X.shape
 
@@ -68,16 +63,13 @@ for d in datasets:
     f = cp.utils.LogLoss(X, y)
     x0 = np.zeros(n_features)
     x0[0] = d["alpha"]  # start from a (random) vertex
-    active_set = np.zeros(n_features * 2)
-    active_set[0] = 1
 
     for step_size, label, marker in variants_fw:
 
         cb = cp.utils.Trace(f)
-        sol = cp.minimize_pairwise_frank_wolfe(
+        sol = cp.minimize_frank_wolfe(
             f.f_grad,
             x0,
-            active_set,
             l1_ball.lmo_pairwise,
             callback=cb,
             step_size=step_size,
