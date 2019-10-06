@@ -6,6 +6,40 @@ from scipy import optimize
 from tqdm import trange
 
 
+def fw_adaptive_step_size(
+    x,
+    f_t,
+    old_f_t,
+    f_grad,
+    certificate,
+    lipschitz_t,
+    max_step_size,
+    update_direction,
+    norm_update_direction,
+):
+    """Adaptive step-size finding routine for FW-like algorithms"""
+    ratio_decrease = 0.9
+    max_iter = 100
+    if old_f_t is not None:
+        tmp = (certificate ** 2) / (2 * (old_f_t - f_t) * norm_update_direction)
+        lipschitz_t = max(min(tmp, lipschitz_t), lipschitz_t * ratio_decrease)
+    for _ in range(max_iter):
+        step_size_t = min(
+            certificate / (norm_update_direction * lipschitz_t), max_step_size
+        )
+        f_next, grad_next = f_grad(x + step_size_t * update_direction)
+        if f_next - f_t < -step_size_t * certificate / 2:
+            # we're done here
+            break
+        else:
+            lipschitz_t *= 2.0
+    else:
+        warnings.warn(
+            "Exhausted line search iterations in minimize_frank_wolfe", RuntimeWarning
+        )
+    return step_size_t, lipschitz_t, f_next, grad_next
+
+
 def minimize_frank_wolfe(
     f_grad,
     x0,
@@ -36,7 +70,7 @@ def minimize_frank_wolfe(
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
 
-    step_size: None or "adaptive" or "adaptive2" or callable
+    step_size: None or "adaptive" or callable
       Step-size step_size to use. If None is used and keyword lipschitz
       is not given or None, then it will use a decreasing step-size of the
       form 2/(k+2) (described in [1]). If None is used and keyword lipschitz
@@ -124,26 +158,17 @@ def minimize_frank_wolfe(
             step_size_t = step_size(locals())
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
         elif step_size == "adaptive":
-            ratio_decrease = 0.9
-            max_iter = 100
-            if old_f_t is not None:
-                tmp = (certificate ** 2) / (2 * (old_f_t - f_t) * norm_update_direction)
-                lipschitz_t = max(min(tmp, lipschitz_t), lipschitz_t * ratio_decrease)
-            for _ in range(max_iter):
-                step_size_t = min(
-                    certificate / (norm_update_direction * lipschitz_t), max_step_size
-                )
-                f_next, grad_next = f_grad(x + step_size_t * update_direction)
-                if f_next - f_t < -step_size_t * certificate / 2:
-                    # we're done here
-                    break
-                else:
-                    lipschitz_t *= 2.0
-            else:
-                warnings.warn(
-                    "Exhausted line search iterations in minimize_frank_wolfe",
-                    RuntimeWarning,
-                )
+            step_size_t, lipschitz_t, f_next, grad_next = fw_line_search(
+                x,
+                f_t,
+                old_f_t,
+                f_grad,
+                certificate,
+                lipschitz_t,
+                max_step_size,
+                update_direction,
+                norm_update_direction,
+            )
         elif step_size == "DR":
             if lipschitz is None:
                 raise ValueError('lipschitz needs to be specified with step_size="DR"')

@@ -22,11 +22,6 @@ datasets = [
 
 variants_fw = [
     ["adaptive", "adaptive step-size", "s"],
-    ["adaptive_scipy", "scipy linesearch step-size", "^"],
-    ["adaptive_scipy+", "linesearch+ step-size", "s"],
-    # ["adaptive3", "adaptive3 step-size", "+"],
-    # ["adaptive4", "adaptive4 step-size", "x"],
-    ["panj", "geoff's step-size", ">"],
     ["DR", "Lipschitz step-size", "<"],
 ]
 
