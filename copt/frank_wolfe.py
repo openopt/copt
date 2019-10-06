@@ -6,7 +6,7 @@ from scipy import optimize
 from tqdm import trange
 
 
-def fw_adaptive_step_size(
+def adaptive_step_size(
     x,
     f_t,
     old_f_t,
@@ -17,8 +17,35 @@ def fw_adaptive_step_size(
     update_direction,
     norm_update_direction,
 ):
-    """Adaptive step-size finding routine for FW-like algorithms"""
+    """Adaptive step-size finding routine for FW-like algorithms
+    
+    Args:
+        x: array-like, shape (n_features,)
+            Current iterate
+
+        f_t: float
+            Value of objective function at the current iterate.
+
+        old_f_t: float
+            Value of objective function at previous iterate.
+
+        f_grad: callable
+
+        certificate
+
+        lipschitz_t
+
+        max_step_size: float
+            Maximum admissible step-size.
+
+        update_direction: array-like, shape (n_features,)
+            Update direction given by the FW variant.
+
+        norm_update_direction
+
+    """
     ratio_decrease = 0.9
+    ratio_increase = 2.0
     max_iter = 100
     if old_f_t is not None:
         tmp = (certificate ** 2) / (2 * (old_f_t - f_t) * norm_update_direction)
@@ -32,7 +59,7 @@ def fw_adaptive_step_size(
             # we're done here
             break
         else:
-            lipschitz_t *= 2.0
+            lipschitz_t *= ratio_increase
     else:
         warnings.warn(
             "Exhausted line search iterations in minimize_frank_wolfe", RuntimeWarning
@@ -158,7 +185,7 @@ def minimize_frank_wolfe(
             step_size_t = step_size(locals())
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
         elif step_size == "adaptive":
-            step_size_t, lipschitz_t, f_next, grad_next = fw_line_search(
+            step_size_t, lipschitz_t, f_next, grad_next = adaptive_step_size(
                 x,
                 f_t,
                 old_f_t,
