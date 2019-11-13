@@ -6,6 +6,9 @@ from scipy import optimize
 from tqdm import trange
 
 
+EPS = np.finfo(np.float32).eps
+
+
 def adaptive_step_size(
     x,
     f_t,
@@ -30,10 +33,14 @@ def adaptive_step_size(
             Value of objective function at previous iterate.
 
         f_grad: callable
+            Callable returning objective function and gradient at
+            argument.
 
-        certificate
+        certificate: float
+            FW gap
 
-        lipschitz_t
+        lipschitz_t: float
+            Current value of the Lipschitz estimate.
 
         max_step_size: float
             Maximum admissible step-size.
@@ -41,22 +48,41 @@ def adaptive_step_size(
         update_direction: array-like, shape (n_features,)
             Update direction given by the FW variant.
 
-        norm_update_direction
+        norm_update_direction: float
+            Squared L2 norm of update_direction
 
+    Returns:
+        step_size_t: float
+            Step-size to be used to compute the next iterate.
+
+        lipschitz_t: float
+            Updated value for the Lipschitz estimate
+
+        f_next: float
+            Objective function evaluated at x + step_size_t d_t.
+
+        grad_next: array-like
+            Gradient evaluated at x + step_size_t d_t.
     """
     ratio_decrease = 0.9
     ratio_increase = 2.0
-    max_iter = 100
+    max_ls_iter = 100
     if old_f_t is not None:
         tmp = (certificate ** 2) / (2 * (old_f_t - f_t) * norm_update_direction)
         lipschitz_t = max(min(tmp, lipschitz_t), lipschitz_t * ratio_decrease)
-    for _ in range(max_iter):
-        step_size_t = min(
-            certificate / (norm_update_direction * lipschitz_t), max_step_size
-        )
+    for _ in range(max_ls_iter):
+        step_size_t = certificate / (norm_update_direction * lipschitz_t)
+        if step_size_t < max_step_size:
+            rhs = -0.5 * step_size_t * certificate
+        else:
+            step_size_t = max_step_size
+            rhs = (
+                -step_size_t * certificate
+                + 0.5 * (step_size_t ** 2) * lipschitz_t * norm_update_direction
+            )
         f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        if f_next - f_t < -step_size_t * certificate / 2:
-            # we're done here
+        if f_next - f_t <= rhs + EPS:
+            # .. sufficient decrease condition verified ..
             break
         else:
             lipschitz_t *= ratio_increase
