@@ -64,9 +64,24 @@ def test_fw_l1(loss_grad, alpha):
     assert np.linalg.norm(grad_map) < 0.3
 
 
-def exact_ls(kw):
+def bisection(kw):
+    # naive implementation of bisection method
     def f_ls(gamma):
         return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
+
+    a = 0
+    b = kw["max_step_size"]
+    fa = f_ls(a)
+    fb = f_ls(b)
+    for _ in range(10):
+        c = (a + b) / 2
+        fc = f_ls(c)
+        if fc * fa > 0:
+            a = c
+            fa = fc
+        else:
+            b = c
+            fb = fc
 
     ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1])
     return ls_sol.x
@@ -74,7 +89,7 @@ def exact_ls(kw):
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", LOSS_FUNCS)
-@pytest.mark.parametrize("step_size", ["DR", "adaptive", "oblivious", exact_ls])
+@pytest.mark.parametrize("step_size", ["DR", "adaptive", "oblivious", bisection])
 def test_fw_backtrack(obj, step_size, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
@@ -96,21 +111,9 @@ def test_fw_backtrack(obj, step_size, alpha):
     assert np.linalg.norm(grad_map) < 0.4
 
 
-def exact_ls_pairwise(kw):
-    def f_ls(gamma):
-        return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
-
-    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, kw["max_step_size"]])
-    # quick hack since the bounds often seem to be ignored by scipy
-    ls_sol.x = max(ls_sol.x, kw["max_step_size"])
-    # assert ls_sol.x <= kw["max_step_size"]
-    assert ls_sol.x >= 0
-    return ls_sol.x
-
-
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", LOSS_FUNCS)
-@pytest.mark.parametrize("step_size", ["DR", "adaptive", exact_ls_pairwise])
+@pytest.mark.parametrize("step_size", ["DR", "adaptive", bisection])
 def test_pairwise_fw(obj, step_size, alpha):
     """Test the Pairwise FW method."""
     f = obj(A, b, 1.0 / n_samples)
