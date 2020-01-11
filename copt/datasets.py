@@ -9,7 +9,7 @@ from scipy import misc
 from scipy import sparse
 
 try:
-    from tensorflow.io import gfile
+    from tensorflow.compat.v1.io import gfile
 
     HAS_TF = True
 except ImportError:
