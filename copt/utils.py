@@ -217,8 +217,48 @@ class LogLoss:
 
         return loss, grad
 
-    def Hessian(self, x):
-        """Return a callable that performs dot products with the Hessian."""
+    def hessian_mv(self, x):
+        """Return a callable that returns matrix-vector products with the Hessian."""
+
+        n_samples, n_features = self.A.shape
+        if self.intercept:
+            x_, c = x[:-1], x[-1]
+        else:
+            x_, c = x, 0.0
+
+        z = special.expit(safe_sparse_dot(self.A, x_, dense_output=True).ravel() + c)
+
+        # The mat-vec product of the Hessian
+        d = z * (1 - z)
+        if sparse.issparse(self.A):
+            dX = safe_sparse_dot(
+                sparse.dia_matrix((d, 0), shape=(n_samples, n_samples)), self.A
+            )
+        else:
+            # Precompute as much as possible
+            dX = d[:, np.newaxis] * self.A
+
+        if self.intercept:
+            # Calculate the double derivative with respect to intercept
+            # In the case of sparse matrices this returns a matrix object.
+            dd_intercept = np.squeeze(np.array(dX.sum(axis=0)))
+
+        def _Hs(s):
+            ret = np.empty_like(s)
+            ret[:n_features] = self.A.T.dot(dX.dot(s[:n_features]))
+            ret[:n_features] += self.alpha * s[:n_features]
+
+            # For the fit intercept case.
+            if self.intercept:
+                ret[:n_features] += s[-1] * dd_intercept
+                ret[-1] = dd_intercept.dot(s[:n_features])
+                ret[-1] += d.sum() * s[-1]
+            return ret / n_samples
+
+        return _Hs
+
+    def hessian_trace(self, x):
+        """Return a callable that returns matrix-vector products with the Hessian."""
 
         n_samples, n_features = self.A.shape
         if self.intercept:

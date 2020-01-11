@@ -23,13 +23,13 @@ def test_log_hess():
     for A in (A_dense, A_sparse):
         f = cp.utils.LogLoss(A, b)
         x = np.random.randn(n_features)
-        Hs = f.Hessian(x)
+        Hs = f.hessian_mv(x)
 
         def obj(x):
             return f.f_grad(x)[1][0]
 
         def grad(x):
-            return f.Hessian(x)(np.eye(x.size)[0])
+            return f.hessian_mv(x)(np.eye(x.size)[0])
 
         err = optimize.check_grad(obj, grad, np.random.randn(n_features))
         assert err < 1e-6

@@ -68,7 +68,7 @@ def exact_ls(kw):
     def f_ls(gamma):
         return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
+    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1])
     return ls_sol.x
 
 
@@ -100,10 +100,10 @@ def exact_ls_pairwise(kw):
     def f_ls(gamma):
         return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    ls_sol = optimize.minimize_scalar(
-        f_ls, bounds=[0, kw["max_step_size"]], method="bounded"
-    )
-    assert ls_sol.x <= kw["max_step_size"]
+    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, kw["max_step_size"]])
+    # quick hack since the bounds often seem to be ignored by scipy
+    ls_sol.x = max(ls_sol.x, kw["max_step_size"])
+    # assert ls_sol.x <= kw["max_step_size"]
     assert ls_sol.x >= 0
     return ls_sol.x
 
