@@ -746,7 +746,7 @@ def euclidean_proj_simplex(v, s=1.0):
       http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf
   """
     assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
-    n, = v.shape  # will raise ValueError if v is not 1-D
+    (n,) = v.shape  # will raise ValueError if v is not 1-D
     # check if we are already on the simplex
     if v.sum() == s and np.alltrue(v >= 0):
         # best projection: itself!
