@@ -333,7 +333,7 @@ class SquareLoss:
   The Squared loss is defined as
 
   .. math::
-      \frac{1}{n}\|A x - b\|^2~,
+      \frac{1}{2n}\|A x - b\|^2~,
 
   where :math:`\|\cdot\|` is the euclidean norm.
   """
@@ -349,12 +349,11 @@ class SquareLoss:
     def __call__(self, x):
         z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
         pen = self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
-        return 0.5 * (z * z).mean() + 0.5 * pen
+        return .5 * (z * z).mean() + 0.5 * pen
 
     def f_grad(self, x, return_gradient=True):
         z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
-        pen = self.alpha * safe_sparse_dot(x.T, x, dense_output=True).ravel()[0]
-        loss = 0.5 * (z * z).mean() + 0.5 * pen
+        loss = self.__call__(x)
         if not return_gradient:
             return loss
         grad = safe_sparse_add(self.A.T.dot(z) / self.A.shape[0], self.alpha * x.T)
