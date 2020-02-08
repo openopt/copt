@@ -338,9 +338,11 @@ class SquareLoss:
   where :math:`\|\cdot\|` is the euclidean norm.
   """
 
-    def __init__(self, A, b, alpha=0):
+    def __init__(self, A=None, b=None, alpha=0):
         if A is None:
             A = sparse.eye(b.size, b.size, format="csr")
+        if b is None:
+            b = 0
         self.b = b
         self.alpha = alpha
         self.A = A
@@ -352,10 +354,10 @@ class SquareLoss:
         return .5 * (z * z).mean() + 0.5 * pen
 
     def f_grad(self, x, return_gradient=True):
-        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
         loss = self.__call__(x)
         if not return_gradient:
             return loss
+        z = safe_sparse_dot(self.A, x, dense_output=True).ravel() - self.b
         grad = safe_sparse_add(self.A.T.dot(z) / self.A.shape[0], self.alpha * x.T)
         return loss, np.asarray(grad).ravel()
 
