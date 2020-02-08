@@ -339,6 +339,8 @@ class SquareLoss:
   """
 
     def __init__(self, A=None, b=None, alpha=0):
+        if A is None and b is None:
+            return ValueError("Please specify A or b.")
         if A is None:
             A = sparse.eye(b.size, b.size, format="csr")
         if b is None:
