@@ -462,7 +462,7 @@ class L1Ball:
 
     def lmo(self, u, x):
         """Solve the linear problem
-    min_{||s||_1 <= alpha} <u, s>
+    max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
@@ -534,7 +534,7 @@ class GroupL1:
   ----------
 
   alpha: float
-      Constat multiplying this loss
+      Constant multiplying this loss
 
   blocks: list of lists
 
