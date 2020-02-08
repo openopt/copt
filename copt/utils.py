@@ -727,9 +727,6 @@ class SimplexConstraint:
         return update_direction, 1
 
 
-
-
-
 def euclidean_proj_simplex(v, s=1.0):
     r""" Compute the Euclidean projection on a positive simplex
   Solves the optimisation problem (using the algorithm from [1]):
