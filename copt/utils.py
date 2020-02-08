@@ -718,6 +718,17 @@ class SimplexConstraint:
     def prox(self, x, step_size):
         return euclidean_proj_simplex(x, self.s)
 
+    def lmo(self, u, x):
+
+        update_direction = -x
+        smallest_coordinate = np.argmin(u)
+        update_direction[smallest_coordinate] += self.s
+
+        return update_direction, 1
+
+
+
+
 
 def euclidean_proj_simplex(v, s=1.0):
     r""" Compute the Euclidean projection on a positive simplex
