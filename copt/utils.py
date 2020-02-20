@@ -420,11 +420,23 @@ class L1Norm:
         return self.alpha * np.abs(x).sum()
 
     def prox(self, x, step_size):
+        """Proximal operator of the L1 norm.
+        
+        This routine can be used in gradient-based methods like
+        minimize_proximal_gradient, minimize_three_split and
+        minimize_primal_dual.
+        """
         return np.fmax(x - self.alpha * step_size, 0) - np.fmax(
             -x - self.alpha * step_size, 0
         )
 
     def prox_factory(self, n_features):
+        """Proximal operator of the L1 norm.
+        
+        This method is meant to be used with stochastic algorithms that need
+        access to a proximal operator over a potentially sparse vector,
+        like minimize_saga, minimize_svrg and minimize_vrtos
+        """
         alpha = self.alpha
 
         @njit
