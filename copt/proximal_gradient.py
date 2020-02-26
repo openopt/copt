@@ -13,6 +13,7 @@ def minimize_proximal_gradient(
     prox=None,
     tol=1e-6,
     max_iter=500,
+    args=(),
     verbose=0,
     callback=None,
     step_size="adaptive",
@@ -30,7 +31,7 @@ def minimize_proximal_gradient(
 
   Args:
     f_grad : callable.
-        Value and gradient of f: ``f_grad(x) -> float, array-like``.
+        Value and gradient of f: ``f_grad(x) -> (float, array-like)``.
 
     x0 : array-like of size n_features
         Initial guess of solution.
@@ -38,10 +39,15 @@ def minimize_proximal_gradient(
     prox : callable, optional.
         Proximal operator g.
 
-    tol: float
+    tol: float, optional
+        Tolerance of the optimization procedure. The iteration stops when the gradient mapping
+        (a generalization of the gradient to non-smooth functions) is below this tolerance.
 
     max_iter : int, optional.
         Maximum number of iterations.
+    
+    args: sequence, optional.
+        Arguments to pass to f_grad.
 
     verbose : int, optional.
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
@@ -97,7 +103,7 @@ def minimize_proximal_gradient(
     # .. allows for infinite or floating point max_iter ..
 
     if not accelerated:
-        fk, grad_fk = f_grad(x)
+        fk, grad_fk = f_grad(x, *args)
         pbar = trange(max_iter, disable=(verbose == 0))
         for it in pbar:
             if callback is not None:
@@ -108,13 +114,13 @@ def minimize_proximal_gradient(
                 step_size_ = strategy(locals())
                 x_next = prox(x - step_size_ * grad_fk, step_size_)
                 update_direction = x_next - x
-                f_next, grad_next = f_grad(x_next)
+                f_next, grad_next = f_grad(x_next, *args)
             elif strategy == "adaptive":
                 x_next = prox(x - step_size_ * grad_fk, step_size_)
                 update_direction = x_next - x
                 step_size_ *= 1.1
                 for _ in range(max_iter_backtracking):
-                    f_next, grad_next = f_grad(x_next)
+                    f_next, grad_next = f_grad(x_next, *args)
                     rhs = (
                         fk
                         + grad_fk.dot(update_direction)
@@ -133,7 +139,7 @@ def minimize_proximal_gradient(
             elif strategy == "fixed":
                 x_next = prox(x - step_size_ * grad_fk, step_size_)
                 update_direction = x_next - x
-                f_next, grad_next = f_grad(x_next)
+                f_next, grad_next = f_grad(x_next, *args)
             else:
                 raise ValueError("Step-size strategy not understood")
             certificate = np.linalg.norm((x - x_next) / step_size_)
@@ -159,7 +165,6 @@ def minimize_proximal_gradient(
         # .. a while loop instead of a for loop ..
         # .. allows for infinite or floating point max_iter ..
         yk = x.copy()
-        xk_prev = x.copy()
         pbar = trange(max_iter, disable=(verbose == 0))
         for it in pbar:
             if callback is not None:
@@ -168,12 +173,17 @@ def minimize_proximal_gradient(
 
             # .. compute gradient and step size
             current_step_size = step_size_
-            grad_fk = f_grad(yk)[1]
-            x = prox(yk - current_step_size * grad_fk, current_step_size)
-            if step_size == "adaptive":
+            grad_fk = f_grad(yk, *args)[1]
+            x_next = prox(yk - current_step_size * grad_fk, current_step_size)
+            if hasattr(strategy, "__call__"):
+                step_size_ = strategy(locals())
+                x_next = prox(x - step_size_ * grad_fk, step_size_)
+                update_direction = x_next - x
+                f_next, grad_next = f_grad(x_next, *args)
+            elif step_size == "adaptive":
                 for _ in range(max_iter_backtracking):
-                    update_direction = x - yk
-                    if f_grad(x)[0] <= f_grad(yk)[0] + grad_fk.dot(
+                    update_direction = x_next - yk
+                    if f_grad(x_next, *args)[0] <= f_grad(yk, *args)[0] + grad_fk.dot(
                         update_direction
                     ) + update_direction.dot(update_direction) / (
                         2.0 * current_step_size
@@ -183,16 +193,20 @@ def minimize_proximal_gradient(
                     else:
                         # .. backtracking, reduce step size ..
                         current_step_size *= backtracking_factor
-                        x = prox(yk - current_step_size * grad_fk, current_step_size)
+                        x_next = prox(
+                            yk - current_step_size * grad_fk, current_step_size
+                        )
                 else:
                     warnings.warn("Maxium number of line-search iterations reached")
             t_next = (1 + np.sqrt(1 + 4 * tk * tk)) / 2
-            yk = x + ((tk - 1.0) / t_next) * (x - xk_prev)
+            yk = x_next + ((tk - 1.0) / t_next) * (x_next - x)
 
-            x_prox = prox(x - current_step_size * f_grad(x)[1], current_step_size)
-            certificate = np.linalg.norm((x - x_prox) / step_size_)
+            x_prox = prox(
+                x_next - current_step_size * f_grad(x_next, *args)[1], current_step_size
+            )
+            certificate = np.linalg.norm((x - x_prox) / current_step_size)
             tk = t_next
-            xk_prev = x.copy()
+            x = x_next.copy()
 
             if verbose > 0:
                 print(
@@ -200,7 +214,7 @@ def minimize_proximal_gradient(
                     % (it, certificate, step_size_)
                 )
 
-            if False and certificate < tol:
+            if certificate < tol:
                 if verbose:
                     print("Achieved relative tolerance at iteration %s" % it)
                 success = True

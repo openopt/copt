@@ -15,6 +15,12 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 
+# the accelerated variant, to pass it as a method parameter
+def minimize_accelerated(*args, **kw):
+    kw["accelerated"] = True
+    return cp.minimize_proximal_gradient(*args, **kw)
+
+
 loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
 penalty_funcs = [None, cp.utils.L1Norm]
 
@@ -80,7 +86,12 @@ def test_optimize(accelerated, loss, penalty):
 
 @pytest.mark.parametrize(
     "solver",
-    [cp.minimize_proximal_gradient, cp.minimize_three_split, cp.minimize_primal_dual],
+    [
+        cp.minimize_proximal_gradient,
+        cp.minimize_three_split,
+        cp.minimize_primal_dual,
+        minimize_accelerated,
+    ],
 )
 def test_callback(solver):
     """Make sure that the algorithm exists when the callback returns False."""
@@ -93,26 +104,32 @@ def test_callback(solver):
     assert opt.nit < 2
 
 
-@pytest.mark.parametrize("solver", [cp.minimize_proximal_gradient])
+@pytest.mark.parametrize(
+    "solver", [cp.minimize_proximal_gradient, minimize_accelerated]
+)
 def test_line_search(solver):
     """Test the custom line search option."""
 
     def ls_wrong(_):
         return -10
 
-    f = cp.utils.SquareLoss(A, b)
-    opt = solver(f.f_grad, np.zeros(n_features), step_size=ls_wrong)
+    ls_loss = cp.utils.SquareLoss(A, b)
+
+    # define a function with unused arguments for the API
+    def f_grad(x, r1, r2):
+        return ls_loss.f_grad(x)
+
+    opt = solver(f_grad, np.zeros(n_features), step_size=ls_wrong, args=(None, None))
     assert not opt.success
 
     # Define an exact line search strategy
     def exact_ls(kw):
         def f_ls(gamma):
             x_next = kw["prox"](kw["x"] - gamma * kw["grad_fk"], gamma)
-            return kw["f_grad"](x_next)[0]
+            return kw["f_grad"](x_next, *kw["args"])[0]
 
         ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
         return ls_sol.x
 
-    opt = solver(f.f_grad, np.zeros(n_features), step_size=exact_ls)
+    opt = solver(f_grad, np.zeros(n_features), step_size=exact_ls, args=(None, None))
     assert opt.success
-
