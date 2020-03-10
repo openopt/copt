@@ -133,7 +133,7 @@ class LogLoss:
   The logistic loss function is defined as
 
   .. math::
-      -\frac{1}{n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
+      -\frac{1}{2 n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
          + (1 - b_i) \log(1 - \sigma(\bs{a}_i^T \bs{x}))
 
   where :math:`\sigma` is the sigmoid function
@@ -471,7 +471,7 @@ class L1Ball:
 
     def lmo(self, u, x):
         """Solve the linear problem
-    min_{||s||_1 <= alpha} <u, s>
+    max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
@@ -543,7 +543,7 @@ class GroupL1:
   ----------
 
   alpha: float
-      Constat multiplying this loss
+      Constant multiplying this loss
 
   blocks: list of lists
 

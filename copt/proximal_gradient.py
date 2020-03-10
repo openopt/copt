@@ -45,7 +45,7 @@ def minimize_proximal_gradient(
 
     max_iter : int, optional.
         Maximum number of iterations.
-    
+
     args: sequence, optional.
         Arguments to pass to f_grad.
 
