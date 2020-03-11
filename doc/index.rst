@@ -1,6 +1,4 @@
-
-
-Welcome to copt!
+Welcome to COPT!
 ================
 
 .. image:: https://travis-ci.org/openopt/copt.svg?branch=master
@@ -14,16 +12,19 @@ Welcome to copt!
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: citing.html
 
-copt is a library for mathematical optimization written in pure Python.
+COPT is a library for mathematical optimization written in pure Python.
 
 
-Philosophy
-----------
+Philosophy: life is too short to learn another API
+--------------------------------------------------
 
-  * State of the art implementation of classical optimization algorithms.
-  * API that follows whenever possible that of scipy.optimize.
-  * State of the art performance, with emphasis on large-scale optimization.
+COPT provides an implementation of classical optimization algorithms in an API following that of `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_. It provides:
+
+
+  * State of the art implementation of classical optimization algorithms such as proximal gradient descent and Frank-Wolfe under a consistent API.
   * Few dependencies, pure Python library for easy deployment.
+  * An example gallery to help you achieve common tasks.
+
 
 
 Contents

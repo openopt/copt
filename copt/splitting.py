@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from scipy import optimize, linalg, sparse
-from tqdm import trange
 
 from . import utils
 
@@ -112,9 +111,7 @@ def minimize_three_split(
     x = prox_1(z - step_size * grad_fk, step_size)
     u = np.zeros_like(x)
 
-    pbar = trange(max_iter, disable=(verbose == 0))
-    pbar.set_description("TOS")
-    for it in pbar:
+    for it in range(max_iter):
 
         fk, grad_fk = f_grad(z)
         x = prox_1(z - step_size * (u + grad_fk), step_size)
@@ -144,7 +141,6 @@ def minimize_three_split(
                 quot = h_Lipschitz ** 2
                 tmp = np.sqrt(step_size ** 2 + (2 * step_size / quot) * (-ls_tol))
                 step_size = min(tmp, step_size * 1.02)
-        pbar.set_postfix(tol=certificate, step_size=step_size)
 
         if callback is not None:
             if callback(locals()) is False:
@@ -152,13 +148,8 @@ def minimize_three_split(
 
         if it > 0 and certificate < tol:
             success = True
-            if verbose:
-                pbar.write("Achieved relative tolerance at iteration %s" % it)
             break
 
-        if it >= max_iter:
-            pbar.write("warning: three_split did not reach the desired tolerance level")
-    pbar.close()
     return optimize.OptimizeResult(
         x=x, success=success, nit=it, certificate=certificate, step_size=step_size
     )
@@ -269,12 +260,11 @@ def minimize_primal_dual(
         tau = 0.5 * sigma
     ss_ratio = sigma / tau
 
-    pbar = trange(max_iter, disable=(verbose == 0))
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
     x_next = x.copy()
 
-    for it in pbar:
+    for it in range(max_iter):
         y_next = prox_2_conj(y + tau * Ldot(x), tau)
         if line_search:
             tau_next = tau * np.sqrt(1 + theta)
@@ -302,14 +292,6 @@ def minimize_primal_dual(
 
         if it % 100 == 0:
             norm_incr = linalg.norm(x_next - x) + linalg.norm(y_next - y)
-            pbar.set_description("PDHG")
-            pbar.set_postfix(
-                tol=norm_incr,
-                iter=it,
-                step_size=sigma,
-                step_size2=tau,
-                quot=sigma * tau,
-            )
 
         x[:] = x_next[:]
         y[:] = y_next[:]
@@ -329,5 +311,4 @@ def minimize_primal_dual(
             RuntimeWarning,
         )
 
-    pbar.close()
     return optimize.OptimizeResult(x=y, success=success, nit=it, certificate=norm_incr)
