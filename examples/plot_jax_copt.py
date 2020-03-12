@@ -33,7 +33,9 @@ w0 = onp.zeros(n_features)
 
 l1_ball = cp.utils.L1Norm(0.1)
 cb = cp.utils.Trace(lambda x: loss(x) + l1_ball(x))
-sol = cp.minimize_proximal_gradient(f_grad, w0, prox=l1_ball.prox, callback=cb)
+sol = cp.minimize_proximal_gradient(
+    f_grad, w0, prox=l1_ball.prox, callback=cb, jac=True
+)
 plt.plot(cb.trace_fx, lw=3)
 plt.yscale("log")
 plt.xlabel("# Iterations")

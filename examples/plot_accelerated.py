@@ -5,9 +5,9 @@ Accelerated gradient descent
 Speed of convergence comparison between gradient descent
 and Nesterov acceleration on a logistic regression problem.
 """
-import copt as cp
 import matplotlib.pyplot as plt
 import numpy as np
+import copt as cp
 
 # .. construct (random) dataset ..
 n_samples, n_features = 1000, 200
@@ -22,9 +22,10 @@ cb_pgd = cp.utils.Trace(f)
 result_pgd = cp.minimize_proximal_gradient(
     f.f_grad,
     np.zeros(n_features),
-    step_size=step_size,
+    step=lambda x: step_size,
     callback=cb_pgd,
     tol=0,
+    jac=True,
     accelerated=False,
 )
 
@@ -32,9 +33,10 @@ cb_apgd = cp.utils.Trace(f)
 result_apgd = cp.minimize_proximal_gradient(
     f.f_grad,
     np.zeros(n_features),
-    step_size=step_size,
+    step=lambda x: step_size,
     callback=cb_apgd,
     tol=0,
+    jac=True,
     accelerated=True,
 )
 

@@ -9,8 +9,8 @@ from copt import utils
 def minimize_proximal_gradient(
     fun,
     x0,
-    jac="2-point",
     prox=None,
+    jac="2-point",
     tol=1e-6,
     max_iter=500,
     args=(),
@@ -21,6 +21,7 @@ def minimize_proximal_gradient(
     eps=1e-8,
     max_iter_backtracking=1000,
     backtracking_factor=0.6,
+    trace_certificate=False,
 ):
     """Proximal gradient descent.
 
@@ -90,6 +91,8 @@ def minimize_proximal_gradient(
 
     backtracking_factor: float
 
+    trace_certificate: bool
+
   Returns:
     res : The optimization result represented as a
         ``scipy.optimize.OptimizeResult`` object. Important attributes are:
@@ -150,6 +153,7 @@ def minimize_proximal_gradient(
         step_size = None
 
     n_iterations = 0
+    certificate_list = []
     # .. a while loop instead of a for loop ..
     # .. allows for infinite or floating point max_iter ..
     if not accelerated:
@@ -192,6 +196,8 @@ def minimize_proximal_gradient(
             else:
                 raise ValueError("Step-size strategy not understood")
             certificate = np.linalg.norm((x - x_next) / step_size)
+            if trace_certificate:
+                certificate_list.append(certificate)
             x[:] = x_next
             fk = f_next
             grad_fk = grad_next
@@ -266,6 +272,8 @@ def minimize_proximal_gradient(
                     current_step_size,
                 )
                 certificate = np.linalg.norm((x - x_prox) / current_step_size)
+                if trace_certificate:
+                    certificate_list.append(certificate)
                 tk = t_next
                 x = x_next.copy()
 
@@ -290,4 +298,5 @@ def minimize_proximal_gradient(
         certificate=certificate,
         nit=n_iterations,
         step_size=step_size,
+        trace_certificate=certificate_list,
     )
