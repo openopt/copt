@@ -6,7 +6,8 @@ install:
 - pip install --upgrade -r requirements.txt
 - # make sure tests run with these minimal requirements
 - python setup.py develop
-- py.test -v
+- # run _one_ test file, just to make sure everything imports fine
+- py.test -v copt tests/test_proximal_gradient.py
 - # the following are only needed for the examples and coverage tests
 - pip install python-coveralls scikit-image coverage pytest-sugar black pytest-cov scikit-learn h5py Pillow
 - py.test --version
