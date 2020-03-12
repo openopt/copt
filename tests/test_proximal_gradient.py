@@ -65,6 +65,7 @@ def test_optimize(accelerated, loss, penalty):
             obj.f_grad,
             np.zeros(n_features),
             prox=prox,
+            jac=True,
             step="backtracking",
             max_iter=max_iter,
             accelerated=accelerated,
@@ -76,6 +77,7 @@ def test_optimize(accelerated, loss, penalty):
             obj.f_grad,
             np.zeros(n_features),
             prox=prox,
+            jac=True,
             max_iter=max_iter,
             step=lambda x: 1 / obj.lipschitz,
             accelerated=accelerated,
@@ -119,7 +121,9 @@ def test_line_search(solver):
     def f_grad(x, r1, r2):
         return ls_loss.f_grad(x)
 
-    opt = solver(f_grad, np.zeros(n_features), step=ls_wrong, args=(None, None))
+    opt = solver(
+        f_grad, np.zeros(n_features), step=ls_wrong, args=(None, None), jac=True
+    )
     assert not opt.success
 
     # Define an exact line search strategy
