@@ -5,7 +5,7 @@ Group Lasso regularization
 This example solves an inverse problem where the ground truth
 coefficients (in orange) follow a group structure. In blue is
 the recovered coefficients for group lasso with different values
-of the regularization parameter 
+of the regularization parameter.
 
 
 The group lasso regularization enters the optimization through
