@@ -6,3 +6,6 @@ doc/generated
 .vscode
 copt.egg-info
 __pycache__
+.pytest_cache/
+doc/modules/
+*code-workspace
