@@ -5,11 +5,11 @@ python:
 install:
 - pip install --upgrade -r requirements.txt
 - # make sure tests run with these minimal requirements
+- python setup.py develop
 - py.test -v
 - # the following are only needed for the examples and coverage tests
 - pip install python-coveralls scikit-image coverage pytest-sugar black pytest-cov scikit-learn h5py Pillow
 - py.test --version
-- python setup.py develop
 script:
 - NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
 - black --check copt
