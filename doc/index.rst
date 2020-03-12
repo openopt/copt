@@ -14,10 +14,11 @@ COPT: a library for constrained optimization in Python
 
 
 
-COPT is a boring optimization library
+Life is too short to learn another API
 -------------------------------------
 
-I believe *life is too short to learn another API*.
+COPT is a boring library that does not try to reinvent the wheel. It packs 
+
 
 COPT provides an implementation of classical optimization algorithms in an API following that of `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_. It provides:
 
