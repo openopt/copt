@@ -1,7 +1,6 @@
 """Module that contains randomized (also known as stochastic) algorithms."""
 import numpy as np
 from scipy import sparse, optimize
-from tqdm import trange
 
 from . import utils
 
@@ -209,9 +208,7 @@ def minimize_saga(
     success = False
     if callback is not None:
         callback(locals())
-    pbar = trange(max_iter, disable=(verbose == 0))
-    pbar.set_description("SAGA")
-    for it in pbar:
+    for it in range(max_iter):
         x_old = x.copy()
         np.random.shuffle(idx)
         _saga_epoch(x, idx, memory_gradient, gradient_average, grad_tmp, step_size)
@@ -222,8 +219,6 @@ def minimize_saga(
         if diff_norm < tol:
             success = True
             break
-        pbar.set_postfix(tol=diff_norm)
-    pbar.close()
     return optimize.OptimizeResult(x=x, success=success, nit=it)
 
 
@@ -394,9 +389,7 @@ def minimize_svrg(
     success = False
     if callback is not None:
         callback(locals())
-    pbar = trange(max_iter, disable=(verbose == 0))
-    pbar.set_description("SVRG")
-    for it in pbar:
+    for it in range(max_iter):
         x_snapshot = x.copy()
         gradient_average = full_grad(x_snapshot)
         np.random.shuffle(idx)
@@ -408,7 +401,6 @@ def minimize_svrg(
             success = True
             break
     message = ""
-    pbar.close()
     return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
 
 
@@ -547,8 +539,7 @@ def minimize_vrtos(
     # .. iterate on epochs ..
     if callback is not None:
         callback(locals())
-    pbar = trange(max_iter, disable=(verbose == 0))
-    for it in pbar:
+    for it in range(max_iter):
         epoch_iteration(
             Y,
             x0,
@@ -565,9 +556,6 @@ def minimize_vrtos(
         if callback is not None:
             callback(locals())
 
-        pbar.set_description("VRTOS")
-        pbar.set_postfix(tol=certificate)
-    pbar.close()
     return optimize.OptimizeResult(
         x=z, success=success, nit=it, certificate=certificate
     )

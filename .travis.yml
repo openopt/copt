@@ -4,10 +4,13 @@ python:
   - "3.7"
 install:
 - pip install --upgrade -r requirements.txt
-- # the following are only needed for the examples and coverage tests
-- pip install python-coveralls scikit-image coverage pytest-sugar black
-- py.test --version
+- # make sure tests run with these minimal requirements
 - python setup.py develop
+- # run _one_ test file, just to make sure everything imports fine
+- py.test -v copt tests/test_proximal_gradient.py
+- # the following are only needed for the examples and coverage tests
+- pip install python-coveralls scikit-image coverage pytest-sugar black pytest-cov scikit-learn h5py Pillow
+- py.test --version
 script:
 - NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
 - black --check copt

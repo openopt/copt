@@ -65,7 +65,8 @@ def test_optimize(accelerated, loss, penalty):
             obj.f_grad,
             np.zeros(n_features),
             prox=prox,
-            step_size="adaptive",
+            jac=True,
+            step="backtracking",
             max_iter=max_iter,
             accelerated=accelerated,
         )
@@ -76,8 +77,9 @@ def test_optimize(accelerated, loss, penalty):
             obj.f_grad,
             np.zeros(n_features),
             prox=prox,
+            jac=True,
             max_iter=max_iter,
-            step_size=1 / obj.lipschitz,
+            step=lambda x: 1 / obj.lipschitz,
             accelerated=accelerated,
         )
         grad_2x = obj.f_grad(opt_2.x)[1]
@@ -119,17 +121,21 @@ def test_line_search(solver):
     def f_grad(x, r1, r2):
         return ls_loss.f_grad(x)
 
-    opt = solver(f_grad, np.zeros(n_features), step_size=ls_wrong, args=(None, None))
+    opt = solver(
+        f_grad, np.zeros(n_features), step=ls_wrong, args=(None, None), jac=True
+    )
     assert not opt.success
 
     # Define an exact line search strategy
     def exact_ls(kw):
         def f_ls(gamma):
             x_next = kw["prox"](kw["x"] - gamma * kw["grad_fk"], gamma)
-            return kw["f_grad"](x_next, *kw["args"])[0]
+            return kw["fun"](x_next, *kw["args"])
 
         ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
         return ls_sol.x
 
-    opt = solver(f_grad, np.zeros(n_features), step_size=exact_ls, args=(None, None))
+    opt = solver(
+        f_grad, np.zeros(n_features), step=exact_ls, args=(None, None), jac=True
+    )
     assert opt.success

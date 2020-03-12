@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 from scipy import linalg
 from scipy import optimize
-from tqdm import trange
 
 
 EPS = np.finfo(np.float32).eps
@@ -185,12 +184,11 @@ def minimize_frank_wolfe(
     if lipschitz is not None:
         lipschitz_t = lipschitz
 
-    pbar = trange(max_iter, disable=(verbose == 0))
     f_t, grad = f_grad(x)
     old_f_t = None
 
     it = 0
-    for it in pbar:
+    for it in range(max_iter):
         update_direction, max_step_size = lmo(-grad, x)
         norm_update_direction = linalg.norm(update_direction) ** 2
         certificate = np.dot(update_direction, -grad)
@@ -239,11 +237,9 @@ def minimize_frank_wolfe(
         if callback is not None:
             callback(locals())
         x += step_size_t * update_direction
-        pbar.set_postfix(tol=certificate, iter=it, L_t=lipschitz_t)
 
         old_f_t = f_t
         f_t, grad = f_next, grad_next
     if callback is not None:
         callback(locals())
-    pbar.close()
     return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
