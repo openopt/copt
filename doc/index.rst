@@ -17,7 +17,7 @@ COPT: a boring library for constrained optimization
 Life is too short to learn another API
 -------------------------------------
 
-COPT is an optimization library that does not try to reinvent the wheel. It packs classical optimization algorithms in an API following that of `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_. It provides:
+COPT is an optimization library that does not reinvent the wheel. It packs classical optimization algorithms in an API following that of `scipy.optimize <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_. It provides:
 
   * State of the art implementation of classical optimization algorithms such as :ref:`proximal gradient descent <proximal_gradient>` and :ref:`Frank-Wolfe <frank_wolfe>`  under a consistent API.
   * Few dependencies, pure Python library for easy deployment.
