@@ -11,6 +11,7 @@ by a single update with larger step-size.
 """
 import copt as cp
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 # datasets and their respective loading functions
@@ -39,25 +40,25 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
       [None, "Lipschitz step-size", "d"]
       ]):
     print("Running %s variant" % label)
-    dt_prev = []
+    st_prev = []
     overlap = []
 
     def trace(kw):
       """Store vertex overlap during execution of the algorithm."""
       s_t = kw["update_direction"] + kw["x"]
-      if dt_prev:
+      if st_prev:
         # check if the vertex of this and the previous iterate
         # coincide. Since these might be sparse vectors, we use
         # sparse.linalg.norm to make the comparison
         prev_overlap = overlap[-1]
-        if np.linalg.norm(dt_prev[0] - s_t) == 0:
+        if np.linalg.norm(st_prev[0] - s_t) == 0:
           overlap.append(prev_overlap + 1)
         else:
           overlap.append(prev_overlap)
-        dt_prev[0] = s_t
+        st_prev[0] = s_t
       else:
         overlap.append(0)
-        dt_prev.append(s_t)
+        st_prev.append(s_t)
 
     if label.startswith("Frank-Wolfe"):
       cp.minimize_frank_wolfe(
@@ -73,6 +74,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
     elif label.startswith("Pairwise"):
       pass
     ax.plot(overlap, label=label, marker=marker, markevery=7 + i)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax.legend()
   ax.set_xlabel("number of iterations")
   ax.set_ylabel("LMO overlap")
