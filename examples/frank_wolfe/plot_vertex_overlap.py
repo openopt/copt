@@ -44,7 +44,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
 
     def trace(kw):
       """Store vertex overlap during execution of the algorithm."""
-      s_t = kw["update_direction"] - kw["x"]
+      s_t = kw["update_direction"] + kw["x"]
       if dt_prev:
         # check if the vertex of this and the previous iterate
         # coincide. Since these might be sparse vectors, we use

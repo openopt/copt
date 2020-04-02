@@ -2,6 +2,7 @@
 import hashlib
 import os
 import urllib
+import urllib.request
 import tarfile
 
 import numpy as np
