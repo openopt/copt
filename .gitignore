@@ -9,3 +9,4 @@ __pycache__
 .pytest_cache/
 doc/modules/
 *code-workspace
+*.swp
