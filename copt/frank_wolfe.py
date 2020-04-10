@@ -96,7 +96,7 @@ def minimize_frank_wolfe(
     f_grad,
     x0,
     lmo,
-    step="adaptive",
+    step="backtracking",
     lipschitz=None,
     max_iter=400,
     tol=1e-12,
@@ -186,6 +186,7 @@ def minimize_frank_wolfe(
         raise ValueError("Tol must be non-negative")
     x = x0.copy()
     lipschitz_t = None
+    step_size = None
     if lipschitz is not None:
         lipschitz_t = lipschitz
 
@@ -211,10 +212,10 @@ def minimize_frank_wolfe(
         if certificate <= tol:
             break
         if hasattr(step, "__call__"):
-            step_size_t = step(locals())
-            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+            step_size = step(locals())
+            f_next, grad_next = f_grad(x + step_size * update_direction)
         elif step == "backtracking":
-            step_size_t, lipschitz_t, f_next, grad_next = backtracking_step_size(
+            step_size, lipschitz_t, f_next, grad_next = backtracking_step_size(
                 x,
                 f_t,
                 old_f_t,
@@ -228,20 +229,20 @@ def minimize_frank_wolfe(
         elif step == "DR":
             if lipschitz is None:
                 raise ValueError('lipschitz needs to be specified with step="DR"')
-            step_size_t = min(
+            step_size = min(
                 certificate / (norm_update_direction * lipschitz_t), max_step_size
             )
-            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+            f_next, grad_next = f_grad(x + step_size * update_direction)
         elif step == "oblivious":
             # .. without knowledge of the Lipschitz constant ..
             # .. we take the oblivious 2/(k+2) step-size ..
-            step_size_t = 2.0 / (it + 2)
-            f_next, grad_next = f_grad(x + step_size_t * update_direction)
+            step_size = 2.0 / (it + 2)
+            f_next, grad_next = f_grad(x + step_size * update_direction)
         else:
             raise ValueError("Invalid option step=%s" % step)
         if callback is not None:
             callback(locals())
-        x += step_size_t * update_direction
+        x += step_size * update_direction
 
         old_f_t = f_t
         f_t, grad = f_next, grad_next
