@@ -79,7 +79,8 @@ def minimize_proximal_gradient(
         callback returns False.
 
     step : "backtracking" or callable.
-        Step-size to use. "backtracking" will use a backtracking line-search.
+        Step-size strategy to use. "backtracking" will use a backtracking line-search,
+        while callable will use the value returned by step(locals()).
 
     accelerated: boolean
         Whether to use the accelerated variant of the algorithm.

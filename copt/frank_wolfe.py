@@ -8,7 +8,7 @@ from scipy import optimize
 EPS = np.finfo(np.float32).eps
 
 
-def adaptive_step_size(
+def backtracking_step_size(
     x,
     f_t,
     old_f_t,
@@ -19,7 +19,7 @@ def adaptive_step_size(
     update_direction,
     norm_update_direction,
 ):
-    """Adaptive step-size finding routine for FW-like algorithms
+    """Backtracking step-size finding routine for FW-like algorithms
     
     Args:
         x: array-like, shape (n_features,)
@@ -96,7 +96,7 @@ def minimize_frank_wolfe(
     f_grad,
     x0,
     lmo,
-    step_size="adaptive",
+    step="adaptive",
     lipschitz=None,
     max_iter=400,
     tol=1e-12,
@@ -122,29 +122,34 @@ def minimize_frank_wolfe(
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
 
-    step_size: None or "adaptive" or callable
-      Step-size step_size to use. If None is used and keyword lipschitz
-      is not given or None, then it will use a decreasing step-size of the
-      form 2/(k+2) (described in [1]). If None is used and keyword lipschitz
-      is not None, then it will use the Demyanov-Rubinov step-size
-      (variant 1 in [2]).
+    step: str or callable, optional
+      Step-size strategy to use. Should be one of
+      
+        - "backtracking", will use the backtracking line-search from [1]_
 
-    lipschitz: None or float.
-      Estimate for the Lipschitz constant of the gradient.
+        - "DR", will use the Demyanov-Rubinov step-size (variant 1 in [2]).
 
-    max_iter: integer
+        - "oblivious", will use a decreasing step-size of the form 2/(k+2).
+
+        - callable, if step is a callable function, it will use the step-size
+            returned by step(locals).
+
+    lipschitz: None or float, optional
+      Estimate for the Lipschitz constant of the gradient. Used when step="DR".
+
+    max_iter: integer, optional
       Maximum number of iterations.
 
-    tol: float
+    tol: float, optional
       Tolerance of the stopping criterion. The algorithm will stop whenever
       the Frank-Wolfe gap is below tol or the maximum number of iterations
       is exceeded.
 
-    callback: callable
+    callback: callable, optional
       Callback to execute at each iteration. If the callable returns False
       then the algorithm with immediately return.
 
-    verbose: int
+    verbose: int, optional
       Verbosity level.
 
 
@@ -205,11 +210,11 @@ def minimize_frank_wolfe(
 
         if certificate <= tol:
             break
-        if hasattr(step_size, "__call__"):
-            step_size_t = step_size(locals())
+        if hasattr(step, "__call__"):
+            step_size_t = step(locals())
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        elif step_size == "adaptive":
-            step_size_t, lipschitz_t, f_next, grad_next = adaptive_step_size(
+        elif step == "backtracking":
+            step_size_t, lipschitz_t, f_next, grad_next = backtracking_step_size(
                 x,
                 f_t,
                 old_f_t,
@@ -220,20 +225,20 @@ def minimize_frank_wolfe(
                 update_direction,
                 norm_update_direction,
             )
-        elif step_size == "DR":
+        elif step == "DR":
             if lipschitz is None:
-                raise ValueError('lipschitz needs to be specified with step_size="DR"')
+                raise ValueError('lipschitz needs to be specified with step="DR"')
             step_size_t = min(
                 certificate / (norm_update_direction * lipschitz_t), max_step_size
             )
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
-        elif step_size == "oblivious":
+        elif step == "oblivious":
             # .. without knowledge of the Lipschitz constant ..
             # .. we take the oblivious 2/(k+2) step-size ..
             step_size_t = 2.0 / (it + 2)
             f_next, grad_next = f_grad(x + step_size_t * update_direction)
         else:
-            raise ValueError("Invalid option step_size=%s" % step_size)
+            raise ValueError("Invalid option step=%s" % step)
         if callback is not None:
             callback(locals())
         x += step_size_t * update_direction
