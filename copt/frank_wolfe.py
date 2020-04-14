@@ -124,18 +124,20 @@ def minimize_frank_wolfe(
 
     step: str or callable, optional
       Step-size strategy to use. Should be one of
-      
+
         - "backtracking", will use the backtracking line-search from [1]_
 
-        - "DR", will use the Demyanov-Rubinov step-size (variant 1 in [2]).
+        - "DR", will use the Demyanov-Rubinov step-size. This step-size minimizes
+        a quadratic upper bound ob the objective using the gradient's lipschitz
+        constant, passed in keyword argument `lipschitz`.
 
-        - "oblivious", will use a decreasing step-size of the form 2/(k+2).
+        - "sublinear", will use a decreasing step-size of the form 2/(k+2).
 
         - callable, if step is a callable function, it will use the step-size
             returned by step(locals).
 
     lipschitz: None or float, optional
-      Estimate for the Lipschitz constant of the gradient. Used when step="DR".
+      Estimate for the Lipschitz constant of the gradient. Required when step="DR".
 
     max_iter: integer, optional
       Maximum number of iterations.
