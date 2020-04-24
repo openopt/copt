@@ -7,21 +7,21 @@ from copt import utils
 
 
 def minimize_proximal_gradient(
-    fun,
-    x0,
-    prox=None,
-    jac="2-point",
-    tol=1e-6,
-    max_iter=500,
-    args=(),
-    verbose=0,
-    callback=None,
-    step="backtracking",
-    accelerated=False,
-    eps=1e-8,
-    max_iter_backtracking=1000,
-    backtracking_factor=0.6,
-    trace_certificate=False,
+        fun,
+        x0,
+        prox=None,
+        jac="2-point",
+        tol=1e-6,
+        max_iter=500,
+        args=(),
+        verbose=0,
+        callback=None,
+        step="backtracking",
+        accelerated=False,
+        eps=1e-8,
+        max_iter_backtracking=1000,
+        backtracking_factor=0.6,
+        trace_certificate=False,
 ):
     """Proximal gradient descent.
 
@@ -61,7 +61,6 @@ def minimize_proximal_gradient(
     args : tuple, optional
         Extra arguments passed to the objective function and its
         derivatives (`fun`, `jac` and `hess` functions).
-
 
     tol: float, optional
         Tolerance of the optimization procedure. The iteration stops when the gradient mapping
@@ -124,27 +123,7 @@ def minimize_proximal_gradient(
     success = False
     certificate = np.NaN
 
-    if not callable(jac):
-        if bool(jac):
-            fun = optimize.optimize.MemoizeJac(fun)
-            jac = fun.derivative
-        elif jac == "2-point":
-            jac = None
-        else:
-            raise NotImplementedError("jac has unexpected value.")
-
-    if jac is None:
-
-        def func_and_grad(x):
-            f = fun(x, *args)
-            g = optimize._approx_fprime_helper(x, fun, eps, args=args, f0=f)
-
-    else:
-
-        def func_and_grad(x):
-            f = fun(x, *args)
-            g = jac(x, *args)
-            return f, g
+    func_and_grad = utils.build_func_grad(jac, fun, args, eps)
 
     # find initial step-size
     if step == "backtracking":
@@ -301,3 +280,4 @@ def minimize_proximal_gradient(
         step_size=step_size,
         trace_certificate=certificate_list,
     )
+

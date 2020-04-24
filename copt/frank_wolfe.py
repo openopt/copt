@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 from scipy import linalg
 from scipy import optimize
+from copt import utils
 
 
 EPS = np.finfo(np.float32).eps
@@ -93,15 +94,18 @@ def backtracking_step_size(
 
 
 def minimize_frank_wolfe(
-    f_grad,
-    x0,
-    lmo,
-    step="backtracking",
-    lipschitz=None,
-    max_iter=400,
-    tol=1e-12,
-    callback=None,
-    verbose=0,
+        fun,
+        x0,
+        lmo,
+        jac="2-point",
+        step="backtracking",
+        lipschitz=None,
+        args=(),
+        max_iter=400,
+        tol=1e-12,
+        callback=None,
+        verbose=0,
+        eps=1e-8,
 ):
     r"""Frank-Wolfe algorithm.
 
@@ -109,11 +113,12 @@ def minimize_frank_wolfe(
   a more detailed description.
 
   Args:
-    f_grad: callable
-      Takes as input the current iterate (a vector of same size as x0) and
-      returns the function value and gradient of the objective function.
-      It should accept the optional argument return_gradient, and when False
-      it should return only the function value.
+    fun : callable
+        The objective function to be minimized.
+            ``fun(x, *args) -> float``
+        where x is an 1-D array with shape (n,) and `args`
+        is a tuple of the fixed parameters needed to completely
+        specify the function.
 
     x0: array-like
       Initial guess for solution.
@@ -122,19 +127,27 @@ def minimize_frank_wolfe(
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
 
+    jac : {callable,  '2-point', bool}, optional
+        Method for computing the gradient vector. If it is a callable,
+        it should be a function that returns the gradient vector:
+            ``jac(x, *args) -> array_like, shape (n,)``
+        where x is an array with shape (n,) and `args` is a tuple with
+        the fixed parameters. Alternatively, the '2-point' select a finite
+        difference scheme for numerical estimation of the gradient.
+        If `jac` is a Boolean and is True, `fun` is assumed to return the
+        gradient along with the objective function. If False, the gradient
+        will be estimated using '2-point' finite difference estimation.
+
     step: str or callable, optional
       Step-size strategy to use. Should be one of
 
         - "backtracking", will use the backtracking line-search from [PANJ2020]_
 
-        - "DR", will use the Demyanov-Rubinov step-size. This step-size minimizes
-        a quadratic upper bound ob the objective using the gradient's lipschitz
-        constant, passed in keyword argument `lipschitz`. [P2018]_
+        - "DR", will use the Demyanov-Rubinov step-size. This step-size minimizes a quadratic upper bound ob the objective using the gradient's lipschitz constant, passed in keyword argument `lipschitz`. [P2018]_
 
         - "sublinear", will use a decreasing step-size of the form 2/(k+2). [J2013]_
 
-        - callable, if step is a callable function, it will use the step-size
-            returned by step(locals).
+        - callable, if step is a callable function, it will use the step-size returned by step(locals).
 
     lipschitz: None or float, optional
       Estimate for the Lipschitz constant of the gradient. Required when step="DR".
@@ -150,6 +163,9 @@ def minimize_frank_wolfe(
     callback: callable, optional
       Callback to execute at each iteration. If the callable returns False
       then the algorithm with immediately return.
+
+    eps: float or ndarray
+        If jac is approximated, use this value for the step size.
 
     verbose: int, optional
       Verbosity level.
@@ -187,7 +203,9 @@ def minimize_frank_wolfe(
     if lipschitz is not None:
         lipschitz_t = lipschitz
 
-    f_t, grad = f_grad(x)
+    func_and_grad = utils.build_func_grad(jac, fun, args, eps)
+
+    f_t, grad = func_and_grad(x)
     old_f_t = None
 
     it = 0
@@ -200,7 +218,7 @@ def minimize_frank_wolfe(
         # .. Lipschitz estimate if not given ...
         if lipschitz_t is None:
             eps = 1e-3
-            grad_eps = f_grad(x + eps * update_direction)[1]
+            grad_eps = func_and_grad(x + eps * update_direction)[1]
             lipschitz_t = linalg.norm(grad - grad_eps) / (
                 eps * np.sqrt(norm_update_direction)
             )
@@ -210,13 +228,13 @@ def minimize_frank_wolfe(
             break
         if hasattr(step, "__call__"):
             step_size = step(locals())
-            f_next, grad_next = f_grad(x + step_size * update_direction)
+            f_next, grad_next = func_and_grad(x + step_size * update_direction)
         elif step == "backtracking":
             step_size, lipschitz_t, f_next, grad_next = backtracking_step_size(
                 x,
                 f_t,
                 old_f_t,
-                f_grad,
+                func_and_grad,
                 certificate,
                 lipschitz_t,
                 max_step_size,
@@ -229,12 +247,12 @@ def minimize_frank_wolfe(
             step_size = min(
                 certificate / (norm_update_direction * lipschitz_t), max_step_size
             )
-            f_next, grad_next = f_grad(x + step_size * update_direction)
+            f_next, grad_next = func_and_grad(x + step_size * update_direction)
         elif step == "oblivious":
             # .. without knowledge of the Lipschitz constant ..
             # .. we take the oblivious 2/(k+2) step-size ..
             step_size = 2.0 / (it + 2)
-            f_next, grad_next = f_grad(x + step_size * update_direction)
+            f_next, grad_next = func_and_grad(x + step_size * update_direction)
         else:
             raise ValueError("Invalid option step=%s" % step)
         if callback is not None:

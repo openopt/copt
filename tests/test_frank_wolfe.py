@@ -67,7 +67,7 @@ def test_fw_l1(loss_grad, alpha):
 def bisection(kw):
     # naive implementation of bisection method
     def f_ls(gamma):
-        return kw["f_grad"](kw["x"] + gamma * kw["update_direction"])[0]
+        return kw["func_and_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
     a = 0
     b = kw["max_step_size"]

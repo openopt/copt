@@ -130,7 +130,7 @@ def test_line_search(solver):
     def exact_ls(kw):
         def f_ls(gamma):
             x_next = kw["prox"](kw["x"] - gamma * kw["grad_fk"], gamma)
-            return kw["fun"](x_next, *kw["args"])
+            return kw["func_and_grad"](x_next)[0]
 
         ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1], method="bounded")
         return ls_sol.x

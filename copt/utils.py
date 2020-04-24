@@ -3,6 +3,7 @@ import numpy.ma as ma
 from scipy import sparse
 from scipy import linalg
 from scipy import special
+from scipy import optimize
 from scipy.sparse import linalg as splinalg
 from datetime import datetime
 from sklearn.utils.extmath import safe_sparse_dot
@@ -32,6 +33,31 @@ except ImportError:
                 return wrapper
 
             return inner_function
+
+
+def build_func_grad(jac, fun, args, eps):
+    if not callable(jac):
+        if bool(jac):
+            fun = optimize.optimize.MemoizeJac(fun)
+            jac = fun.derivative
+        elif jac == "2-point":
+            jac = None
+        else:
+            raise NotImplementedError("jac has unexpected value.")
+
+    if jac is None:
+
+        def func_and_grad(x):
+            f = fun(x, *args)
+            g = optimize._approx_fprime_helper(x, fun, eps, args=args, f0=f)
+
+    else:
+
+        def func_and_grad(x):
+            f = fun(x, *args)
+            g = jac(x, *args)
+            return f, g
+    return func_and_grad
 
 
 def safe_sparse_add(a, b):
