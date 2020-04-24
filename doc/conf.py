@@ -57,7 +57,7 @@ mathjax_config = {
         },
     },
     "tex2jax" : {
-        "inlineMath": [['$', '$']],
+        "inlineMath": [['$', '$'], ['\(', '\)']],
     }
 }
 

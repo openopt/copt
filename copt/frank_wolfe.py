@@ -156,7 +156,7 @@ def minimize_frank_wolfe(
 
 
   Returns:
-    res : scipy.optimize.OptimizeResult
+    scipy.optimize.OptimizeResult
       The optimization result represented as a
       ``scipy.optimize.OptimizeResult`` object. Important attributes are:
       ``x`` the solution array, ``success`` a Boolean flag indicating if
@@ -169,9 +169,7 @@ def minimize_frank_wolfe(
 
     .. [J2013] Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_ ICML 2013.
 
-    .. [P2018] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
-    <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_,
-    2018
+    .. [P2018] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm" <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_, 2018
 
     .. [PANJ2020] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. `"Step-Size Adaptivity in Projection-Free Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2020).
 
