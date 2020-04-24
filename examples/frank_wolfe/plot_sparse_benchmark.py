@@ -3,7 +3,7 @@
 Benchmark of Frank-Wolfe variants for sparse logistic regression
 ================================================================
 
-Speed of convergence of different Frank-Wolfe variants on various
+Comparison of different Frank-Wolfe variants on various 
 problems with a logistic regression loss (:meth:`copt.utils.LogLoss`)
 and a L1 ball constraint (:meth:`copt.utils.L1Ball`).
 """
@@ -21,7 +21,7 @@ datasets = [
 
 
 variants_fw = [
-    ["adaptive", "adaptive step-size", "s"],
+    ["backtracking", "adaptive step-size", "s"],
     ["DR", "Lipschitz step-size", "<"],
 ]
 
@@ -36,17 +36,11 @@ for dataset_title, load_data, alpha in datasets:
     f = cp.utils.LogLoss(X, y)
     x0 = np.zeros(n_features)
 
-    for step_size, label, marker in variants_fw:
+    for step, label, marker in variants_fw:
 
         cb = cp.utils.Trace(f)
         sol = cp.minimize_frank_wolfe(
-            f.f_grad,
-            x0,
-            l1_ball.lmo,
-            callback=cb,
-            step_size=step_size,
-            lipschitz=f.lipschitz,
-            # max_iter=1000
+            f.f_grad, x0, l1_ball.lmo, callback=cb, step=step, lipschitz=f.lipschitz
         )
 
         plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker, markevery=10)
