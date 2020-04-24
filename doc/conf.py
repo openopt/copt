@@ -54,7 +54,10 @@ mathjax_config = {
             "argmin": "\\DeclareMathOperator*{\\argmin}{\\mathbf{arg\\,min}}",
             "argmax": "\\DeclareMathOperator*{\\argmin}{\\mathbf{arg\\,max}}",
             "bs": "\\newcommand{\\bs}[1]{\\boldsymbol{#1}}",
-        }
+        },
+    },
+    "tex2jax" : {
+        "inlineMath": [['$', '$']],
     }
 }
 
@@ -227,12 +230,7 @@ html_last_updated_fmt = "%b %d, %Y"
 from datetime import datetime
 
 now = datetime.now()
-html_show_copyright = copyright = (
-    str(now.year)
-    + ', <a href="https://github.com/openopt/copt/graphs/contributors">COPT developers</a>. Updated on '
-    + now.strftime("%B %d, %Y")
-    + ' | <a href="https://storage.googleapis.com/copt/index.html">Development version</a>'
-)
+html_show_copyright = False
 
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the

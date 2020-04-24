@@ -55,7 +55,7 @@ def backtracking_step_size(
             Step-size to be used to compute the next iterate.
 
         lipschitz_t: float
-            Updated value for the Lipschitz estimate
+            Updated value for the Lipschitz estimate.
 
         f_next: float
             Objective function evaluated at x + step_size_t d_t.
@@ -125,13 +125,13 @@ def minimize_frank_wolfe(
     step: str or callable, optional
       Step-size strategy to use. Should be one of
 
-        - "backtracking", will use the backtracking line-search from [1]_
+        - "backtracking", will use the backtracking line-search from [PANJ2020]_
 
         - "DR", will use the Demyanov-Rubinov step-size. This step-size minimizes
         a quadratic upper bound ob the objective using the gradient's lipschitz
-        constant, passed in keyword argument `lipschitz`.
+        constant, passed in keyword argument `lipschitz`. [P2018]_
 
-        - "sublinear", will use a decreasing step-size of the form 2/(k+2).
+        - "sublinear", will use a decreasing step-size of the form 2/(k+2). [J2013]_
 
         - callable, if step is a callable function, it will use the step-size
             returned by step(locals).
@@ -166,17 +166,14 @@ def minimize_frank_wolfe(
 
 
   References:
-    [1] Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex
-    Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_
-    ICML 2013.
 
-    [2] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
+    .. [J2013] Jaggi, Martin. `"Revisiting Frank-Wolfe: Projection-Free Sparse Convex Optimization." <http://proceedings.mlr.press/v28/jaggi13-supp.pdf>`_ ICML 2013.
+
+    .. [P2018] Pedregosa, Fabian `"Notes on the Frank-Wolfe Algorithm"
     <http://fa.bianp.net/blog/2018/notes-on-the-frank-wolfe-algorithm-part-i/>`_,
     2018
 
-    [3] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi.
-    `"Step-Size Adaptivity in Projection-Free Optimization."
-    <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2018).
+    .. [PANJ2020] Pedregosa, Fabian, Armin Askari, Geoffrey Negiar, and Martin Jaggi. `"Step-Size Adaptivity in Projection-Free Optimization." <https://arxiv.org/pdf/1806.05123.pdf>`_ arXiv:1806.05123 (2020).
 
 
   Examples:
