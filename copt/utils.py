@@ -496,7 +496,7 @@ class L1Ball:
         return euclidean_proj_l1ball(x, self.alpha)
 
     def lmo(self, u, x):
-        """Solve the linear problem
+        """Return s - x, s solving the linear problem
     max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
@@ -892,6 +892,9 @@ class TraceBall:
         raise NotImplementedError
 
     def lmo(self, u, x):
+        """Return s - x, with s solving the linear problem
+    max_{ ||eig(s)||_1 <= alpha } <u, s>
+    """
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
