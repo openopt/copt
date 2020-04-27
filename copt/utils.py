@@ -496,7 +496,7 @@ class L1Ball:
         return euclidean_proj_l1ball(x, self.alpha)
 
     def lmo(self, u, x):
-        """Solve the linear problem
+        """Return s - x, s solving the linear problem
     max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
@@ -756,6 +756,18 @@ class SimplexConstraint:
     def prox(self, x, step_size):
         return euclidean_proj_simplex(x, self.s)
 
+    def lmo(self, u, x):
+        """Return v - x, s solving the linear problem
+    max_{||v||_1 <= s, v >= 0} <u, v>
+    """
+        largest_coordinate = np.argmax(u)
+
+        update_direction = -x.copy()
+        update_direction[largest_coordinate] += self.s * np.sign(
+            u[largest_coordinate]
+        )
+
+        return update_direction, 1
 
 def euclidean_proj_simplex(v, s=1.0):
     r""" Compute the Euclidean projection on a positive simplex
@@ -892,6 +904,9 @@ class TraceBall:
         raise NotImplementedError
 
     def lmo(self, u, x):
+        """Return s - x, with s solving the linear problem
+    max_{ ||eig(s)||_1 <= alpha } <u, s>
+    """
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
