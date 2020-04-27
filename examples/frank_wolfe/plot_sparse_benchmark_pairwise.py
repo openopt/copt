@@ -64,7 +64,7 @@ for d in datasets:
     x0 = np.zeros(n_features)
     x0[0] = d["alpha"]  # start from a (random) vertex
 
-    for step_size, label, marker in variants_fw:
+    for step, label, marker in variants_fw:
 
         cb = cp.utils.Trace(f)
         sol = cp.minimize_frank_wolfe(
@@ -72,7 +72,7 @@ for d in datasets:
             x0,
             l1_ball.lmo_pairwise,
             callback=cb,
-            step_size=step_size,
+            step=step,
             lipschitz=f.lipschitz,
             max_iter=d["max_iter"],
             verbose=True,
