@@ -16,6 +16,7 @@ n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
+max_iter = int(1e5)
 
 # .. objective function and regularizer ..
 f = cp.utils.LogLoss(X, y)
@@ -33,7 +34,7 @@ result_sfw = cp.randomized.minimize_sfw(
     constraint.lmo,
     callback=cb_sfw_subopt,
     tol=0,
-    max_iter=int(1e5),
+    max_iter=max_iter,
 )
 
 # .. plot the result ..
@@ -45,7 +46,7 @@ plt.plot(cb_sfw_subopt.trace_fx - fmin, lw=4, label="SFW")
 plt.ylabel("Function suboptimality", fontweight="bold")
 plt.xlabel("number of gradient evaluations", fontweight="bold")
 plt.yscale("log")
-plt.xlim((0, int(1e5)))
+plt.xlim((0, max_iter))
 plt.legend()
 plt.grid()
 plt.show()
