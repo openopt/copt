@@ -717,32 +717,27 @@ def minimize_sfw(
       f_deriv
           derivative of f
 
-      x0: np.ndarray or None, optional
+      x0: np.ndarray
           Starting point for optimization.
 
-      step_size: float or None, optional
+      step_size: function or None, optional
           Step size for the optimization. If None is given, this will be set as the
-          default: 2/(t+2)
+          default: t -> 2/(t+2)
 
       constraint: object representing a constraint. Requires lmo method. Cf `utils.py`.
 
       max_iter: int
-          Maximum number of passes through the data in the optimization.
+          Maximum number of gradient calls in the optimization.
 
       tol: float
-          Tolerance criterion. The algorithm will stop whenever the norm of the
-          gradient mapping (generalization of the gradient for nonsmooth
-          optimization)
-          is below tol.
+          Tolerance criterion. The algorithm will stop whenever the
+          difference between two successive iterates is below tol.
 
       verbose: bool
           Verbosity level. True might print some messages.
 
-      trace: bool
-          Whether to trace convergence of the function, useful for plotting
-          and/or debugging. If True, the result will have extra members
-          trace_func, trace_time.
-
+      callback: function or None
+          If not None, callback will be called at each iteration.
 
     Returns:
       opt: OptimizeResult
