@@ -700,7 +700,7 @@ def minimize_sfw(
         A,
         b,
         x0,
-        constraint,
+        lmo,
         step_size=None,
         max_iter=500,
         tol=1e-6,
@@ -724,7 +724,8 @@ def minimize_sfw(
           Step size for the optimization. If None is given, this will be set as the
           default: t -> 2/(t+2)
 
-      constraint: object representing a constraint. Requires lmo method. Cf `utils.py`.
+      lmo: function
+          returns the update direction
 
       max_iter: int
           Maximum number of gradient calls in the optimization.
@@ -750,9 +751,9 @@ def minimize_sfw(
 
     """
     n_samples, n_features = A.shape
-    x = sparse.csc_matrix(x0.reshape(n_features, 1)).copy()
+    x = sparse.csc_matrix(np.reshape(x0, (n_features, 1)))
     assert x.shape == (n_features, 1)
-    A = sparse.csr_matrix(A)
+    A = sparse.csr_matrix(A).copy()
 
     if step_size is None:
         # fall back on default
@@ -778,7 +779,7 @@ def minimize_sfw(
 
         grad_agg += (dual_var[idx] - dual_var_prev) * A[idx].T
 
-        update_direction, _ = constraint.lmo(-grad_agg, x)
+        update_direction, _ = lmo(-grad_agg, x)
 
         x += step_size(it) * update_direction
 

@@ -30,7 +30,7 @@ result_sfw = cp.randomized.minimize_sfw(
     X,
     y,
     np.zeros(n_features),
-    constraint=constraint,
+    constraint.lmo,
     callback=cb_sfw_subopt,
     tol=0,
     max_iter=int(1e5),
