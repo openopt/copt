@@ -1,4 +1,6 @@
 """Module that contains randomized (also known as stochastic) algorithms."""
+from random import randint
+
 import numpy as np
 from scipy import sparse, optimize
 
@@ -691,3 +693,105 @@ def _factory_sparse_vrtos(
             memory_gradient[i] = grad_i
 
     return epoch_iteration_template
+
+
+def minimize_sfw(
+        f_deriv,
+        A,
+        b,
+        x0,
+        constraint,
+        step_size=None,
+        max_iter=500,
+        tol=1e-6,
+        verbose=False,
+        callback=None,
+):
+    r"""Stochastic Frank-Wolfe (SFW) algorithm.
+
+    The SFW algorithm can solve optimization problems of the form
+
+        argmin_{x \in constraint} (1/n)\sum_{i}^n_samples f(A_i^T x, b_i)
+
+    Args:
+      f_deriv
+          derivative of f
+
+      x0: np.ndarray or None, optional
+          Starting point for optimization.
+
+      step_size: float or None, optional
+          Step size for the optimization. If None is given, this will be set as the
+          default: 2/(t+2)
+
+      constraint: object representing a constraint. Requires lmo method. Cf `utils.py`.
+
+      max_iter: int
+          Maximum number of passes through the data in the optimization.
+
+      tol: float
+          Tolerance criterion. The algorithm will stop whenever the norm of the
+          gradient mapping (generalization of the gradient for nonsmooth
+          optimization)
+          is below tol.
+
+      verbose: bool
+          Verbosity level. True might print some messages.
+
+      trace: bool
+          Whether to trace convergence of the function, useful for plotting
+          and/or debugging. If True, the result will have extra members
+          trace_func, trace_time.
+
+
+    Returns:
+      opt: OptimizeResult
+          The optimization result represented as a
+          ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+          ``x`` the solution array, ``success`` a Boolean flag indicating if
+          the optimizer exited successfully and ``message`` which describes
+          the cause of the termination. See `scipy.optimize.OptimizeResult`
+          for a description of other attributes.
+
+    """
+    n_samples, n_features = A.shape
+    x = sparse.csc_matrix(x0.reshape(n_features, 1)).copy()
+    assert x.shape == (n_features, 1)
+    A = sparse.csr_matrix(A)
+
+    if step_size is None:
+        # fall back on default
+        def step_size(t):
+            return 2/(t+2)
+
+    dual_var = np.zeros(n_samples)
+    grad_agg = np.zeros((n_features, 1))
+
+    success = False
+
+    if callback is not None:
+        callback(locals())
+
+    for it in range(max_iter):
+        x_snapshot = x.copy()
+        # Batch size 1
+        idx = randint(0, n_samples - 1)
+
+        dual_var_prev = dual_var[idx]
+        p = A[idx].dot(x)
+        dual_var[idx] = (1 / n_samples) * f_deriv(p.toarray(), b[idx])
+
+        grad_agg += (dual_var[idx] - dual_var_prev) * A[idx].T
+
+        update_direction, _ = constraint.lmo(-grad_agg, x)
+
+        x += step_size(it) * update_direction
+
+        if callback is not None:
+            callback(locals())
+
+        if np.abs(x - x_snapshot).sum() < tol:
+            success = True
+            break
+    message = ""
+    return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
