@@ -4,8 +4,12 @@ Comparison of variants of Stochastic FW
 
 The problem solved in this case is a L1 constrained logistic regression
 (sometimes referred to as sparse logistic regression).
-"""
 
+The considered variants are described in recent papers:
+ - Mokhtari et al. 2020
+ - Lu and Freund 2020
+ - Negiar et al. 2020
+"""
 
 import copt as cp
 import matplotlib.pyplot as plt
