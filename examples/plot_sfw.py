@@ -1,5 +1,5 @@
 """
-Stochastic FW
+Comparison of variants of Stochastic FW
 ===========================================
 
 The problem solved in this case is a L1 constrained logistic regression
@@ -22,8 +22,25 @@ max_iter = int(1e5)
 f = cp.utils.LogLoss(X, y)
 constraint = cp.utils.L1Ball(1.)
 
+
 # .. callbacks to track progress ..
-cb_sfw_subopt = cp.utils.Trace(lambda x: f(x))
+def fw_gap(x):
+    _, grad = f.f_grad(x)
+    return constraint.lmo(-grad, x)[0].dot(-grad)
+
+
+class TraceGaps(cp.utils.Trace):
+    def __init__(self, f=None, freq=1):
+        super(TraceGaps, self).__init__(f, freq)
+        self.trace_gaps = []
+
+    def __call__(self, dl):
+        self.trace_gaps.append(fw_gap(dl['x']))
+        super(TraceGaps, self).__call__(dl)
+
+
+cb_sfw = TraceGaps(f)
+cb_sfw_mokhtari = TraceGaps(f)
 
 # .. run the SFW algorithm ..
 result_sfw = cp.randomized.minimize_sfw(
@@ -32,18 +49,27 @@ result_sfw = cp.randomized.minimize_sfw(
     y,
     np.zeros(n_features),
     constraint.lmo,
-    callback=cb_sfw_subopt,
+    callback=cb_sfw,
     tol=0,
     max_iter=max_iter,
 )
 
+result_sfw_mokhtari = cp.randomized.minimize_sfw_mokhtari(
+    f.partial_deriv,
+    X,
+    y,
+    np.zeros(n_features),
+    constraint.lmo,
+    callback=cb_sfw_mokhtari,
+    tol=0,
+    max_iter=max_iter,
+)
 # .. plot the result ..
-fmin = np.min(cb_sfw_subopt.trace_fx)
+max_gap = max(cb_sfw.trace_gaps[0], cb_sfw_mokhtari.trace_gaps[0])
 plt.title("Stochastic Frank-Wolfe")
-plt.plot(cb_sfw_subopt.trace_fx - fmin, lw=4, label="SFW")
-# .. for SVRG we multiply the number of iterations by two to ..
-# .. account for computation of the snapshot gradient ..
-plt.ylabel("Function suboptimality", fontweight="bold")
+plt.plot(np.array(cb_sfw.trace_gaps) / max_gap, lw=4, label="SFW")
+plt.plot(np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
+plt.ylabel("Relative FW gap", fontweight="bold")
 plt.xlabel("number of gradient evaluations", fontweight="bold")
 plt.yscale("log")
 plt.xlim((0, max_iter))
