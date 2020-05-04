@@ -52,8 +52,39 @@ def test_sfw_l1(loss_grad, alpha):
         tol=1e-3,
         callback=cb,
     )
-    # assert np.isfinite(opt.x).sum() == n_features
 
+
+@pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
+@pytest.mark.parametrize("loss_grad", LOSS_FUNCS)
+def test_sfw_gap_traceback(loss_grad, alpha):
+
+    f = loss_grad(A, b, 1.0 / n_samples)
+    l1ball = cp.utils.L1Ball(alpha)
+
+    def fw_gap(x):
+        _, grad = f.f_grad(x)
+        return l1ball.lmo(-grad, x)[0].dot(-grad)
+
+    class TraceGaps(cp.utils.Trace):
+        def __init__(self, f=None, freq=1):
+            super(TraceGaps, self).__init__(f, freq)
+            self.trace_gaps = []
+
+        def __call__(self, dl):
+            self.trace_gaps.append(fw_gap(dl['x']))
+            super(TraceGaps, self).__call__(dl)
+
+    cb = TraceGaps(f)
+
+    opt = cp.randomized.minimize_sfw(
+        f.partial_deriv,
+        A,
+        b,
+        np.zeros(n_features),
+        l1ball.lmo,
+        tol=1e-3,
+        callback=cb,
+    )
 
 @pytest.mark.parametrize("A", [sparse.random(n_samples, n_features, 0.1,
                                              fmt)
