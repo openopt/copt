@@ -968,7 +968,7 @@ def minimize_sfw_lu_freund(
             return 2 * n_samples / (2 * n_samples + t + 1)
 
         def step_size_x(t):
-            return 2 * (2 * n_samples + t) / ((t+1) * 4 * n_samples + t + 1)
+            return 2 * (2 * n_samples + t) / ((t+1) * (4 * n_samples + t + 1))
 
     else:
         raise NotImplementedError("Only the default step size from the paper is implemented.")
