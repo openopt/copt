@@ -65,7 +65,7 @@ def safe_sparse_add(a, b):
         # both are sparse, keep the result sparse
         return a + b
     else:
-        # on of them is non-sparse, convert
+        # one of them is non-sparse, convert
         # everything to dense.
         if sparse.issparse(a):
             a = a.toarray()
