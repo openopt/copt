@@ -751,7 +751,7 @@ def minimize_sfw(
 
     """
     n_samples, n_features = A.shape
-    x = np.reshape(x0, n_features)
+    x = np.reshape(x0, n_features).astype(float)
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
@@ -849,7 +849,7 @@ def minimize_sfw_mokhtari(
 
     """
     n_samples, n_features = A.shape
-    x = np.reshape(x0, n_features)
+    x = np.reshape(x0, n_features).astype(float)
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
@@ -883,7 +883,7 @@ def minimize_sfw_mokhtari(
 
         update_direction, _ = lmo(-grad_agg, x)
 
-        x += step * update_direction
+        x += step_size(it) * update_direction
 
         if callback is not None:
             callback(locals())

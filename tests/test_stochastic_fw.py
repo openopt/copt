@@ -1,4 +1,4 @@
-"""Tests for the Stochastic Frank-Wolfe algorithm."""
+"""Tests for the Stochastic Frank-Wolfe algorithms."""
 import numpy as np
 import pytest
 from scipy import optimize, sparse
@@ -16,8 +16,9 @@ b = np.abs(b / np.max(np.abs(b)))
 
 LOSS_FUNCS = [cp.utils.LogLoss]
 
+
 def test_fw_api():
-    """Check that FW takes the right arguments and raises the right exceptions."""
+    """Check that SFW takes the right arguments and raises the right exceptions."""
 
     # test that the algorithm does not fail if x0
     # is a tuple
@@ -39,7 +40,7 @@ def test_fw_api():
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("loss_grad", LOSS_FUNCS)
 def test_sfw_l1(loss_grad, alpha):
-    """Test result of FW algorithm with L1 constraint."""
+    """Test SFW algorithm with L1 constraint."""
     f = loss_grad(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
     l1ball = cp.utils.L1Ball(alpha)
@@ -100,7 +101,7 @@ def test_sfw_sparse(A):
         f.partial_deriv,
         A,
         b,
-        sparse.csr_matrix((n_features, 1)),
+        np.zeros(n_features),
         l1ball.lmo,
         tol=0,
         callback=cb,
