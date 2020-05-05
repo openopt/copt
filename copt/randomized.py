@@ -780,6 +780,18 @@ def minimize_sfw(
           the cause of the termination. See `scipy.optimize.OptimizeResult`
           for a description of other attributes.
 
+     References:
+
+    .. [NDTELP2020] Negiar, Geoffrey, Dresdner, Gideon, Tsai Alicia, El Ghaoui, Laurent, Locatello, Francesco, and Pedregosa, Fabian.
+    `"Stochastic Frank-Wolfe for Constrained Finite-Sum Minimization" <https://arxiv.org/abs/2002.11860v2>` arxiv:2002.11860v2 (2020).
+
+    .. [MHK2018] Mokhtari, Aryan, Hassani, Hamed, and Karbassi, Amin `"Stochastic Conditional Gradient Methods:
+From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804.09554>`_, arxiv:1804.09554 (2018)
+
+    .. [LF2020] Lu, Haihao, and Freund, Robert `"Generalized Stochastic Frank-Wolfe Algorithm with Stochastic 'Substitute' Gradient for Structured Convex Optimization"
+    <https://arxiv.org/pdf/1806.05123.pdf>`_, Mathematical Programming (2020).
+
+
     """
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
