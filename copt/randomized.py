@@ -695,6 +695,30 @@ def _factory_sparse_vrtos(
     return epoch_iteration_template
 
 
+def step_size_sfw(variant):
+    if variant == 'SAG':
+        def step_sizes_SAG(t, n_samples=None):
+            step_size_x = 2 / (t+2)
+            return step_size_x, None
+        return step_sizes_SAG
+
+    if variant == 'MK':
+        def step_sizes_MK(t, n_samples=None):
+            step_size_x = 1 / (t+1)
+            step_size_agg = step_size_x ** (2/3)
+            return step_size_x, step_size_agg
+        return step_sizes_MK
+
+    if variant == 'LF':
+        def step_sizes_LF(t, n_samples=None):
+            if n_samples is None:
+                raise ValueError("n_samples must be the number of samples in the dataset.")
+            step_agg = 2 * n_samples / (2 * n_samples + t + 1)
+            step_x = 2 * (2 * n_samples + t) / ((t+1) * (4 * n_samples + t + 1))
+            return step_x, step_agg
+        return step_sizes_LF
+
+
 def minimize_sfw(
         f_deriv,
         A,
@@ -706,6 +730,7 @@ def minimize_sfw(
         tol=1e-6,
         verbose=False,
         callback=None,
+        variant='SAG'
 ):
     r"""Stochastic Frank-Wolfe (SFW) algorithm.
 
@@ -740,6 +765,12 @@ def minimize_sfw(
       callback: function or None
           If not None, callback will be called at each iteration.
 
+      variant: str in {'SAG', 'MK', 'LF'}
+          Controls which variant of SFW to use.
+          'SAG' is described in Negiar et al. (2020),
+          'MK' in Mokhtari et al. (2020),
+          'LF' in Lu and Freund (2020).
+
     Returns:
       opt: OptimizeResult
           The optimization result represented as a
@@ -755,33 +786,50 @@ def minimize_sfw(
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
-    if step_size is None:
-        # fall back on default
-        def step_size(t):
-            return 2/(t+2)
-
     dual_var = np.zeros(n_samples)
     grad_agg = np.zeros(n_features)
+
+    if variant == 'LF':
+        agg = utils.safe_sparse_dot(A, x)
 
     success = False
 
     if callback is not None:
         callback(locals())
 
+    if step_size is None:
+        # then default according to variant
+        step_size = step_size_sfw(variant)
+
     for it in range(max_iter):
         x_snapshot = x.copy()
         # Batch size 1
         idx = randint(0, n_samples - 1)
 
+        step_size_x, step_size_agg = step_size(it, n_samples)
         dual_var_prev = dual_var[idx]
-        p = A[idx].dot(x)
-        dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
-        grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx], )
+        if variant == 'SAG':
+            p = A[idx].dot(x)
+            dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
-        update_direction, _ = lmo(-grad_agg, x)
+        elif variant == 'MK':
+            p = A[idx].dot(x)
+            dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
 
-        x += step_size(it) * update_direction
+        elif variant == 'LF':
+            update_direction, _ = lmo(-grad_agg, x)
+            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A[idx], update_direction + x)-agg[idx])
+            dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
+
+        # For all variants, update the aggregate gradient
+        grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx])
+
+        if variant in {'SAG', 'MK'}:
+
+            update_direction, _ = lmo(-grad_agg, x)
+
+        x += step_size_x * update_direction
 
         if callback is not None:
             callback(locals())
@@ -896,7 +944,6 @@ def minimize_sfw_mokhtari(
     return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
 
 
-
 def minimize_sfw_lu_freund(
         f_deriv,
         A,
@@ -984,16 +1031,15 @@ def minimize_sfw_lu_freund(
 
         # Batch size 1
         idx = randint(0, n_samples - 1)
+        step_size_x, step_size_agg = step_size(t, n_samples)
+        dual_var_prev = dual_var[idx]
 
         update_direction, _ = lmo(-grad_agg, x)
         agg[idx] += step_size_agg(it) * (A[idx].dot(update_direction + x) - agg[idx])
 
-        dual_var_prev = dual_var[idx]
         dual_var[idx] = (1/n_samples) * f_deriv(agg[idx], b[idx])
 
         grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx].T)
-
-        update_direction, _ = lmo(-grad_agg, x)
 
         x += step_size_x(it) * update_direction
 
