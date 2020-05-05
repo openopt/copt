@@ -850,6 +850,7 @@ def minimize_sfw_mokhtari(
     """
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
+
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
@@ -895,7 +896,8 @@ def minimize_sfw_mokhtari(
     return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
 
 
-def minimize_sfw_lu_and_freund(
+
+def minimize_sfw_lu_freund(
         f_deriv,
         A,
         b,
@@ -952,13 +954,22 @@ def minimize_sfw_lu_and_freund(
     """
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
+
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
+    agg = utils.safe_sparse_dot(A, x)
+
     if step_size is None:
         # fall back on default
-        def step_size(t):
-            return 1/(t+1)
+        def step_size_agg(t):
+            return 2 * n_samples / (2 * n_samples + t + 1)
+
+        def step_size_x(t):
+            return 2 * (2 * n_samples + t) / ((t+1) * (4 * n_samples + t + 1))
+
+    else:
+        raise NotImplementedError("Only the default step size from the paper is implemented.")
 
     dual_var = np.zeros(n_samples)
     grad_agg = np.zeros(n_features)
@@ -970,22 +981,21 @@ def minimize_sfw_lu_and_freund(
 
     for it in range(max_iter):
         x_snapshot = x.copy()
+
         # Batch size 1
         idx = randint(0, n_samples - 1)
 
+        update_direction, _ = lmo(-grad_agg, x)
+        agg[idx] += step_size_agg(it) * (A[idx].dot(update_direction + x) - agg[idx])
+
         dual_var_prev = dual_var[idx]
-        p = A[idx].dot(x)
-
-        step = step_size(it)
-
-        dual_var[idx] = (1 - step ** (2/3)) * dual_var_prev
-        dual_var[idx] += step ** (2/3) * f_deriv(p, b[idx])
+        dual_var[idx] = (1/n_samples) * f_deriv(agg[idx], b[idx])
 
         grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx].T)
 
         update_direction, _ = lmo(-grad_agg, x)
 
-        x += step_size(it) * update_direction
+        x += step_size_x(it) * update_direction
 
         if callback is not None:
             callback(locals())
@@ -995,5 +1005,4 @@ def minimize_sfw_lu_and_freund(
             break
     message = ""
     return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
-
 
