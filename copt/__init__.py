@@ -9,5 +9,6 @@ from .proximal_gradient import minimize_proximal_gradient
 from .randomized import minimize_saga
 from .randomized import minimize_svrg
 from .randomized import minimize_vrtos
+from .randomized import minimize_sfw
 from .splitting import minimize_primal_dual
 from .splitting import minimize_three_split
