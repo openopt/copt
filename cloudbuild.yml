@@ -23,5 +23,5 @@ options:
 
 artifacts:
   objects:
-    location: 'gs://copt/'
+    location: 'gs://copt_doc/'
     paths: ['doc/_build/html/doc_status.svg', 'pylint.txt', 'pylint.svg']
