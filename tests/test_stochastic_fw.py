@@ -15,7 +15,7 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 LOSS_FUNCS = [cp.utils.LogLoss]
-VARIANTS = ['SAG', 'MK', 'LF']
+VARIANTS = ['SAGA', 'SAG', 'MK', 'LF']
 
 
 @pytest.mark.parametrize("variant", VARIANTS)

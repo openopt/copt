@@ -696,11 +696,11 @@ def _factory_sparse_vrtos(
 
 
 def step_size_sfw(variant):
-    if variant == 'SAG':
-        def step_sizes_SAG(t, n_samples=None):
+    if variant in {'SAG', 'SAGA'} :
+        def step_sizes_SAG_A(t, n_samples=None):
             step_size_x = 2 / (t+2)
             return step_size_x, None
-        return step_sizes_SAG
+        return step_sizes_SAG_A
 
     if variant == 'MK':
         def step_sizes_MK(t, n_samples=None):
@@ -730,7 +730,7 @@ def minimize_sfw(
         tol=1e-6,
         verbose=False,
         callback=None,
-        variant='SAG'
+        variant='SAGA'
 ):
     r"""Stochastic Frank-Wolfe (SFW) algorithm.
 
@@ -767,9 +767,10 @@ def minimize_sfw(
 
       variant: str in {'SAG', 'MK', 'LF'}
           Controls which variant of SFW to use.
-          'SAG' is described in Negiar et al. (2020),
-          'MK' in Mokhtari et al. (2020),
-          'LF' in Lu and Freund (2020).
+          'SAG' is described in [1],
+          'SAGA' is yet to be described.
+          'MK' is described in [2],
+          'LF' is described in [3].
 
     Returns:
       opt: OptimizeResult
@@ -821,7 +822,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         step_size_x, step_size_agg = step_size(it, n_samples)
         dual_var_prev = dual_var[idx]
 
-        if variant == 'SAG':
+        if variant in {'SAG', 'SAGA'}:
             p = A[idx].dot(x)
             dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
@@ -838,8 +839,11 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx])
 
         if variant in {'SAG', 'MK'}:
-
             update_direction, _ = lmo(-grad_agg, x)
+
+        elif variant == 'SAGA':
+            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * (dual_var[idx] - dual_var_prev) * A[idx])
+            update_direction, _ = lmo(-grad_est, x)
 
         x += step_size_x * update_direction
 

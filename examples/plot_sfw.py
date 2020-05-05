@@ -38,21 +38,34 @@ class TraceGaps(cp.utils.Trace):
         super(TraceGaps, self).__call__(dl)
 
 
-cb_sfw = TraceGaps(f)
+cb_sfw_SAG = TraceGaps(f)
+cb_sfw_SAGA = TraceGaps(f)
 cb_sfw_mokhtari = TraceGaps(f)
 cb_sfw_lu_freund = TraceGaps(f)
 
 # .. run the SFW algorithm ..
-result_sfw = cp.randomized.minimize_sfw(
+result_sfw_SAG = cp.randomized.minimize_sfw(
     f.partial_deriv,
     X,
     y,
     np.zeros(n_features),
     constraint.lmo,
-    callback=cb_sfw,
+    callback=cb_sfw_SAG,
     tol=0,
     max_iter=max_iter,
     variant='SAG'
+)
+
+result_sfw_SAGA = cp.randomized.minimize_sfw(
+    f.partial_deriv,
+    X,
+    y,
+    np.zeros(n_features),
+    constraint.lmo,
+    callback=cb_sfw_SAGA,
+    tol=0,
+    max_iter=max_iter,
+    variant='SAGA'
 )
 
 result_sfw_mokhtari = cp.randomized.minimize_sfw(
@@ -79,11 +92,14 @@ result_sfw_lu_freund = cp.randomized.minimize_sfw(
     variant='LF'
 )
 # .. plot the result ..
-max_gap = max(cb_sfw.trace_gaps[0],
+max_gap = max(cb_sfw_SAG.trace_gaps[0],
               cb_sfw_mokhtari.trace_gaps[0],
-              cb_sfw_lu_freund.trace_gaps[0])
+              cb_sfw_lu_freund.trace_gaps[0],
+              cb_sfw_SAGA.trace_gaps[0])
+
 plt.title("Stochastic Frank-Wolfe")
-plt.plot(np.array(cb_sfw.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
+plt.plot(np.array(cb_sfw_SAG.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
+plt.plot(np.array(cb_sfw_SAGA.trace_gaps) / max_gap, lw=4, label="SFW -- SAGA, NDTELP (2020)")
 plt.plot(np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
 plt.plot(np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
 plt.ylabel("Relative FW gap", fontweight="bold")
