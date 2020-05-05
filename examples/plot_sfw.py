@@ -20,7 +20,7 @@ n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
-max_iter = int(1e4)
+max_iter = int(1e5)
 
 # .. objective function and regularizer ..
 f = cp.utils.LogLoss(X, y)
@@ -57,9 +57,10 @@ result_sfw = cp.randomized.minimize_sfw(
     callback=cb_sfw,
     tol=0,
     max_iter=max_iter,
+    variant='SAG'
 )
 
-result_sfw_mokhtari = cp.randomized.minimize_sfw_mokhtari(
+result_sfw_mokhtari = cp.randomized.minimize_sfw(
     f.partial_deriv,
     X,
     y,
@@ -68,9 +69,10 @@ result_sfw_mokhtari = cp.randomized.minimize_sfw_mokhtari(
     callback=cb_sfw_mokhtari,
     tol=0,
     max_iter=max_iter,
+    variant='MK'
 )
 
-result_sfw_lu_freund = cp.randomized.minimize_sfw_lu_freund(
+result_sfw_lu_freund = cp.randomized.minimize_sfw(
     f.partial_deriv,
     X,
     y,
@@ -79,13 +81,14 @@ result_sfw_lu_freund = cp.randomized.minimize_sfw_lu_freund(
     callback=cb_sfw_lu_freund,
     tol=0,
     max_iter=max_iter,
+    variant='LF'
 )
 # .. plot the result ..
 max_gap = max(cb_sfw.trace_gaps[0],
               cb_sfw_mokhtari.trace_gaps[0],
               cb_sfw_lu_freund.trace_gaps[0])
 plt.title("Stochastic Frank-Wolfe")
-plt.plot(np.array(cb_sfw.trace_gaps) / max_gap, lw=4, label="SFW")
+plt.plot(np.array(cb_sfw.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
 plt.plot(np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
 plt.plot(np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
 plt.ylabel("Relative FW gap", fontweight="bold")
