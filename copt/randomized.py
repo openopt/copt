@@ -832,7 +832,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
         elif variant == 'LF':
             update_direction, _ = lmo(-grad_agg, x)
-            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A[idx], update_direction + x)-agg[idx])
+            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A[idx], update_direction + x) - agg[idx])
             dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
 
         # For all variants, update the aggregate gradient
