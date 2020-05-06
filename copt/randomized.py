@@ -781,7 +781,7 @@ def minimize_sfw(
           the cause of the termination. See `scipy.optimize.OptimizeResult`
           for a description of other attributes.
 
-     References:
+    References:
 
     .. [NDTELP2020] Negiar, Geoffrey, Dresdner, Gideon, Tsai Alicia, El Ghaoui, Laurent, Locatello, Francesco, and Pedregosa, Fabian.
     `"Stochastic Frank-Wolfe for Constrained Finite-Sum Minimization" <https://arxiv.org/abs/2002.11860v2>` arxiv:2002.11860v2 (2020).

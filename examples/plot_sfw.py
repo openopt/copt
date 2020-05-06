@@ -15,7 +15,7 @@ n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
-max_iter = int(1e5)
+max_iter = int(1e6)
 
 # .. objective function and regularizer ..
 f = cp.utils.LogLoss(X, y)
@@ -34,14 +34,17 @@ class TraceGaps(cp.utils.Trace):
         self.trace_gaps = []
 
     def __call__(self, dl):
-        self.trace_gaps.append(fw_gap(dl['x']))
+        if self._counter % self.freq == 0:
+            self.trace_gaps.append(fw_gap(dl['x']))
         super(TraceGaps, self).__call__(dl)
 
 
-cb_sfw_SAG = TraceGaps(f)
-cb_sfw_SAGA = TraceGaps(f)
-cb_sfw_mokhtari = TraceGaps(f)
-cb_sfw_lu_freund = TraceGaps(f)
+freq = 1000
+
+cb_sfw_SAG = TraceGaps(f, freq=freq)
+cb_sfw_SAGA = TraceGaps(f, freq=freq)
+cb_sfw_mokhtari = TraceGaps(f, freq=freq)
+cb_sfw_lu_freund = TraceGaps(f, freq=freq)
 
 # .. run the SFW algorithm ..
 result_sfw_SAG = cp.randomized.minimize_sfw(
@@ -98,10 +101,10 @@ max_gap = max(cb_sfw_SAG.trace_gaps[0],
               cb_sfw_SAGA.trace_gaps[0])
 
 plt.title("Stochastic Frank-Wolfe")
-plt.plot(np.array(cb_sfw_SAG.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
-plt.plot(np.array(cb_sfw_SAGA.trace_gaps) / max_gap, lw=4, label="SFW -- SAGA, NDTELP (2020)")
-plt.plot(np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
-plt.plot(np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
+plt.plot(freq * np.arange(len(cb_sfw_SAG.trace_gaps)), np.array(cb_sfw_SAG.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
+plt.plot(freq * np.arange(len(cb_sfw_SAGA.trace_gaps)), np.array(cb_sfw_SAGA.trace_gaps) / max_gap, lw=4, label="SFW -- SAGA, NDTELP (2020)")
+plt.plot(freq * np.arange(len(cb_sfw_mokhtari.trace_gaps)), np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
+plt.plot(freq * np.arange(len(cb_sfw_lu_freund.trace_gaps)), np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
 plt.ylabel("Relative FW gap", fontweight="bold")
 plt.xlabel("number of gradient evaluations", fontweight="bold")
 plt.yscale("log")
