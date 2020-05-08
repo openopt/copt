@@ -696,7 +696,7 @@ def _factory_sparse_vrtos(
 
 
 def step_size_sfw(variant):
-    if variant in {'SAG', 'SAGA'} :
+    if variant in {'SAG', 'SAGA'}:
         def step_sizes_SAG_A(t, n_samples=None):
             step_size_x = 2 / (t+2)
             return step_size_x, None
@@ -791,8 +791,6 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
     .. [LF2020] Lu, Haihao, and Freund, Robert `"Generalized Stochastic Frank-Wolfe Algorithm with Stochastic 'Substitute' Gradient for Structured Convex Optimization"
     <https://arxiv.org/pdf/1806.05123.pdf>`_, Mathematical Programming (2020).
-
-
     """
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
