@@ -15,11 +15,13 @@ b = A.dot(w) + np.random.randn(n_samples)
 b = np.abs(b / np.max(np.abs(b)))
 
 LOSS_FUNCS = [cp.utils.LogLoss]
-VARIANTS = ['SAGA', 'SAG', 'MK', 'LF']
+VARIANTS = ['SAGA', 'SAG', 'MHK', 'LF']
+BATCH_SIZES = [1, 10, n_samples]
 
 
 @pytest.mark.parametrize("variant", VARIANTS)
-def test_fw_api(variant):
+@pytest.mark.parametrize("batch_size", BATCH_SIZES)
+def test_fw_api(variant, batch_size):
     """Check that SFW algorithms take the right arguments and raises the right exceptions."""
 
     # test that the algorithm does not fail if x0
@@ -34,6 +36,7 @@ def test_fw_api(variant):
         b,
         [0] * n_features,
         l1ball.lmo,
+        batch_size=batch_size,
         tol=0,
         callback=cb,
         variant=variant

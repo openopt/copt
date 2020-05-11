@@ -698,16 +698,16 @@ def _factory_sparse_vrtos(
 def step_size_sfw(variant):
     if variant in {'SAG', 'SAGA'}:
         def step_sizes_SAG_A(t, n_samples=None):
-            step_size_x = 2 / (t+2)
+            step_size_x = 2. / (t+2)
             return step_size_x, None
         return step_sizes_SAG_A
 
-    if variant == 'MK':
-        def step_sizes_MK(t, n_samples=None):
-            step_size_x = 1 / (t+1)
+    if variant == 'MHK':
+        def step_sizes_MHK(t, n_samples=None):
+            step_size_x = 1. / (t+1)
             step_size_agg = step_size_x ** (2/3)
             return step_size_x, step_size_agg
-        return step_sizes_MK
+        return step_sizes_MHK
 
     if variant == 'LF':
         def step_sizes_LF(t, n_samples=None):
@@ -719,12 +719,16 @@ def step_size_sfw(variant):
         return step_sizes_LF
 
 
+SFW_VARIANTS = {'SAG', 'SAGA', 'MHK', 'LF'}
+
+
 def minimize_sfw(
         f_deriv,
         A,
         b,
         x0,
         lmo,
+        batch_size=1,
         step_size=None,
         max_iter=500,
         tol=1e-6,
@@ -734,7 +738,7 @@ def minimize_sfw(
 ):
     r"""Stochastic Frank-Wolfe (SFW) algorithm.
 
-    The SFW algorithm can solve optimization problems of the form
+    This implementation of SFW algorithms can solve optimization problems of the form
 
         argmin_{x \in constraint} (1/n)\sum_{i}^n_samples f(A_i^T x, b_i)
 
@@ -747,11 +751,14 @@ def minimize_sfw(
 
       step_size: function or None, optional
           Step size for the optimization. If None is given, this will be set as the
-          default: t -> 2/(t+2)
+          default for `variant`. The function should return a tuple of floats.
+          One is needed for `SAG` and `SAGA` variants. Two are needed for `MHK` and `LF`.
 
       lmo: function
           returns the update direction
 
+      batch_size: int
+          Size of the random subset (without replacement) to compute the stochastic gradient estimator.
       max_iter: int
           Maximum number of gradient calls in the optimization.
 
@@ -765,12 +772,12 @@ def minimize_sfw(
       callback: function or None
           If not None, callback will be called at each iteration.
 
-      variant: str in {'SAG', 'MK', 'LF'}
+      variant: str in {'SAG', 'MHK', 'LF'}
           Controls which variant of SFW to use.
-          'SAG' is described in [1],
+          'SAG' is described in [NDTELP2020],
           'SAGA' is yet to be described.
-          'MK' is described in [2],
-          'LF' is described in [3].
+          'MHK' is described in [MHK2020],
+          'LF' is described in [LF2020].
 
     Returns:
       opt: OptimizeResult
@@ -792,16 +799,20 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     .. [LF2020] Lu, Haihao, and Freund, Robert `"Generalized Stochastic Frank-Wolfe Algorithm with Stochastic 'Substitute' Gradient for Structured Convex Optimization"
     <https://arxiv.org/pdf/1806.05123.pdf>`_, Mathematical Programming (2020).
     """
+
+    if variant not in SFW_VARIANTS:
+        raise ValueError("This variant is not implemented. Please use one from {}.".format(SFW_VARIANTS))
+
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
     assert x.shape == (n_features,)
     A = sparse.csr_matrix(A).copy()
 
-    dual_var = np.zeros(n_samples)
-    grad_agg = np.zeros(n_features)
+    dual_var = np.zeros(n_samples)  # alpha_t in [NDTELP2020]
+    grad_agg = np.zeros(n_features)  # r_t in [NDTELP2020]
 
     if variant == 'LF':
-        agg = utils.safe_sparse_dot(A, x)
+        agg = utils.safe_sparse_dot(A, x)  # sigma_t in [LF2020]
 
     success = False
 
@@ -813,9 +824,9 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         step_size = step_size_sfw(variant)
 
     for it in range(max_iter):
-        x_snapshot = x.copy()
+        x_prev = x.copy()
         # Batch size 1
-        idx = randint(0, n_samples - 1)
+        idx = np.random.choice(n_samples, batch_size)
 
         step_size_x, step_size_agg = step_size(it, n_samples)
         dual_var_prev = dual_var[idx]
@@ -824,7 +835,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
             p = A[idx].dot(x)
             dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
-        elif variant == 'MK':
+        elif variant == 'MHK':
             p = A[idx].dot(x)
             dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
 
@@ -836,7 +847,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         # For all variants, update the aggregate gradient
         grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx])
 
-        if variant in {'SAG', 'MK'}:
+        if variant in {'SAG', 'MHK'}:
             update_direction, _ = lmo(-grad_agg, x)
 
         elif variant == 'SAGA':
@@ -848,7 +859,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         if callback is not None:
             callback(locals())
 
-        if np.abs(x - x_snapshot).sum() < tol:
+        if np.abs(x - x_prev).sum() < tol:
             success = True
             break
     message = ""

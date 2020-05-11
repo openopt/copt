@@ -16,6 +16,7 @@ np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
 max_iter = int(1e6)
+freq = max(max_iter // 1000, 1000)
 
 # .. objective function and regularizer ..
 f = cp.utils.LogLoss(X, y)
@@ -38,8 +39,6 @@ class TraceGaps(cp.utils.Trace):
             self.trace_gaps.append(fw_gap(dl['x']))
         super(TraceGaps, self).__call__(dl)
 
-
-freq = 1000
 
 cb_sfw_SAG = TraceGaps(f, freq=freq)
 cb_sfw_SAGA = TraceGaps(f, freq=freq)
@@ -100,14 +99,36 @@ max_gap = max(cb_sfw_SAG.trace_gaps[0],
               cb_sfw_lu_freund.trace_gaps[0],
               cb_sfw_SAGA.trace_gaps[0])
 
-plt.title("Stochastic Frank-Wolfe")
-plt.plot(freq * np.arange(len(cb_sfw_SAG.trace_gaps)), np.array(cb_sfw_SAG.trace_gaps) / max_gap, lw=4, label="SFW -- SAG, NDTELP (2020)")
-plt.plot(freq * np.arange(len(cb_sfw_SAGA.trace_gaps)), np.array(cb_sfw_SAGA.trace_gaps) / max_gap, lw=4, label="SFW -- SAGA, NDTELP (2020)")
-plt.plot(freq * np.arange(len(cb_sfw_mokhtari.trace_gaps)), np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
-plt.plot(freq * np.arange(len(cb_sfw_lu_freund.trace_gaps)), np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
-plt.ylabel("Relative FW gap", fontweight="bold")
-plt.xlabel("number of gradient evaluations", fontweight="bold")
-plt.yscale("log")
+max_val = max(cb_sfw_SAG.trace_fx[0],
+              cb_sfw_mokhtari.trace_fx[0],
+              cb_sfw_lu_freund.trace_fx[0],
+              cb_sfw_SAGA.trace_fx[0])
+
+min_val = min(np.min(cb_sfw_SAG.trace_fx),
+              np.min(cb_sfw_mokhtari.trace_fx),
+              np.min(cb_sfw_lu_freund.trace_fx),
+              np.min(cb_sfw_SAGA.trace_fx),
+              )
+
+fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+fig.suptitle('Stochastic Frank-Wolfe')
+
+ax1.plot(freq * np.arange(len(cb_sfw_SAG.trace_gaps)), np.array(cb_sfw_SAG.trace_gaps) / max_gap, lw=4, label="SFW -- SAG")
+ax1.plot(freq * np.arange(len(cb_sfw_SAGA.trace_gaps)), np.array(cb_sfw_SAGA.trace_gaps) / max_gap, lw=4, label="SFW -- SAGA")
+ax1.plot(freq * np.arange(len(cb_sfw_mokhtari.trace_gaps)), np.array(cb_sfw_mokhtari.trace_gaps) / max_gap, lw=4, label='SFW -- Mokhtari et al. (2020)')
+ax1.plot(freq * np.arange(len(cb_sfw_lu_freund.trace_gaps)), np.array(cb_sfw_lu_freund.trace_gaps) / max_gap, lw=4, label='SFW -- Lu and Freund (2020)')
+ax1.set_ylabel("Relative FW gap", fontweight="bold")
+ax1.set_yscale('log')
+ax1.grid()
+
+ax2.plot(freq * np.arange(len(cb_sfw_SAG.trace_fx)), (np.array(cb_sfw_SAG.trace_fx) - min_val) / (max_val - min_val), lw=4, label="SFW -- SAG")
+ax2.plot(freq * np.arange(len(cb_sfw_SAGA.trace_fx)), (np.array(cb_sfw_SAGA.trace_fx) - min_val) / (max_val - min_val), lw=4, label="SFW -- SAGA")
+ax2.plot(freq * np.arange(len(cb_sfw_mokhtari.trace_fx)), (np.array(cb_sfw_mokhtari.trace_fx) - min_val) / (max_val - min_val), lw=4, label='SFW -- Mokhtari et al. (2020)')
+ax2.plot(freq * np.arange(len(cb_sfw_lu_freund.trace_fx)), (np.array(cb_sfw_lu_freund.trace_fx) - min_val) / (max_val - min_val), lw=4, label='SFW -- Lu and Freund (2020)')
+ax2.set_ylabel("Relative suboptimality", fontweight="bold")
+ax2.set_xlabel("Number of gradient evaluations", fontweight="bold")
+ax2.set_yscale("log")
+
 plt.xlim((0, max_iter))
 plt.legend()
 plt.grid()
