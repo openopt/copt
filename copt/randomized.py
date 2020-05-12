@@ -1,4 +1,6 @@
 """Module that contains randomized (also known as stochastic) algorithms."""
+from random import randint
+
 import numpy as np
 from scipy import sparse, optimize
 
@@ -691,3 +693,174 @@ def _factory_sparse_vrtos(
             memory_gradient[i] = grad_i
 
     return epoch_iteration_template
+
+
+def step_size_sfw(variant):
+    if variant in {'SAG', 'SAGA'}:
+        def step_sizes_SAG_A(t, n_samples=None):
+            step_size_x = 2. / (t+2)
+            return step_size_x, None
+        return step_sizes_SAG_A
+
+    if variant == 'MHK':
+        def step_sizes_MHK(t, n_samples=None):
+            step_size_x = 1. / (t+1)
+            step_size_agg = step_size_x ** (2/3)
+            return step_size_x, step_size_agg
+        return step_sizes_MHK
+
+    if variant == 'LF':
+        def step_sizes_LF(t, n_samples=None):
+            if n_samples is None:
+                raise ValueError("n_samples must be the number of samples in the dataset.")
+            step_agg = 2 * n_samples / (2 * n_samples + t + 1)
+            step_x = 2 * (2 * n_samples + t) / ((t+1) * (4 * n_samples + t + 1))
+            return step_x, step_agg
+        return step_sizes_LF
+
+
+SFW_VARIANTS = {'SAG', 'SAGA', 'MHK', 'LF'}
+
+
+def minimize_sfw(
+        f_deriv,
+        A,
+        b,
+        x0,
+        lmo,
+        batch_size=1,
+        step_size=None,
+        max_iter=500,
+        tol=1e-6,
+        verbose=False,
+        callback=None,
+        variant='SAGA'
+):
+    r"""Stochastic Frank-Wolfe (SFW) algorithm.
+
+    This implementation of SFW algorithms can solve optimization problems of the form
+
+        argmin_{x \in constraint} (1/n)\sum_{i}^n_samples f(A_i^T x, b_i)
+
+    Args:
+      f_deriv
+          derivative of f
+
+      x0: np.ndarray
+          Starting point for optimization.
+
+      step_size: function or None, optional
+          Step size for the optimization. If None is given, this will be set as the
+          default for `variant`. The function should return a tuple of floats.
+          One is needed for `SAG` and `SAGA` variants. Two are needed for `MHK` and `LF`.
+
+      lmo: function
+          returns the update direction
+
+      batch_size: int
+          Size of the random subset (without replacement) to compute the stochastic gradient estimator.
+      max_iter: int
+          Maximum number of gradient calls in the optimization.
+
+      tol: float
+          Tolerance criterion. The algorithm will stop whenever the
+          difference between two successive iterates is below tol.
+
+      verbose: bool
+          Verbosity level. True might print some messages.
+
+      callback: function or None
+          If not None, callback will be called at each iteration.
+
+      variant: str in {'SAG', 'MHK', 'LF'}
+          Controls which variant of SFW to use.
+          'SAG' is described in [NDTELP2020],
+          'SAGA' is yet to be described.
+          'MHK' is described in [MHK2020],
+          'LF' is described in [LF2020].
+
+    Returns:
+      opt: OptimizeResult
+          The optimization result represented as a
+          ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+          ``x`` the solution array, ``success`` a Boolean flag indicating if
+          the optimizer exited successfully and ``message`` which describes
+          the cause of the termination. See `scipy.optimize.OptimizeResult`
+          for a description of other attributes.
+
+    References:
+
+    .. [NDTELP2020] Negiar, Geoffrey, Dresdner, Gideon, Tsai Alicia, El Ghaoui, Laurent, Locatello, Francesco, and Pedregosa, Fabian.
+    `"Stochastic Frank-Wolfe for Constrained Finite-Sum Minimization" <https://arxiv.org/abs/2002.11860v2>` arxiv:2002.11860v2 (2020).
+
+    .. [MHK2018] Mokhtari, Aryan, Hassani, Hamed, and Karbassi, Amin `"Stochastic Conditional Gradient Methods:
+From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804.09554>`_, arxiv:1804.09554 (2018)
+
+    .. [LF2020] Lu, Haihao, and Freund, Robert `"Generalized Stochastic Frank-Wolfe Algorithm with Stochastic 'Substitute' Gradient for Structured Convex Optimization"
+    <https://arxiv.org/pdf/1806.05123.pdf>`_, Mathematical Programming (2020).
+    """
+
+    if variant not in SFW_VARIANTS:
+        raise ValueError("This variant is not implemented. Please use one from {}.".format(SFW_VARIANTS))
+
+    n_samples, n_features = A.shape
+    x = np.reshape(x0, n_features).astype(float)
+    assert x.shape == (n_features,)
+    A = sparse.csr_matrix(A).copy()
+
+    dual_var = np.zeros(n_samples)  # alpha_t in [NDTELP2020]
+    grad_agg = np.zeros(n_features)  # r_t in [NDTELP2020]
+
+    if variant == 'LF':
+        agg = utils.safe_sparse_dot(A, x)  # sigma_t in [LF2020]
+
+    success = False
+
+    if callback is not None:
+        callback(locals())
+
+    if step_size is None:
+        # then default according to variant
+        step_size = step_size_sfw(variant)
+
+    for it in range(max_iter):
+        x_prev = x.copy()
+        # Batch size 1
+        idx = np.random.choice(n_samples, batch_size)
+
+        step_size_x, step_size_agg = step_size(it, n_samples)
+        dual_var_prev = dual_var[idx]
+
+        if variant in {'SAG', 'SAGA'}:
+            p = A[idx].dot(x)
+            dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
+
+        elif variant == 'MHK':
+            p = A[idx].dot(x)
+            dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
+
+        elif variant == 'LF':
+            update_direction, _ = lmo(-grad_agg, x)
+            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A[idx], update_direction + x) - agg[idx])
+            dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
+
+        # For all variants, update the aggregate gradient
+        grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx])
+
+        if variant in {'SAG', 'MHK'}:
+            update_direction, _ = lmo(-grad_agg, x)
+
+        elif variant == 'SAGA':
+            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * (dual_var[idx] - dual_var_prev) * A[idx])
+            update_direction, _ = lmo(-grad_est, x)
+
+        x += step_size_x * update_direction
+
+        if callback is not None:
+            callback(locals())
+
+        if np.abs(x - x_prev).sum() < tol:
+            success = True
+            break
+    message = ""
+    return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)

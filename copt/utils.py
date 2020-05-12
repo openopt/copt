@@ -329,12 +329,16 @@ class LogLoss:
         def log_deriv(p, y):
             # derivative of logistic loss
             # same as in lightning (with minus sign)
-            if p > 0:
-                tmp = np.exp(-p)
-                phi = -tmp / (1.0 + tmp) + 1 - y
-            else:
-                tmp = np.exp(p)
-                phi = tmp / (1.0 + tmp) - y
+            p = np.array(p)
+            tmp = np.zeros_like(p)
+            phi = tmp.copy()
+
+            tmp[p > 0] = np.exp(-p[p > 0])
+            phi[p > 0] = -tmp[p > 0] / (1. + tmp[p > 0]) + 1 - y[p > 0]
+
+            tmp[p <= 0] = np.exp(p[p <= 0])
+            phi[p <= 0] = tmp[p <= 0] / (1. + tmp[p <= 0]) - y[p <= 0]
+
             return phi
 
         return log_deriv
