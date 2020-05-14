@@ -329,7 +329,6 @@ class LogLoss:
         def log_deriv(p, y):
             # derivative of logistic loss
             # same as in lightning (with minus sign)
-            p = np.array(p)
             tmp = np.zeros_like(p)
             phi = tmp.copy()
 
