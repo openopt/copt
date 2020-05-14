@@ -79,7 +79,7 @@ result_sfw_mokhtari = cp.randomized.minimize_sfw(
     callback=cb_sfw_mokhtari,
     tol=0,
     max_iter=max_iter,
-    variant='MK'
+    variant='MHK'
 )
 
 result_sfw_lu_freund = cp.randomized.minimize_sfw(
