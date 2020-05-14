@@ -47,7 +47,7 @@ datasets = (
 
 
 variants_fw = [
-    ["adaptive", "adaptive step-size", "s"],
+    ["backtracking", "backtracking line-search", "s"],
     ["DR", "Lipschitz step-size", "<"],
 ]
 
