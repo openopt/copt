@@ -3,7 +3,7 @@ COPT: a Python library for Constrained OPTimization
 
 .. image:: https://travis-ci.org/openopt/copt.svg?branch=master
    :target: https://travis-ci.org/openopt/copt
-.. image:: https://storage.googleapis.com/copt/doc_status.svg
+.. image:: https://storage.googleapis.com/copt-doc/doc_status.svg
    :target: https://storage.googleapis.com/copt-doc/index.html
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
