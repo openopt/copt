@@ -78,3 +78,5 @@ To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_exam
     auto_examples/index
     utils
     citing
+
+Last change: |today|
