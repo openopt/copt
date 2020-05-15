@@ -197,6 +197,7 @@ Stochastic methods
     copt.minimize_saga
     copt.minimize_svrg
     copt.minimize_vrtos
+    copt.minimize_sfw
 
 
 .. topic:: Examples:
