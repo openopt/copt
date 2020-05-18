@@ -18,8 +18,6 @@ steps:
   args: ['-m', 'cp', '-r', 'doc/_build/html/*', 'gs://copt-doc']
 
 timeout: 50000s
-options:
- machineType: 'N1_HIGHCPU_8'
 
 artifacts:
   objects:
