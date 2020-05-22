@@ -56,7 +56,7 @@ def _load_dataset(name, subset, data_dir):
             "%s dataset is not present in the folder %s. Downloading it ..."
             % (name, dataset_dir)
         )
-        url = "https://storage.googleapis.com/copt/datasets/%s.tar.gz" % name
+        url = "https://storage.googleapis.com/copt-doc/datasets/%s.tar.gz" % name
         local_filename, _ = urllib.request.urlretrieve(url)
         print("Finished downloading")
 

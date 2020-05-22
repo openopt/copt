@@ -3,12 +3,12 @@ COPT: a Python library for Constrained OPTimization
 
 .. image:: https://travis-ci.org/openopt/copt.svg?branch=master
    :target: https://travis-ci.org/openopt/copt
-.. image:: https://storage.googleapis.com/copt/doc_status.svg
-   :target: https://storage.googleapis.com/copt/index.html
+.. image:: https://storage.googleapis.com/copt-doc/doc_status.svg
+   :target: https://storage.googleapis.com/copt-doc/index.html
 .. image:: https://coveralls.io/repos/github/openopt/copt/badge.svg?branch=master
    :target: https://coveralls.io/github/openopt/copt?branch=master
-.. image:: https://storage.googleapis.com/copt/pylint.svg
-   :target: https://storage.googleapis.com/copt/pylint.txt
+.. image:: https://storage.googleapis.com/copt-doc/pylint.svg
+   :target: https://storage.googleapis.com/copt-doc/pylint.txt
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: citing.html
 
@@ -78,3 +78,5 @@ To know more about copt, check out our :ref:`example gallery <sphx_glr_auto_exam
     auto_examples/index
     utils
     citing
+
+Last change: |today|

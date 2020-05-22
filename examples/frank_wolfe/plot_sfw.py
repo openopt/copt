@@ -47,7 +47,7 @@ cb_sfw_mokhtari = TraceGaps(f, freq=freq)
 cb_sfw_lu_freund = TraceGaps(f, freq=freq)
 
 # .. run the SFW algorithm ..
-result_sfw_SAG = cp.randomized.minimize_sfw(
+result_sfw_SAG = cp.minimize_sfw(
     f.partial_deriv,
     X,
     y,
@@ -60,7 +60,7 @@ result_sfw_SAG = cp.randomized.minimize_sfw(
     variant='SAG'
 )
 
-result_sfw_SAGA = cp.randomized.minimize_sfw(
+result_sfw_SAGA = cp.minimize_sfw(
     f.partial_deriv,
     X,
     y,
@@ -73,7 +73,7 @@ result_sfw_SAGA = cp.randomized.minimize_sfw(
     variant='SAGA'
 )
 
-result_sfw_mokhtari = cp.randomized.minimize_sfw(
+result_sfw_mokhtari = cp.minimize_sfw(
     f.partial_deriv,
     X,
     y,
@@ -86,7 +86,7 @@ result_sfw_mokhtari = cp.randomized.minimize_sfw(
     variant='MHK'
 )
 
-result_sfw_lu_freund = cp.randomized.minimize_sfw(
+result_sfw_lu_freund = cp.minimize_sfw(
     f.partial_deriv,
     X,
     y,

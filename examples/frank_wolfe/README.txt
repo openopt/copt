@@ -3,4 +3,4 @@
 Frank-Wolfe
 -----------
 
-Examples based on the Frank-Wolf ealgorithm
+Examples based on the Frank-Wolfe algorithm

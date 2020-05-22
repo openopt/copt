@@ -4,10 +4,10 @@
    :target: https://coveralls.io/github/openopt/copt?branch=master
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
-.. image:: https://storage.googleapis.com/copt/doc_status.svg
-   :target: https://storage.googleapis.com/copt/index.html
-.. image:: https://storage.googleapis.com/copt/pylint.svg
-   :target: https://storage.googleapis.com/copt/pylint.txt
+.. image:: https://storage.googleapis.com/copt-doc/doc_status.svg
+   :target: https://storage.googleapis.com/copt-doc/index.html
+.. image:: https://storage.googleapis.com/copt-doc/pylint.svg
+   :target: https://storage.googleapis.com/copt-doc/pylint.txt
 
 copt: composite optimization in Python
 =======================================
@@ -43,9 +43,9 @@ If this software is useful for your research, please consider citing it as
 .. code::
 
     @article{copt,
-      author       = {Fabian Pedregosa},
+      author       = {Fabian Pedregosa, Geoffrey Negiar, Gideon Dresdner},
       title        = {copt: composite optimization in Python},
-      year         = 2018,
+      year         = 2020,
       DOI          = {10.5281/zenodo.1283339},
       url={http://openopt.github.io/copt/}
     }
