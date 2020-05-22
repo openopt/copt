@@ -15,7 +15,8 @@ n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
-max_iter = int(1e6)
+batch_size = 1
+max_iter = int(1e3)
 freq = max(max_iter // 1000, 1000)
 
 # .. objective function and regularizer ..
@@ -52,6 +53,7 @@ result_sfw_SAG = cp.randomized.minimize_sfw(
     y,
     np.zeros(n_features),
     constraint.lmo,
+    batch_size,
     callback=cb_sfw_SAG,
     tol=0,
     max_iter=max_iter,
@@ -64,6 +66,7 @@ result_sfw_SAGA = cp.randomized.minimize_sfw(
     y,
     np.zeros(n_features),
     constraint.lmo,
+    batch_size,
     callback=cb_sfw_SAGA,
     tol=0,
     max_iter=max_iter,
@@ -76,10 +79,11 @@ result_sfw_mokhtari = cp.randomized.minimize_sfw(
     y,
     np.zeros(n_features),
     constraint.lmo,
+    batch_size,
     callback=cb_sfw_mokhtari,
     tol=0,
     max_iter=max_iter,
-    variant='MK'
+    variant='MHK'
 )
 
 result_sfw_lu_freund = cp.randomized.minimize_sfw(
@@ -88,6 +92,7 @@ result_sfw_lu_freund = cp.randomized.minimize_sfw(
     y,
     np.zeros(n_features),
     constraint.lmo,
+    batch_size,
     callback=cb_sfw_lu_freund,
     tol=0,
     max_iter=max_iter,
