@@ -1,6 +1,4 @@
 """Module that contains randomized (also known as stochastic) algorithms."""
-from random import randint
-
 import numpy as np
 from scipy import sparse, optimize
 
@@ -806,13 +804,16 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
     assert x.shape == (n_features,)
-    A = sparse.csr_matrix(A).copy()
+    A_csr = sparse.csr_matrix(A).copy()
+    A_data = A_csr.data
+    A_indptr = A_csr.indptr
+    A_indices = A_csr.indices
 
     dual_var = np.zeros(n_samples)  # alpha_t in [NDTELP2020]
     grad_agg = np.zeros(n_features)  # r_t in [NDTELP2020]
 
     if variant == 'LF':
-        agg = utils.safe_sparse_dot(A, x)  # sigma_t in [LF2020]
+        agg = utils.safe_sparse_dot(A_csr, x)  # sigma_t in [LF2020]
 
     success = False
 
@@ -832,26 +833,30 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         dual_var_prev = dual_var[idx]
 
         if variant in {'SAG', 'SAGA'}:
-            p = A[idx].dot(x)
+            p = A_csr[idx].dot(x)
             dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
         elif variant == 'MHK':
-            p = A[idx].dot(x)
+            p = A_csr[idx].dot(x)
             dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
 
         elif variant == 'LF':
             update_direction, _ = lmo(-grad_agg, x)
-            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A[idx], update_direction + x) - agg[idx])
+            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A_csr[idx], update_direction + x) - agg[idx])
             dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
 
         # For all variants, update the aggregate gradient
-        grad_agg = utils.safe_sparse_add(grad_agg, (dual_var[idx] - dual_var_prev) * A[idx])
+        grad_agg_update = utils.csr_left_mul(dual_var[idx] - dual_var_prev,
+                                             A_data, A_indptr, A_indices, n_features, idx)
+        grad_agg = utils.safe_sparse_add(grad_agg, grad_agg_update)
 
         if variant in {'SAG', 'MHK'}:
             update_direction, _ = lmo(-grad_agg, x)
 
         elif variant == 'SAGA':
-            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * (dual_var[idx] - dual_var_prev) * A[idx])
+            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.csr_left_mul(dual_var[idx] - dual_var_prev,
+                                                                                            A_data, A_indptr, A_indices,
+                                                                                            n_features, idx))
             update_direction, _ = lmo(-grad_est, x)
 
         x += step_size_x * update_direction

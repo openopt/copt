@@ -77,6 +77,21 @@ def safe_sparse_add(a, b):
                 b = b.ravel()
         return a + b
 
+@njit
+def csr_left_mul(x, data, indptr, indices, d, idx):
+    """
+    :param x: numpy.ndarray
+    :param A: scipy.sparse.csr_matrix
+    :return: x.dot(A)
+    """
+    res = np.zeros(d)
+    assert x.shape[0] == len(idx)
+    for k, i in np.ndenumerate(idx):
+        for j in range(indptr[i], indptr[i+1]):
+            j_idx = indices[j]
+            res[j_idx] += x[k] * data[j]
+    return res
+
 
 def parse_step_size(step_size):
     if hasattr(step_size, "__len__") and len(step_size) == 2:
