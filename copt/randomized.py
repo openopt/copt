@@ -720,7 +720,6 @@ def step_size_sfw(variant):
 SFW_VARIANTS = {'SAG', 'SAGA', 'MHK', 'LF'}
 
 
-@profile
 def minimize_sfw(
         f_deriv,
         A,
