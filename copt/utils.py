@@ -77,12 +77,17 @@ def safe_sparse_add(a, b):
                 b = b.ravel()
         return a + b
 
-@njit
-def csr_left_mul(x, data, indptr, indices, d, idx):
+@njit(nogil=True)
+def fast_csr_vm(x, data, indptr, indices, d, idx):
     """
-    :param x: numpy.ndarray
-    :param A: scipy.sparse.csr_matrix
-    :return: x.dot(A)
+
+    :param x:
+    :param data:
+    :param indptr:
+    :param indices:
+    :param d:
+    :param idx:
+    :return:
     """
     res = np.zeros(d)
     assert x.shape[0] == len(idx)
@@ -90,6 +95,25 @@ def csr_left_mul(x, data, indptr, indices, d, idx):
         for j in range(indptr[i], indptr[i+1]):
             j_idx = indices[j]
             res[j_idx] += x[k] * data[j]
+    return res
+
+
+@njit(nogil=True)
+def fast_csr_mv(data, indptr, indices, x, idx):
+    """
+
+    :param data:
+    :param indptr:
+    :param indices:
+    :param x:
+    :param idx:
+    :return:
+    """
+    res = np.zeros(len(idx))
+    for i, row_idx in np.ndenumerate(idx):
+        for k, j in enumerate(range(indptr[row_idx], indptr[row_idx+1])):
+            j_idx = indices[j]
+            res[i] += x[j_idx] * data[j]
     return res
 
 

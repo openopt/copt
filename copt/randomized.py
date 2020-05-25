@@ -720,6 +720,7 @@ def step_size_sfw(variant):
 SFW_VARIANTS = {'SAG', 'SAGA', 'MHK', 'LF'}
 
 
+@profile
 def minimize_sfw(
         f_deriv,
         A,
@@ -826,37 +827,38 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
     for it in range(max_iter):
         x_prev = x.copy()
-        # Batch size 1
         idx = np.random.choice(n_samples, batch_size)
 
         step_size_x, step_size_agg = step_size(it, n_samples)
         dual_var_prev = dual_var[idx]
 
         if variant in {'SAG', 'SAGA'}:
-            p = A_csr[idx].dot(x)
+            p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, idx)
             dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
 
         elif variant == 'MHK':
-            p = A_csr[idx].dot(x)
+            p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, idx)
             dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
 
         elif variant == 'LF':
             update_direction, _ = lmo(-grad_agg, x)
-            agg[idx] += step_size_agg * (utils.safe_sparse_dot(A_csr[idx], update_direction + x) - agg[idx])
+            agg[idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, update_direction + x,
+                                                          idx)
+                                         - agg[idx])
             dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
 
         # For all variants, update the aggregate gradient
-        grad_agg_update = utils.csr_left_mul(dual_var[idx] - dual_var_prev,
-                                             A_data, A_indptr, A_indices, n_features, idx)
+        grad_agg_update = utils.fast_csr_vm(dual_var[idx] - dual_var_prev,
+                                            A_data, A_indptr, A_indices, n_features, idx)
         grad_agg = utils.safe_sparse_add(grad_agg, grad_agg_update)
 
         if variant in {'SAG', 'MHK'}:
             update_direction, _ = lmo(-grad_agg, x)
 
         elif variant == 'SAGA':
-            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.csr_left_mul(dual_var[idx] - dual_var_prev,
-                                                                                            A_data, A_indptr, A_indices,
-                                                                                            n_features, idx))
+            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.fast_csr_vm(dual_var[idx] - dual_var_prev,
+                                                                                           A_data, A_indptr, A_indices,
+                                                                                           n_features, idx))
             update_direction, _ = lmo(-grad_est, x)
 
         x += step_size_x * update_direction
