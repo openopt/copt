@@ -80,14 +80,17 @@ def safe_sparse_add(a, b):
 @njit(nogil=True)
 def fast_csr_vm(x, data, indptr, indices, d, idx):
     """
+    Returns the vector matrix product x * M[idx]. M is described
+    in the csr format.
 
-    :param x:
-    :param data:
-    :param indptr:
-    :param indices:
-    :param d:
-    :param idx:
-    :return:
+    Returns x * M[idx]
+
+    x: 1-d iterable
+    data: data field of a scipy.sparse.csr_matrix
+    indptr: indptr field of a scipy.sparse.csr_matrix
+    indices: indices field of a scipy.sparse.csr_matrix
+    d: output dimension
+    idx: 1-d iterable: index of the sparse.csr_matrix
     """
     res = np.zeros(d)
     assert x.shape[0] == len(idx)
@@ -101,14 +104,16 @@ def fast_csr_vm(x, data, indptr, indices, d, idx):
 @njit(nogil=True)
 def fast_csr_mv(data, indptr, indices, x, idx):
     """
+    Returns the matrix vector product M[idx] * x. M is described
+    in the csr format.
 
-    :param data:
-    :param indptr:
-    :param indices:
-    :param x:
-    :param idx:
-    :return:
+    data: data field of a scipy.sparse.csr_matrix
+    indptr: indptr field of a scipy.sparse.csr_matrix
+    indices: indices field of a scipy.sparse.csr_matrix
+    x: 1-d iterable
+    idx: 1-d iterable: index of the sparse.csr_matrix
     """
+
     res = np.zeros(len(idx))
     for i, row_idx in np.ndenumerate(idx):
         for k, j in enumerate(range(indptr[row_idx], indptr[row_idx+1])):
