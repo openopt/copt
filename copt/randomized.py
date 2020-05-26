@@ -695,12 +695,14 @@ def _factory_sparse_vrtos(
 
 def step_size_sfw(variant):
     if variant in {'SAG', 'SAGA'}:
+        @utils.njit
         def step_sizes_SAG_A(t, n_samples=None):
             step_size_x = 2. / (t+2)
             return step_size_x, None
         return step_sizes_SAG_A
 
     if variant == 'MHK':
+        @utils.njit
         def step_sizes_MHK(t, n_samples=None):
             step_size_x = 1. / (t+1)
             step_size_agg = step_size_x ** (2/3)
@@ -708,6 +710,7 @@ def step_size_sfw(variant):
         return step_sizes_MHK
 
     if variant == 'LF':
+        @utils.njit
         def step_sizes_LF(t, n_samples=None):
             if n_samples is None:
                 raise ValueError("n_samples must be the number of samples in the dataset.")
@@ -757,8 +760,9 @@ def minimize_sfw(
 
       batch_size: int
           Size of the random subset (without replacement) to compute the stochastic gradient estimator.
+
       max_iter: int
-          Maximum number of gradient calls in the optimization.
+          Maximum number of passes on the dataset (epochs).
 
       tol: float
           Tolerance criterion. The algorithm will stop whenever the
@@ -803,17 +807,20 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
+    x = np.ascontiguousarray(x)
+
     assert x.shape == (n_features,)
-    A_csr = sparse.csr_matrix(A).copy()
-    A_data = A_csr.data
-    A_indptr = A_csr.indptr
-    A_indices = A_csr.indices
+
+    A = sparse.csr_matrix(A)
+    A_data = A.data
+    A_indptr = A.indptr
+    A_indices = A.indices
 
     dual_var = np.zeros(n_samples)  # alpha_t in [NDTELP2020]
     grad_agg = np.zeros(n_features)  # r_t in [NDTELP2020]
 
     if variant == 'LF':
-        agg = utils.safe_sparse_dot(A_csr, x)  # sigma_t in [LF2020]
+        agg = utils.safe_sparse_dot(A, x)  # sigma_t in [LF2020]
 
     success = False
 
@@ -824,49 +831,63 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         # then default according to variant
         step_size = step_size_sfw(variant)
 
+    step = 0
+
+    # Perform an epoch
     for it in range(max_iter):
-        x_prev = x.copy()
-        idx = np.random.choice(n_samples, batch_size)
+        # Shuffle in place
+        # np.random.shuffle(idx)
 
-        step_size_x, step_size_agg = step_size(it, n_samples)
-        dual_var_prev = dual_var[idx]
+        # Sample with replacement
+        idx = np.random.randint(n_samples, size=n_samples)
 
-        if variant in {'SAG', 'SAGA'}:
-            p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, idx)
-            dual_var[idx] = (1 / n_samples) * f_deriv(p, b[idx])
+        i = 0
+        while i < len(idx):
+            batch_idx = idx[i: min(i + batch_size, n_samples)]
 
-        elif variant == 'MHK':
-            p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, idx)
-            dual_var[idx] += step_size_agg * (f_deriv(p, b[idx]) - dual_var[idx])
+            x_prev = x.copy()
+            step_size_x, step_size_agg = step_size(step, n_samples)
+            dual_var_prev = dual_var[batch_idx]
 
-        elif variant == 'LF':
-            update_direction, _ = lmo(-grad_agg, x)
-            agg[idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, update_direction + x,
-                                                          idx)
-                                         - agg[idx])
-            dual_var[idx] = (1 / n_samples) * f_deriv(agg[idx], b[idx])
+            if variant in {'SAG', 'SAGA'}:
+                p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, batch_idx)
+                dual_var[batch_idx] = (1 / n_samples) * f_deriv(p, b[batch_idx])
 
-        # For all variants, update the aggregate gradient
-        grad_agg_update = utils.fast_csr_vm(dual_var[idx] - dual_var_prev,
-                                            A_data, A_indptr, A_indices, n_features, idx)
-        grad_agg = utils.safe_sparse_add(grad_agg, grad_agg_update)
+            elif variant == 'MHK':
+                p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, batch_idx)
+                dual_var[batch_idx] += step_size_agg * (f_deriv(p, b[batch_idx]) - dual_var[batch_idx])
 
-        if variant in {'SAG', 'MHK'}:
-            update_direction, _ = lmo(-grad_agg, x)
+            elif variant == 'LF':
+                update_direction, _ = lmo(-grad_agg, x)
+                agg[batch_idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, update_direction + x,
+                                                                     batch_idx)
+                                                   - agg[batch_idx])
+                dual_var[batch_idx] = (1 / n_samples) * f_deriv(agg[batch_idx], b[batch_idx])
 
-        elif variant == 'SAGA':
-            grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.fast_csr_vm(dual_var[idx] - dual_var_prev,
-                                                                                           A_data, A_indptr, A_indices,
-                                                                                           n_features, idx))
-            update_direction, _ = lmo(-grad_est, x)
+            # For all variants, update the aggregate gradient
+            grad_agg_update = utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
+                                                A_data, A_indptr, A_indices, n_features, batch_idx)
+            grad_agg = utils.safe_sparse_add(grad_agg, grad_agg_update)
 
-        x += step_size_x * update_direction
+            if variant in {'SAG', 'MHK'}:
+                update_direction, _ = lmo(-grad_agg, x)
 
-        if callback is not None:
-            callback(locals())
+            elif variant == 'SAGA':
+                grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
+                                                                                               A_data, A_indptr, A_indices,
+                                                                                               n_features, batch_idx))
+                update_direction, _ = lmo(-grad_est, x)
 
-        if np.abs(x - x_prev).sum() < tol:
-            success = True
-            break
+            x += step_size_x * update_direction
+
+            if callback is not None:
+                callback(locals())
+
+            if np.abs(x - x_prev).sum() < tol:
+                success = True
+                break
+            i += batch_size
+            step += 1
+
     message = ""
     return optimize.OptimizeResult(x=x, success=success, nit=it, message=message)
