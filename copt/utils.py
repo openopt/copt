@@ -362,7 +362,7 @@ class SquareLoss:
   The Squared loss is defined as
 
   .. math::
-      \frac{1}{2n}\|A x - b\|^2~,
+      \frac{1}{2n}\|A x - b\|^2 + \frac{1}{2} \alpha \|x\|^2 
 
   where :math:`\|\cdot\|` is the euclidean norm.
   """
