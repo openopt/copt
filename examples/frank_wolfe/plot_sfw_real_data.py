@@ -1,6 +1,6 @@
 """
-Comparison of variants of Stochastic FW
-===========================================
+Comparison of variants of Stochastic FW on real data
+====================================================
 
 The problem solved in this case is a L1 constrained logistic regression
 (sometimes referred to as sparse logistic regression).
