@@ -103,7 +103,7 @@ def test_sfw_gap_traceback(variant, loss_grad, alpha):
                                              fmt)
                                for fmt in ['coo', 'csr', 'csc', 'lil']])
 def test_sfw_sparse(variant, A):
-    """Check that SFW algorithms run on sparse data matrices and initial values."""
+    """Check that SFW algorithms run on sparse data matrices."""
 
     f = cp.utils.LogLoss(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
