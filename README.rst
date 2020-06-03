@@ -16,7 +16,7 @@ copt is an optimization library for Python. Its goal is to provide a high qualit
 
 
 
-`Docs <http://openopt.github.io/copt/>`_ | `Examples <http://openopt.github.io/copt/auto_examples/index.html>`_
+`Docs <http://openo.pt/copt/>`_ | `Examples <http://openo.pt/copt/auto_examples/index.html>`_
 
 
 
