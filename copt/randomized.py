@@ -617,7 +617,7 @@ def _factory_sparse_vrtos(
                 p += z[j_idx] * A_data[j]
 
             # .. gradient estimate ..
-            grad_i = f_deriv(p, b[i])
+            grad_i = f_deriv(np.array([p]), np.array([b[i]]))[0]
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
