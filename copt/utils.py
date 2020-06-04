@@ -205,7 +205,7 @@ class LogLoss:
   The logistic loss function is defined as
 
   .. math::
-      -\frac{1}{2 n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
+      -\frac{1}{n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
          + (1 - b_i) \log(1 - \sigma(\bs{a}_i^T \bs{x}))
 
   where :math:`\sigma` is the sigmoid function
