@@ -10,7 +10,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 
 
 try:
-    from numba import njit
+    from numba import njit, prange
 except ImportError:
     from functools import wraps
 
@@ -33,6 +33,8 @@ except ImportError:
                 return wrapper
 
             return inner_function
+    
+    prange = range
 
 
 def build_func_grad(jac, fun, args, eps):
@@ -203,7 +205,7 @@ class LogLoss:
   The logistic loss function is defined as
 
   .. math::
-      -\frac{1}{2 n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
+      -\frac{1}{n}\sum_{i=1}^n b_i \log(\sigma(\bs{a}_i^T \bs{x}))
          + (1 - b_i) \log(1 - \sigma(\bs{a}_i^T \bs{x}))
 
   where :math:`\sigma` is the sigmoid function
@@ -369,20 +371,19 @@ class LogLoss:
 
     @property
     def partial_deriv(self):
-        @njit
+        @njit(parallel=True)
         def log_deriv(p, y):
             # derivative of logistic loss
             # same as in lightning (with minus sign)
-            tmp = np.zeros_like(p)
-            phi = tmp.copy()
-
-            tmp[p > 0] = np.exp(-p[p > 0])
-            phi[p > 0] = -tmp[p > 0] / (1. + tmp[p > 0]) + 1 - y[p > 0]
-
-            tmp[p <= 0] = np.exp(p[p <= 0])
-            phi[p <= 0] = tmp[p <= 0] / (1. + tmp[p <= 0]) - y[p <= 0]
-
-            return phi
+            out = np.zeros_like(p)
+            for i in prange(p.size):
+                if p[i] < 0:
+                    exp_p = np.exp(p[i])
+                    out[i] = ((1 - y[i]) * exp_p - y[i]) / (1 + exp_p)
+                else:
+                    exp_nx = np.exp(-p[i])
+                    out[i] = ((1 - y[i]) - y[i] * exp_nx) / (1 + exp_nx)
+            return out
 
         return log_deriv
 
