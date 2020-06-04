@@ -379,7 +379,7 @@ class LogLoss:
             for i in prange(p.size):
                 if p[i] < 0:
                     exp_p = np.exp(p[i])
-                    out[i] = ((1 - y[i]) * exp_p - y[i]) / exp_p
+                    out[i] = ((1 - y[i]) * exp_p - y[i]) / (1 + exp_p)
                 else:
                     exp_nx = np.exp(-p[i])
                     out[i] = ((1 - y[i]) - y[i] * exp_nx) / (1 + exp_nx)
