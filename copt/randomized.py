@@ -832,14 +832,15 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         step_size = step_size_sfw(variant)
 
     step = 0
+    idx = np.arange(n_samples)
 
     # Perform an epoch
     for it in range(max_iter):
         # Shuffle in place
-        # np.random.shuffle(idx)
+        np.random.shuffle(idx)
 
         # Sample with replacement
-        idx = np.random.randint(n_samples, size=n_samples)
+        #idx = np.random.randint(n_samples, size=n_samples)
 
         i = 0
         while i < len(idx):
@@ -847,7 +848,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
             x_prev = x.copy()
             step_size_x, step_size_agg = step_size(step, n_samples)
-            dual_var_prev = dual_var[batch_idx]
+            dual_var_prev = dual_var[batch_idx].copy()
 
             if variant in {'SAG', 'SAGA'}:
                 p = utils.fast_csr_mv(A_data, A_indptr, A_indices, x, batch_idx)
@@ -867,7 +868,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
             # For all variants, update the aggregate gradient
             grad_agg_update = utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
                                                 A_data, A_indptr, A_indices, n_features, batch_idx)
-            grad_agg = utils.safe_sparse_add(grad_agg, grad_agg_update)
+            grad_agg += grad_agg_update
 
             if variant in {'SAG', 'MHK'}:
                 update_direction, _ = lmo(-grad_agg, x)
