@@ -176,7 +176,7 @@ def minimize_saga(
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 p += x[j_idx] * A_data[j]
-            grad_i = f_deriv(p, b[i])
+            grad_i = f_deriv(np.array([p]), np.array([b[i]]))[0]
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 grad_tmp[j_idx] = (grad_i - memory_gradient[i]) * A_data[j]
@@ -349,7 +349,7 @@ def minimize_svrg(
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 p += x[j_idx] * A_data[j]
-            grad_i = f_deriv(p, b[i])
+            grad_i = f_deriv(np.array([p]), np.array([b[i]]))[0]
             # .. gradient estimate (XXX difference) ..
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
@@ -368,8 +368,8 @@ def minimize_svrg(
                 p += x[j_idx] * A_data[j]
                 p_old += x_snapshot[j_idx] * A_data[j]
 
-            grad_i = f_deriv(p, b[i])
-            old_grad_i = f_deriv(p_old, b[i])
+            grad_i = f_deriv(np.array([p]), np.array([b[i]]))[0]
+            old_grad_i = f_deriv(np.array([p_old]), np.array([b[i]]))[0]
             for j in range(A_indptr[i], A_indptr[i + 1]):
                 j_idx = A_indices[j]
                 grad_tmp[j_idx] = (grad_i - old_grad_i) * A_data[j]
