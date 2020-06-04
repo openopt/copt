@@ -435,6 +435,13 @@ class SquareLoss:
         return loss, np.asarray(grad).ravel()
 
     @property
+    def partial_deriv(self):
+        @njit
+        def square_deriv(p, y):
+            return p - y
+        return square_deriv
+
+    @property
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
