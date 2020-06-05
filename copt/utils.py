@@ -79,6 +79,15 @@ def safe_sparse_add(a, b):
                 b = b.ravel()
         return a + b
 
+
+@njit(parallel=True)
+def sample_batches(n_samples, n_batches, batch_size):
+    idx = np.zeros(n_batches * batch_size, dtype=np.int32)
+    for k in prange(n_batches):
+        idx[k * batch_size:(k + 1) * batch_size] = np.random.choice(n_samples, size=batch_size, replace=False)
+    return idx
+
+
 @njit(nogil=True)
 def fast_csr_vm(x, data, indptr, indices, d, idx):
     """
