@@ -6,7 +6,6 @@ The problem solved in this case is a L1 constrained logistic regression
 (sometimes referred to as sparse logistic regression).
 """
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import copt as cp
@@ -16,9 +15,9 @@ np.random.seed(0)
 X, y = cp.datasets.load_rcv1("train")
 dataset_name = "RCV1"
 n_samples, n_features = X.shape
-batch_size = 100
-max_iter = int(1e1)
-freq = max(max_iter * n_samples // (batch_size * 1000), 1)
+batch_size = 400
+max_iter = int(1e2)
+freq = max(max_iter * n_samples // (batch_size * 100), 1)
 
 # .. objective function and regularizer ..
 f = cp.utils.LogLoss(X, y)
