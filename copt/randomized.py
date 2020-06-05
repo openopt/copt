@@ -837,7 +837,10 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     for it in range(max_iter):
 
         # Sample without replacement batch wise
-        idx = utils.sample_batches(n_samples, n_samples // batch_size, batch_size)
+        if batch_size == 1:
+            idx = np.random.randint(n_samples, size=n_samples)
+        else:
+            idx = utils.sample_batches(n_samples, n_samples // batch_size, batch_size)
 
         i = 0
         while i < len(idx):
