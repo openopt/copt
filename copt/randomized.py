@@ -840,7 +840,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         idx = utils.sample_batches(n_samples, n_samples // batch_size, batch_size)
 
         i = 0
-        while i < n_samples:
+        while i < len(idx):
             batch_idx = idx[i: min(i + batch_size, n_samples)]
 
             x_prev = x.copy()
