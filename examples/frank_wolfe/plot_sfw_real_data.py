@@ -6,6 +6,7 @@ The problem solved in this case is a L1 constrained logistic regression
 (sometimes referred to as sparse logistic regression).
 """
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import copt as cp
@@ -15,8 +16,8 @@ np.random.seed(0)
 X, y = cp.datasets.load_rcv1("train")
 dataset_name = "RCV1"
 n_samples, n_features = X.shape
-batch_size = 400
-max_iter = int(1e2)
+batch_size = 1000
+max_iter = int(1e3)
 freq = max(max_iter * n_samples // (batch_size * 100), 1)
 
 # .. objective function and regularizer ..
@@ -105,25 +106,25 @@ min_val = min(np.min(cb_SAG.trace_fx),
               np.min(cb_LF.trace_fx),
               )
 
-fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-fig.suptitle("Sparse Logistic Regression -- {}".format(dataset_name), fontweight="bold")
 
-ax1.plot(batch_size * freq * np.arange(len(cb_SAG.trace_gaps)), np.array(cb_SAG.trace_gaps) / max_gap, label="SFW -- SAG")
-ax1.plot(batch_size * freq * np.arange(len(cb_MHK.trace_gaps)), np.array(cb_MHK.trace_gaps) / max_gap, label='SFW -- Mokhtari et al. (2020)')
+fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+
+ax1.set_title("Sparse Logistic Regression -- {}".format(dataset_name), fontweight="bold")
 ax1.plot(batch_size * freq * np.arange(len(cb_LF.trace_gaps)), np.array(cb_LF.trace_gaps) / max_gap, label='SFW -- Lu and Freund (2020)')
+ax1.plot(batch_size * freq * np.arange(len(cb_MHK.trace_gaps)), np.array(cb_MHK.trace_gaps) / max_gap, label='SFW -- Mokhtari et al. (2020)')
+ax1.plot(batch_size * freq * np.arange(len(cb_SAG.trace_gaps)), np.array(cb_SAG.trace_gaps) / max_gap, label="SFW -- Negiar et al. (2020)")
 ax1.set_ylabel("Relative FW gap", fontweight="bold")
 ax1.set_yscale('log')
 ax1.grid()
 
 
-ax2.plot(batch_size * freq * np.arange(len(cb_SAG.trace_fx)), (np.array(cb_SAG.trace_fx) - min_val) / (max_val - min_val), label="SFW -- Ours")
-ax2.plot(batch_size * freq * np.arange(len(cb_MHK.trace_fx)), (np.array(cb_MHK.trace_fx) - min_val) / (max_val - min_val), label='SFW -- Mokhtari et al. (2018)')
 ax2.plot(batch_size * freq * np.arange(len(cb_LF.trace_fx)), (np.array(cb_LF.trace_fx) - min_val) / (max_val - min_val), label='SFW -- Lu and Freund (2020)')
+ax2.plot(batch_size * freq * np.arange(len(cb_MHK.trace_fx)), (np.array(cb_MHK.trace_fx) - min_val) / (max_val - min_val), label='SFW -- Mokhtari et al. (2018)')
+ax2.plot(batch_size * freq * np.arange(len(cb_SAG.trace_fx)), (np.array(cb_SAG.trace_fx) - min_val) / (max_val - min_val), label="SFW -- Négiar et al. (2020)")
 ax2.set_ylabel("Relative suboptimality", fontweight="bold")
 ax2.set_xlabel("Number of gradient evaluations", fontweight="bold")
 ax2.set_yscale("log")
-ax2.legend()
 ax2.grid()
+plt.legend()
 plt.show()
-
 print("Done.")
