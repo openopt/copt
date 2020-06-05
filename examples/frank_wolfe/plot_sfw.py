@@ -15,8 +15,8 @@ n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
-batch_size = 1
-max_iter = int(1e3)
+batch_size = 100
+max_iter = int(1e2)
 freq = max(max_iter * n_samples // (batch_size * 500), 1)
 
 # .. objective function and regularizer ..
