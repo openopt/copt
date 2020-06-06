@@ -696,14 +696,14 @@ def _factory_sparse_vrtos(
 def step_size_sfw(variant):
     if variant in {'SAG', 'SAGA'}:
         @utils.njit
-        def step_sizes_SAG_A(t, n_samples=None):
+        def step_sizes_SAG_A(t, n_samples=None, batch_size=1):
             step_size_x = 2. / (t+2)
             return step_size_x, None
         return step_sizes_SAG_A
 
     if variant == 'MHK':
         @utils.njit
-        def step_sizes_MHK(t, n_samples=None):
+        def step_sizes_MHK(t, n_samples=None, batch_size=1):
             step_size_x = 1. / (t+1)
             step_size_agg = step_size_x ** (2/3)
             return step_size_x, step_size_agg
@@ -711,11 +711,12 @@ def step_size_sfw(variant):
 
     if variant == 'LF':
         @utils.njit
-        def step_sizes_LF(t, n_samples=None):
+        def step_sizes_LF(t, n_samples=None, batch_size=1):
             if n_samples is None:
                 raise ValueError("n_samples must be the number of samples in the dataset.")
-            step_agg = 2 * n_samples / (2 * n_samples + t + 1)
-            step_x = 2 * (2 * n_samples + t) / ((t+1) * (4 * n_samples + t + 1))
+            m = n_samples / batch_size
+            step_x = 2 * (2 * m + t) / ((t+1) * (4 * m + t))
+            step_agg = 2 * m / (2 * m + t + 1)
             return step_x, step_agg
         return step_sizes_LF
 
@@ -836,10 +837,10 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     # Perform an epoch
     for it in range(max_iter):
 
-        # Sample without replacement batch wise
         if batch_size == 1:
             idx = np.random.randint(n_samples, size=n_samples)
         else:
+            # Sample without replacement batch wise
             idx = utils.sample_batches(n_samples, n_samples // batch_size, batch_size)
 
         i = 0
@@ -847,7 +848,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
             batch_idx = idx[i: min(i + batch_size, n_samples)]
 
             x_prev = x.copy()
-            step_size_x, step_size_agg = step_size(step, n_samples)
+            step_size_x, step_size_agg = step_size(step, n_samples, batch_size)
             dual_var_prev = dual_var[batch_idx].copy()
 
             if variant in {'SAG', 'SAGA'}:
@@ -860,7 +861,8 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
             elif variant == 'LF':
                 update_direction, _ = lmo(-grad_agg, x)
-                agg[batch_idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, update_direction + x,
+                extr_point = update_direction + x
+                agg[batch_idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, extr_point,
                                                                      batch_idx)
                                                    - agg[batch_idx])
                 dual_var[batch_idx] = (1 / n_samples) * f_deriv(agg[batch_idx], b[batch_idx])
