@@ -704,7 +704,7 @@ def step_size_sfw(variant):
     if variant == 'MHK':
         @utils.njit
         def step_sizes_MHK(t, n_samples=None, batch_size=1):
-            step_size_x = 1. / (t+1)
+            step_size_x = 2. / (t + 8)
             step_size_agg = step_size_x ** (2/3)
             return step_size_x, step_size_agg
         return step_sizes_MHK
