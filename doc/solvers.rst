@@ -203,3 +203,6 @@ Stochastic methods
 .. topic:: Examples:
 
    * :ref:`sphx_glr_auto_examples_plot_saga_vs_svrg.py`
+   * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sfw.py`
+   * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sfw_real_data.py:
+   
