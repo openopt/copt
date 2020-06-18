@@ -144,6 +144,6 @@ ax2.set_yscale('log')
 ax2.set_xscale("log")
 ax2.grid(True)
 
-plt.xlim(1, 4e8)
+plt.xlim(1e4, 4e8)
 plt.legend()
 plt.show()
