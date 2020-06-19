@@ -3,6 +3,8 @@ import numpy as np
 import pytest
 from scipy import optimize, sparse
 import copt as cp
+import copt.constraint
+import copt.loss
 
 np.random.seed(0)
 n_samples, n_features = 20, 16
@@ -14,7 +16,7 @@ b = A.dot(w) + np.random.randn(n_samples)
 # greater than 1
 b = np.abs(b / np.max(np.abs(b)))
 
-LOSS_FUNCS = [cp.utils.LogLoss]
+LOSS_FUNCS = [copt.loss.LogLoss]
 VARIANTS = ['SAGA', 'SAG', 'MHK', 'LF']
 BATCH_SIZES = [1, 10, n_samples]
 
@@ -26,10 +28,10 @@ def test_fw_api(variant, batch_size):
 
     # test that the algorithm does not fail if x0
     # is a tuple
-    f = cp.utils.LogLoss(A, b, 1.0 / n_samples)
+    f = copt.loss.LogLoss(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
     alpha = 1.0
-    l1ball = cp.utils.L1Ball(alpha)
+    l1ball = copt.constraint.L1Ball(alpha)
     cp.randomized.minimize_sfw(
         f.partial_deriv,
         A,
@@ -50,7 +52,7 @@ def test_sfw_l1(variant, loss_grad, alpha):
     """Test SFW algorithms with L1 constraint."""
     f = loss_grad(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
-    l1ball = cp.utils.L1Ball(alpha)
+    l1ball = copt.constraint.L1Ball(alpha)
     opt = cp.randomized.minimize_sfw(
         f.partial_deriv,
         A,
@@ -69,7 +71,7 @@ def test_sfw_l1(variant, loss_grad, alpha):
 def test_sfw_gap_traceback(variant, loss_grad, alpha):
     """Test outputting the FW gap for SFW algorithms."""
     f = loss_grad(A, b, 1.0 / n_samples)
-    l1ball = cp.utils.L1Ball(alpha)
+    l1ball = copt.constraint.L1Ball(alpha)
 
     def fw_gap(x):
         _, grad = f.f_grad(x)
@@ -105,10 +107,10 @@ def test_sfw_gap_traceback(variant, loss_grad, alpha):
 def test_sfw_sparse(variant, A):
     """Check that SFW algorithms run on sparse data matrices."""
 
-    f = cp.utils.LogLoss(A, b, 1.0 / n_samples)
+    f = copt.loss.LogLoss(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
     alpha = 1.0
-    l1ball = cp.utils.L1Ball(alpha)
+    l1ball = copt.constraint.L1Ball(alpha)
     cp.randomized.minimize_sfw(
         f.partial_deriv,
         A,

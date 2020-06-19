@@ -12,6 +12,9 @@ import numpy as np
 import copt as cp
 
 # .. datasets and their loading functions ..
+import copt.constraint
+import copt.loss
+
 datasets = [
     ("Gisette", cp.datasets.load_gisette, 6e3),
     ("RCV1", cp.datasets.load_rcv1, 2e4),
@@ -32,8 +35,8 @@ for dataset_title, load_data, alpha in datasets:
     X, y = load_data()
     n_samples, n_features = X.shape
 
-    l1_ball = cp.utils.L1Ball(alpha)
-    f = cp.utils.LogLoss(X, y)
+    l1_ball = copt.constraint.L1Ball(alpha)
+    f = copt.loss.LogLoss(X, y)
     x0 = np.zeros(n_features)
 
     for step, label, marker in variants_fw:

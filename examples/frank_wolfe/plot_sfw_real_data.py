@@ -11,6 +11,9 @@ import numpy as np
 import copt as cp
 
 # .. Load dataset ..
+import copt.constraint
+import copt.loss
+
 np.random.seed(0)
 X, y = cp.datasets.load_rcv1("train")
 dataset_name = "RCV1"
@@ -20,8 +23,8 @@ max_iter = int(1e4)
 freq = max(n_samples // (batch_size * 2), 1)
 
 # .. objective function and regularizer ..
-f = cp.utils.LogLoss(X, y)
-constraint = cp.utils.L1Ball(2e3)
+f = copt.loss.LogLoss(X, y)
+constraint = copt.constraint.L1Ball(2e3)
 
 # .. callbacks to track progress ..
 def fw_gap(x):
