@@ -248,9 +248,9 @@ def minimize_frank_wolfe(
                 certificate / (norm_update_direction * lipschitz_t), max_step_size
             )
             f_next, grad_next = func_and_grad(x + step_size * update_direction)
-        elif step == "oblivious":
+        elif step == "sublinear":
             # .. without knowledge of the Lipschitz constant ..
-            # .. we take the oblivious 2/(k+2) step-size ..
+            # .. we take the sublinear 2/(k+2) step-size ..
             step_size = 2.0 / (it + 2)
             f_next, grad_next = func_and_grad(x + step_size * update_direction)
         else:
