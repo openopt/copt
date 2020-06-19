@@ -15,6 +15,9 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 # datasets and their respective loading functions
+import copt.constraint
+import copt.loss
+
 datasets = [
     ("Gisette", cp.datasets.load_gisette),
     ("RCV1", cp.datasets.load_rcv1),
@@ -30,8 +33,8 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
     X, y = load_data()
     n_samples, n_features = X.shape
 
-    l1_ball = cp.utils.L1Ball(n_features / 2.0)
-    f = cp.utils.LogLoss(X, y)
+    l1_ball = copt.constraint.L1Ball(n_features / 2.0)
+    f = copt.loss.LogLoss(X, y)
     x0 = np.zeros(n_features)
 
     for i, (step, label, marker) in enumerate(

@@ -13,6 +13,8 @@ from scipy import misc
 from scipy import sparse
 from scipy.sparse import linalg as splinalg
 
+import copt.loss
+
 np.random.seed(0)
 
 img = misc.face(gray=True).astype(np.float)
@@ -34,7 +36,7 @@ n_samples = n_features
 
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False, tol=1e-3, maxiter=500)[0]
-f = cp.utils.SquareLoss(A, b)
+f = copt.loss.SquareLoss(A, b)
 step_size = 1.0 / f.lipschitz
 
 

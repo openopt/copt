@@ -14,6 +14,9 @@ import copt as cp
 # .. datasets and their loading functions ..
 # .. last value si the regularization parameter ..
 # .. which has been chosen to give 10% feature sparsity ..
+import copt.constraint
+import copt.loss
+
 datasets = (
     {
         "name": "RCV1",
@@ -59,8 +62,8 @@ for d in datasets:
     print(X.shape)
     n_samples, n_features = X.shape
 
-    l1_ball = cp.utils.L1Ball(d["alpha"])
-    f = cp.utils.LogLoss(X, y)
+    l1_ball = copt.constraint.L1Ball(d["alpha"])
+    f = copt.loss.LogLoss(X, y)
     x0 = np.zeros(n_features)
     x0[0] = d["alpha"]  # start from a (random) vertex
 

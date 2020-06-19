@@ -3,6 +3,9 @@ import copt as cp
 import numpy as np
 import pytest
 
+import copt.loss
+import copt.penalty
+
 np.random.seed(0)
 n_samples, n_features = 20, 10
 A = np.random.randn(n_samples, n_features)
@@ -18,8 +21,8 @@ all_solvers = (
     ["PDHG", cp.minimize_primal_dual, 1e-6],
 )
 
-loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
-penalty_funcs = [(None, None), (cp.utils.L1Norm, None), (None, cp.utils.L1Norm)]
+loss_funcs = [copt.loss.LogLoss, copt.loss.SquareLoss, copt.loss.HuberLoss]
+penalty_funcs = [(None, None), (copt.penalty.L1Norm, None), (None, copt.penalty.L1Norm)]
 
 
 def _get_prox(penalty):
