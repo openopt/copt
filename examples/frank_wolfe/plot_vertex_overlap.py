@@ -66,7 +66,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
             x0,
             l1_ball.lmo,
             callback=trace,
-            max_iter=50,
+            max_iter=int(1e4),
             step=step,
             verbose=True,
             lipschitz=f.lipschitz,
