@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import preprocessing
 
+import copt.loss
+import copt.penalty
+
 np.random.seed(0)
 
 n_samples, n_features = 100, 1002
@@ -41,7 +44,7 @@ b = (b + 1) // 2
 
 # .. compute the step-size ..
 max_iter = 5000
-f = cp.utils.LogLoss(A, b)
+f = copt.loss.LogLoss(A, b)
 step_size = 1. / f.lipschitz
 
 # .. run the solver for different values ..
@@ -52,8 +55,8 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print('beta = %s' % beta)
-    G1 = cp.utils.GroupL1(beta, groups[::2])
-    G2 = cp.utils.GroupL1(beta, groups[1::2])
+    G1 = copt.penalty.GroupL1(beta, groups[::2])
+    G2 = copt.penalty.GroupL1(beta, groups[1::2])
 
     def loss(x):
         return f(x) + G1(x) + G2(x)

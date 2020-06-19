@@ -3,6 +3,9 @@ Estimating a sparse and low rank matrix
 =======================================
 
 """
+import copt.loss
+import copt.penalty
+
 print(__doc__)
 import numpy as np
 from scipy.sparse import linalg as splinalg
@@ -51,7 +54,7 @@ b = A.dot(Sigma.ravel()) + sigma * np.random.randn(n_samples)
 
 # .. compute the step-size ..
 s = splinalg.svds(A, k=1, return_singular_vectors=False, tol=1e-3, maxiter=500)[0]
-f = cp.utils.HuberLoss(A, b)
+f = copt.loss.HuberLoss(A, b)
 step_size = 1.0 / f.lipschitz
 
 # .. run the solver for different values ..
@@ -67,8 +70,8 @@ all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_nols_time, all_trace_pdhg
 out_img = []
 for i, beta in enumerate(all_betas):
     print("beta = %s" % beta)
-    G1 = cp.utils.TraceNorm(beta, Sigma.shape)
-    G2 = cp.utils.L1Norm(beta)
+    G1 = copt.penalty.TraceNorm(beta, Sigma.shape)
+    G2 = copt.penalty.L1Norm(beta)
 
     def loss(x):
         return f(x) + G1(x) + G2(x)

@@ -12,14 +12,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # .. construct (random) dataset ..
+import copt.loss
+import copt.penalty
+
 n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
 
 # .. objective function and regularizer ..
-f = cp.utils.LogLoss(X, y)
-g = cp.utils.L1Norm(1.0 / n_samples)
+f = copt.loss.LogLoss(X, y)
+g = copt.penalty.L1Norm(1.0 / n_samples)
 
 # .. callbacks to track progress ..
 cb_saga = cp.utils.Trace(lambda x: f(x) + g(x))

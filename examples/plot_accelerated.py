@@ -10,12 +10,14 @@ import numpy as np
 import copt as cp
 
 # .. construct (random) dataset ..
+import copt.loss
+
 n_samples, n_features = 1000, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
 y = np.random.rand(n_samples)
 
-f = cp.utils.LogLoss(X, y)
+f = copt.loss.LogLoss(X, y)
 step_size = 1.0 / f.lipschitz
 
 cb_pgd = cp.utils.Trace(f)

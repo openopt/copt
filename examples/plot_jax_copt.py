@@ -14,6 +14,8 @@ from sklearn import datasets
 import copt as cp
 
 # .. construct (random) dataset ..
+import copt.penalty
+
 X, y = datasets.make_regression()
 n_samples, n_features = X.shape
 
@@ -31,7 +33,7 @@ f_grad = jax.value_and_grad(loss)
 
 w0 = onp.zeros(n_features)
 
-l1_ball = cp.utils.L1Norm(0.1)
+l1_ball = copt.penalty.L1Norm(0.1)
 cb = cp.utils.Trace(lambda x: loss(x) + l1_ball(x))
 sol = cp.minimize_proximal_gradient(
     f_grad, w0, prox=l1_ball.prox, callback=cb, jac=True

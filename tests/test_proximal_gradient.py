@@ -4,6 +4,9 @@ import numpy as np
 import pytest
 from scipy import optimize
 
+import copt.loss
+import copt.penalty
+
 np.random.seed(0)
 n_samples, n_features = 20, 10
 A = np.random.randn(n_samples, n_features)
@@ -21,8 +24,8 @@ def minimize_accelerated(*args, **kw):
     return cp.minimize_proximal_gradient(*args, **kw)
 
 
-loss_funcs = [cp.utils.LogLoss, cp.utils.SquareLoss, cp.utils.HuberLoss]
-penalty_funcs = [None, cp.utils.L1Norm]
+loss_funcs = [copt.loss.LogLoss, copt.loss.SquareLoss, copt.loss.HuberLoss]
+penalty_funcs = [None, copt.penalty.L1Norm]
 
 
 def test_gradient():
@@ -101,7 +104,7 @@ def test_callback(solver):
     def cb(_):
         return False
 
-    f = cp.utils.SquareLoss(A, b)
+    f = copt.loss.SquareLoss(A, b)
     opt = solver(f.f_grad, np.zeros(n_features), callback=cb)
     assert opt.nit < 2
 
@@ -115,7 +118,7 @@ def test_line_search(solver):
     def ls_wrong(_):
         return -10
 
-    ls_loss = cp.utils.SquareLoss(A, b)
+    ls_loss = copt.loss.SquareLoss(A, b)
 
     # define a function with unused arguments for the API
     def f_grad(x, r1, r2):

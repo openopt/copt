@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import sparse
 
+import copt.loss
+import copt.penalty
+
 np.random.seed(0)
 
 # .. generate some data ..
@@ -41,7 +44,7 @@ np.random.seed(0)
 n_samples = n_features
 
 # .. compute the step-size ..
-f = cp.utils.SquareLoss(A, b)
+f = copt.loss.SquareLoss(A, b)
 step_size = 1.0 / f.lipschitz
 
 # .. run the solver for different values ..
@@ -51,7 +54,7 @@ all_trace_ls, all_trace_nols = [], []
 out_img = []
 for i, beta in enumerate(all_betas):
     print("beta = %s" % beta)
-    G1 = cp.utils.GroupL1(beta, groups)
+    G1 = copt.penalty.GroupL1(beta, groups)
 
     def loss(x):
         return f(x) + G1(x)

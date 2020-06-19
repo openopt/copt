@@ -13,6 +13,9 @@ import sklearn
 
 
 # .. construct (random) dataset ..
+import copt.constraint
+import copt.loss
+
 n_samples, n_features = 500, 200
 np.random.seed(0)
 X = np.random.randn(n_samples, n_features)
@@ -23,8 +26,8 @@ max_iter = int(1e6)
 freq = max(n_batches, max_iter // 1000)
 
 # .. objective function and regularizer ..
-f = cp.utils.LogLoss(X, y)
-constraint = cp.utils.L1Ball(1.)
+f = copt.loss.LogLoss(X, y)
+constraint = copt.constraint.L1Ball(1.)
 
 
 # .. callbacks to track progress ..

@@ -1,22 +1,24 @@
 import numpy as np
 import copt as cp
+import copt.constraint
+import copt.penalty
 from copt import tv_prox
 from numpy import testing
 import pytest
 
 proximal_penalties = [
-    cp.utils.L1Norm(1.0),
-    cp.utils.GroupL1(1.0, np.array_split(np.arange(16), 5)),
-    cp.utils.TraceNorm(1.0, (4, 4)),
-    cp.utils.TraceBall(1.0, (4, 4)),
-    cp.utils.TotalVariation2D(1.0, (4, 4)),
-    cp.utils.FusedLasso(1.0),
+    copt.penalty.L1Norm(1.0),
+    copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
+    copt.penalty.TraceNorm(1.0, (4, 4)),
+    copt.constraint.TraceBall(1.0, (4, 4)),
+    copt.penalty.TotalVariation2D(1.0, (4, 4)),
+    copt.penalty.FusedLasso(1.0),
 ]
 
 
 def test_GroupL1():
     groups = [(0, 1), (2, 3)]
-    g1 = cp.utils.GroupL1(1.0, groups)
+    g1 = copt.penalty.GroupL1(1.0, groups)
     _, B = g1.prox_factory(5)
     assert np.all(
         B.toarray()
@@ -30,7 +32,7 @@ def test_GroupL1():
     )
 
     groups = [(0, 1), (3, 4)]
-    g2 = cp.utils.GroupL1(1.0, groups)
+    g2 = copt.penalty.GroupL1(1.0, groups)
     _, B = g2.prox_factory(5)
     assert np.all(
         B.toarray()
