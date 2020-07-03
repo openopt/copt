@@ -91,7 +91,7 @@ def bisection(kw):
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", LOSS_FUNCS)
-@pytest.mark.parametrize("step", ["DR", "backtracking", "oblivious", bisection])
+@pytest.mark.parametrize("step", ["DR", "backtracking", "sublinear", bisection])
 def test_fw_backtrack(obj, step, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
