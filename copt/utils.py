@@ -2,6 +2,7 @@ import numpy as np
 from scipy import sparse
 from scipy import optimize
 from datetime import datetime
+from sklearn.utils.extmath import safe_sparse_dot
 
 try:
     from numba import njit, prange
