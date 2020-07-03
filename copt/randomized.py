@@ -731,7 +731,7 @@ def minimize_sfw(
         x0,
         lmo,
         batch_size=1,
-        step_size=None,
+        step_size="sublinear",
         max_iter=500,
         tol=1e-6,
         verbose=False,
@@ -828,8 +828,8 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     if callback is not None:
         callback(locals())
 
-    if step_size is None:
-        # then default according to variant
+    if step_size == 'sublinear':
+        # then use sublinear step size according to variant
         step_size = step_size_sfw(variant)
 
     step = 0
