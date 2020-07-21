@@ -47,23 +47,20 @@ class L1Ball:
         )
 
         u_active = -u * np.sign(x)
-        ma_u_active = ma.array(u_active, mask=(u_active == 0))
+        ma_u_active = ma.array(u_active, mask=(x== 0) + (u_active==0))
         largest_active = np.argmax(ma_u_active)
         if largest_active == largest_coordinate:
             # .. if s and v are the same vertex ..
             # .. take a FW step ..
             update_direction -= x
             max_step_size = 1.0
+            return update_direction, max_step_size
         if u_active[largest_active] > 0:
             update_direction[largest_active] -= self.alpha * np.sign(x[largest_active])
             max_step_size = np.abs(x[largest_active]) / self.alpha
         else:
-            # the zero vertex wins
-            max_step_size = max(self.alpha - np.sum(np.abs(x)), 0) / self.alpha
-            if max_step_size == 0:
-                # .. early termination ..
-                update_direction[:] = 0
-
+            # the zero vertex wins: direction = s_t
+            max_step_size = 1.
         return update_direction, max_step_size
 
     # def lmo_away(self, u, x):
