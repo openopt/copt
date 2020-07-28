@@ -102,7 +102,7 @@ def minimize_three_split(
 
     if prox_1 is None:
 
-        def prox_1(x, s, args):
+        def prox_1(x, s, *args):
             return x
 
     if prox_2 is None:
