@@ -60,7 +60,7 @@ def minimize_proximal_gradient(
 
     args : tuple, optional
         Extra arguments passed to the objective function and its
-        derivatives (`fun`, `jac` and `hess` functions).
+        derivatives.
 
     tol: float, optional
         Tolerance of the optimization procedure. The iteration stops when the gradient mapping
