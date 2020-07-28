@@ -4,6 +4,7 @@ doc/auto_examples
 doc/generated
 .coverage
 .vscode
+.mypy_cache/
 copt.egg-info
 __pycache__
 .pytest_cache/

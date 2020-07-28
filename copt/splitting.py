@@ -19,6 +19,7 @@ def minimize_three_split(
     max_iter_backtracking=100,
     backtracking_factor=0.7,
     h_Lipschitz=None,
+    *args
 ):
     """Davis-Yin three operator splitting method.
 
@@ -26,8 +27,8 @@ def minimize_three_split(
 
               minimize_x f(x) + g(x) + h(x)
 
-  where f is a smooth function and g is a (possibly non-smooth)
-  function for which the proximal operator is known.
+  where f is a smooth function and g and h are (possibly non-smooth)
+  functions for which the proximal operator is known.
 
   Args:
     f_grad: callable
@@ -51,19 +52,25 @@ def minimize_three_split(
     max_iter : int
       Maximum number of iterations.
 
-    line_search : boolean
-      Whether to perform line-search to estimate the step size.
-
     verbose : int
       Verbosity level, from 0 (no output) to 2 (output on each iteration)
-
-    step_size : float
-      Starting value for the line-search procedure.
 
     callback : callable.
       callback function (optional). Takes a single argument (x) with the
       current coefficients in the algorithm. The algorithm will exit if
       callback returns False.
+
+    line_search : boolean
+      Whether to perform line-search to estimate the step size.
+
+    step_size : float
+      Starting value for the line-search procedure.
+
+    max_iter_backtracking: int
+      maximun number of backtracking iterations.  Used in line search.
+
+    backtracking_factor: float
+      the amount to backtrack by during line search.
 
 
   Returns:
@@ -104,17 +111,17 @@ def minimize_three_split(
         line_search = True
         step_size = 1.0 / utils.init_lipschitz(f_grad, x0)
 
-    z = prox_2(x0, step_size)
+    z = prox_2(x0, step_size, *args)
     LS_EPS = np.finfo(np.float).eps
 
     fk, grad_fk = f_grad(z)
-    x = prox_1(z - step_size * grad_fk, step_size)
+    x = prox_1(z - step_size * grad_fk, step_size, *args)
     u = np.zeros_like(x)
 
     for it in range(max_iter):
 
         fk, grad_fk = f_grad(z)
-        x = prox_1(z - step_size * (u + grad_fk), step_size)
+        x = prox_1(z - step_size * (u + grad_fk), step_size, *args)
         incr = x - z
         norm_incr = np.linalg.norm(incr)
         ls = norm_incr > 1e-7 and line_search
@@ -130,7 +137,7 @@ def minimize_three_split(
                 else:
                     step_size *= backtracking_factor
 
-        z = prox_2(x + step_size * u, step_size)
+        z = prox_2(x + step_size * u, step_size, *args)
         u += (x - z) / step_size
         certificate = norm_incr / step_size
 
