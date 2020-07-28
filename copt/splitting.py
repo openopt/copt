@@ -140,7 +140,7 @@ def minimize_three_split(
                 else:
                     step_size *= backtracking_factor
 
-        z = prox_2(x + step_size * u, step_size, *args)
+        z = prox_2(x + step_size * u, step_size, *args_prox)
         u += (x - z) / step_size
         certificate = norm_incr / step_size
 
