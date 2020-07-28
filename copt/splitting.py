@@ -19,7 +19,7 @@ def minimize_three_split(
     max_iter_backtracking=100,
     backtracking_factor=0.7,
     h_Lipschitz=None,
-    *args
+    args_prox=(),
 ):
     """Davis-Yin three operator splitting method.
 
@@ -72,6 +72,9 @@ def minimize_three_split(
     backtracking_factor: float
       the amount to backtrack by during line search.
 
+    args_prox: tuple
+      optional Extra arguments passed to the prox functions
+
 
   Returns:
     res : OptimizeResult
@@ -99,29 +102,29 @@ def minimize_three_split(
 
     if prox_1 is None:
 
-        def prox_1(x, s):
+        def prox_1(x, s, args):
             return x
 
     if prox_2 is None:
 
-        def prox_2(x, s):
+        def prox_2(x, s, *args):
             return x
 
     if step_size is None:
         line_search = True
         step_size = 1.0 / utils.init_lipschitz(f_grad, x0)
 
-    z = prox_2(x0, step_size, *args)
+    z = prox_2(x0, step_size, *args_prox)
     LS_EPS = np.finfo(np.float).eps
 
     fk, grad_fk = f_grad(z)
-    x = prox_1(z - step_size * grad_fk, step_size, *args)
+    x = prox_1(z - step_size * grad_fk, step_size, *args_prox)
     u = np.zeros_like(x)
 
     for it in range(max_iter):
 
         fk, grad_fk = f_grad(z)
-        x = prox_1(z - step_size * (u + grad_fk), step_size, *args)
+        x = prox_1(z - step_size * (u + grad_fk), step_size, *args_prox)
         incr = x - z
         norm_incr = np.linalg.norm(incr)
         ls = norm_incr > 1e-7 and line_search
