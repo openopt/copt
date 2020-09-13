@@ -3,8 +3,6 @@ import numpy as np
 import pytest
 from scipy import optimize
 import copt as cp
-import copt.constraint
-import copt.loss
 
 np.random.seed(0)
 n_samples, n_features = 20, 16
@@ -16,7 +14,7 @@ b = A.dot(w) + np.random.randn(n_samples)
 # greater than 1
 b = np.abs(b / np.max(np.abs(b)))
 
-LOSS_FUNCS = [copt.loss.LogLoss, copt.loss.SquareLoss]
+LOSS_FUNCS = [cp.loss.LogLoss, cp.loss.SquareLoss]
 
 
 def test_fw_api():
@@ -24,10 +22,10 @@ def test_fw_api():
 
     # test that the algorithm does not fail if x0
     # is a tuple
-    f = copt.loss.LogLoss(A, b, 1.0 / n_samples)
+    f = cp.loss.LogLoss(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
     alpha = 1.0
-    l1ball = copt.constraint.L1Ball(alpha)
+    l1ball = cp.constraint.L1Ball(alpha)
     cp.minimize_frank_wolfe(
         f.f_grad,
         [0] * n_features,
@@ -49,7 +47,7 @@ def test_fw_l1(loss_grad, alpha):
     """Test result of FW algorithm with L1 constraint."""
     f = loss_grad(A, b, 1.0 / n_samples)
     cb = cp.utils.Trace(f)
-    l1ball = copt.constraint.L1Ball(alpha)
+    l1ball = cp.constraint.L1Ball(alpha)
     opt = cp.minimize_frank_wolfe(
         f.f_grad,
         np.zeros(n_features),
@@ -64,6 +62,18 @@ def test_fw_l1(loss_grad, alpha):
     grad = f.f_grad(opt.x)[1]
     grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
     assert np.linalg.norm(grad_map) < 0.3
+
+
+def test_callback():
+    """Make sure that the algorithm exists when the callback returns False."""
+
+    def cb(_):
+        return False
+
+    l1ball = cp.constraint.L1Ball(1)
+    f = cp.loss.SquareLoss(A, b)
+    opt = cp.minimize_frank_wolfe(f.f_grad, np.zeros(n_features), l1ball.lmo, callback=cb)
+    assert opt.nit < 2
 
 
 def bisection(kw):
@@ -95,7 +105,7 @@ def bisection(kw):
 def test_fw_backtrack(obj, step, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
-    traceball = copt.constraint.TraceBall(alpha, (4, 4))
+    traceball = cp.constraint.TraceBall(alpha, (4, 4))
     opt = cp.minimize_frank_wolfe(
         f.f_grad,
         np.zeros(n_features),
@@ -120,7 +130,7 @@ def test_pairwise_fw(obj, step, alpha):
     """Test the Pairwise FW method."""
     f = obj(A, b, 1.0 / n_samples)
 
-    l1ball = copt.constraint.L1Ball(alpha)
+    l1ball = cp.constraint.L1Ball(alpha)
     x0 = np.zeros(A.shape[1])
     x0[0] = alpha
     cb = cp.utils.Trace(f)

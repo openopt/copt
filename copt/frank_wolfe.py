@@ -256,7 +256,8 @@ def minimize_frank_wolfe(
         else:
             raise ValueError("Invalid option step=%s" % step)
         if callback is not None:
-            callback(locals())
+            if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
+                break
         x += step_size * update_direction
 
         old_f_t = f_t
