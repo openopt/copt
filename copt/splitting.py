@@ -196,14 +196,23 @@ def minimize_primal_dual(
           it should return only the function value.
 
       prox_1 : callable of the form prox_1(x, alpha)
-          prox_1(x, alpha) returns the proximal operator of g at x
+          prox_1(x, alpha, *args) returns the proximal operator of g at x
+          with parameter alpha.
+
+      prox_2 : callable or None
+          prox_2(y, alpha, *args) returns the proximal operator of h at y
           with parameter alpha.
 
       x0 : array-like
           Initial guess of solution.
 
-      L : ndarray or sparse matrix
-          Linear operator inside the h term.
+      L : array-like or linear operator
+          Linear operator inside the h term. It may be any of the following types:
+             - ndarray
+             - matrix
+             - sparse matrix (e.g. csr_matrix, lil_matrix, etc.)
+             - LinearOperator
+             - An object with .shape and .matvec attributes
 
       max_iter : int
           Maximum number of iterations.
@@ -235,14 +244,13 @@ def minimize_primal_dual(
     """
     x = np.array(x0, copy=True)
     n_features = x.size
+
     if L is None:
         L = sparse.eye(n_features, n_features, format="csr")
+    L = sparse.linalg.aslinearoperator(L)
 
-        def Ldot(x):
-            return x
+    y = L.matvec(x)
 
-        Ltdot = Ldot
-    y = L.dot(x)
     success = False
     if not max_iter_ls > 0:
         raise ValueError("Line search iterations need to be greater than 0")
@@ -275,15 +283,15 @@ def minimize_primal_dual(
     x_next = x.copy()
 
     for it in range(max_iter):
-        y_next = prox_2_conj(y + tau * Ldot(x), tau)
+        y_next = prox_2_conj(y + tau * L.matvec(x), tau)
         if line_search:
             tau_next = tau * np.sqrt(1 + theta)
             while True:
                 theta = tau_next / tau
                 sigma = ss_ratio * tau_next
                 y_bar = y_next + theta * (y_next - y)
-                x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
-                incr_x = np.linalg.norm(Ltdot(x_next) - Ltdot(x))
+                x_next = prox_1(x - sigma * (L.rmatvec(y_bar) + grad_fk), sigma)
+                incr_x = np.linalg.norm(L.matvec(x_next) - L.matvec(x))
                 if incr_x <= 1e-10:
                     break
 
@@ -297,7 +305,7 @@ def minimize_primal_dual(
                     tau_next *= 0.5
         else:
             y_bar = 2 * y_next - y
-            x_next = prox_1(x - sigma * (Ltdot(y_bar) + grad_fk), sigma)
+            x_next = prox_1(x - sigma * (L.rmatvec(y_bar) + grad_fk), sigma)
             f_next, f_grad_next = f_grad(x_next)
 
         if it % 100 == 0:
@@ -321,4 +329,4 @@ def minimize_primal_dual(
             RuntimeWarning,
         )
 
-    return optimize.OptimizeResult(x=y, success=success, nit=it, certificate=norm_incr)
+    return optimize.OptimizeResult(x=x, success=success, nit=it, certificate=norm_incr)
