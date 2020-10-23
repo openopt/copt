@@ -22,7 +22,7 @@ class LogLoss:
   class labels, it should have the values 0 or 1.
 
   References:
-    http://fa.bianp.net/drafts/derivatives_logistic.html
+    http://fa.bianp.net/blog/2019/evaluate_logistic/
   """
 
     def __init__(self, A, b, alpha=0.0):

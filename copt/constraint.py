@@ -66,27 +66,6 @@ class L1Ball:
 
         return update_direction, max_step_size
 
-    # def lmo_away(self, u, x):
-    #     raise NotImplementedError
-    #     u2 = active_set = np.concatenate((u, -u))
-    #     active_set = np.concatenate((x > 0, x < 0))
-    #     largest_coordinate = np.argmax(u2)
-
-    #     u2_active = ma.array(u2, mask=(active_set == 0))
-    #     largest_active = np.argmax(-u2_active)
-
-    #     update_direction = np.zeros_like(x)
-    #     sign_largest = 1 if largest_coordinate < len(u) else -1
-    #     idx_largest = largest_coordinate - len(u) * (largest_coordinate >= len(u))
-    #     update_direction[idx_largest] = self.alpha * sign_largest
-
-    #     idx_largest_active = largest_active - len(u) * (largest_active >= len(u))
-    #     sign_active = 1 if largest_active < len(u) else -1
-    #     update_direction[idx_largest_active] -= self.alpha * sign_active
-
-    #     max_step_size = active_set[largest_active]
-
-    #     return update_direction, max_step_size
 
 
 class SimplexConstraint:

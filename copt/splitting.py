@@ -23,79 +23,79 @@ def minimize_three_split(
 ):
     """Davis-Yin three operator splitting method.
 
-  This algorithm can solve problems of the form
+    This algorithm can solve problems of the form
 
-              minimize_x f(x) + g(x) + h(x)
+                minimize_x f(x) + g(x) + h(x)
 
-  where f is a smooth function and g and h are (possibly non-smooth)
-  functions for which the proximal operator is known.
+    where f is a smooth function and g and h are (possibly non-smooth)
+    functions for which the proximal operator is known.
 
-  Args:
-    f_grad: callable
-      Returns the function value and gradient of the objective function.
-      With return_gradient=False, returns only the function value.
+    Args:
+      f_grad: callable
+        Returns the function value and gradient of the objective function.
+        With return_gradient=False, returns only the function value.
 
-    x0 : array-like
-      Initial guess
+      x0 : array-like
+        Initial guess
 
-    prox_1 : callable or None
-      prox_1(x, alpha, *args) returns the proximal operator of g at xa
-      with parameter alpha.
+      prox_1 : callable or None
+        prox_1(x, alpha, *args) returns the proximal operator of g at xa
+        with parameter alpha.
 
-    prox_2 : callable or None
-      prox_2(x, alpha, *args) returns the proximal operator of g at xa
-      with parameter alpha.
+      prox_2 : callable or None
+        prox_2(x, alpha, *args) returns the proximal operator of g at xa
+        with parameter alpha.
 
-    tol: float
-      Tolerance of the stopping criterion.
+      tol: float
+        Tolerance of the stopping criterion.
 
-    max_iter : int
-      Maximum number of iterations.
+      max_iter : int
+        Maximum number of iterations.
 
-    verbose : int
-      Verbosity level, from 0 (no output) to 2 (output on each iteration)
+      verbose : int
+        Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-    callback : callable.
-      callback function (optional). Takes a single argument (x) with the
-      current coefficients in the algorithm. The algorithm will exit if
-      callback returns False.
+      callback : callable.
+        callback function (optional). Takes a single argument (x) with the
+        current coefficients in the algorithm. The algorithm will exit if
+        callback returns False.
 
-    line_search : boolean
-      Whether to perform line-search to estimate the step size.
+      line_search : boolean
+        Whether to perform line-search to estimate the step size.
 
-    step_size : float
-      Starting value for the line-search procedure.
+      step_size : float
+        Starting value for the line-search procedure.
 
-    max_iter_backtracking: int
-      maximun number of backtracking iterations.  Used in line search.
+      max_iter_backtracking: int
+        maximun number of backtracking iterations.  Used in line search.
 
-    backtracking_factor: float
-      the amount to backtrack by during line search.
+      backtracking_factor: float
+        the amount to backtrack by during line search.
 
-    args_prox: tuple
-      optional Extra arguments passed to the prox functions
-
-
-  Returns:
-    res : OptimizeResult
-      The optimization result represented as a
-      ``scipy.optimize.OptimizeResult`` object. Important attributes are:
-      ``x`` the solution array, ``success`` a Boolean flag indicating if
-      the optimizer exited successfully and ``message`` which describes
-      the cause of the termination. See `scipy.optimize.OptimizeResult`
-      for a description of other attributes.
+      args_prox: tuple
+        optional Extra arguments passed to the prox functions
 
 
-  References:
-    [1] Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and
-    its optimization applications."
-    <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued and Variational
-    Analysis, 2017.
+    Returns:
+      res : OptimizeResult
+        The optimization result represented as a
+        ``scipy.optimize.OptimizeResult`` object. Important attributes are:
+        ``x`` the solution array, ``success`` a Boolean flag indicating if
+        the optimizer exited successfully and ``message`` which describes
+        the cause of the termination. See `scipy.optimize.OptimizeResult`
+        for a description of other attributes.
 
-    [2] Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator
-    Splitting." <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th
-    International Conference on Machine Learning, 2018.
-  """
+
+    References:
+      [1] Davis, Damek, and Wotao Yin. `"A three-operator splitting scheme and
+      its optimization applications."
+      <https://doi.org/10.1007/s11228-017-0421-z>`_ Set-Valued and Variational
+      Analysis, 2017.
+
+      [2] Pedregosa, Fabian, and Gauthier Gidel. `"Adaptive Three Operator
+      Splitting." <https://arxiv.org/abs/1804.02339>`_ Proceedings of the 35th
+      International Conference on Machine Learning, 2018.
+    """
     success = False
     if not max_iter_backtracking > 0:
         raise ValueError("Line search iterations need to be greater than 0")
@@ -184,7 +184,7 @@ def minimize_primal_dual(
 
     This method for optimization problems of the form
 
-            minimize_x f(x) + alpha * g(x) + beta * h(L x)
+            minimize_x f(x) + g(x) + h(L x)
 
     where f is a smooth function and g is a (possibly non-smooth)
     function for which the proximal operator is known.
@@ -235,12 +235,17 @@ def minimize_primal_dual(
           for a description of other attributes.
 
     References
-      Condat, Laurent. "A primal-dual splitting method for convex optimization
-      involving Lipschitzian, proximable and linear composite terms." Journal of
-      Optimization Theory and Applications (2013).
+        The implemented algorithm corresponds to Algorithm 4 in:
+        Malitsky, Yura, and Thomas Pock. "A first-order primal-dual algorithm with
+        linesearch." SIAM Journal on Optimization (2018)
 
-      Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
-      first-order primal-dual algorithm." Mathematical Programming (2015)
+        Condat, Laurent. "A primal-dual splitting method for convex optimization
+        involving Lipschitzian, proximable and linear composite terms." Journal of
+        Optimization Theory and Applications (2013).
+
+        Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
+        first-order primal-dual algorithm." Mathematical Programming (2015)
+
     """
     x = np.array(x0, copy=True)
     n_features = x.size
@@ -274,9 +279,9 @@ def minimize_primal_dual(
     delta = 0.99
     sigma = step_size
     tau = step_size2
+    ss_ratio = 0.5
     if tau is None:
-        tau = 0.5 * sigma
-    ss_ratio = sigma / tau
+        tau = ss_ratio * sigma
 
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
@@ -285,7 +290,7 @@ def minimize_primal_dual(
     for it in range(max_iter):
         y_next = prox_2_conj(y + tau * L.matvec(x), tau)
         if line_search:
-            tau_next = tau * np.sqrt(1 + theta)
+            tau_next = tau * np.sqrt(1 + 0.5 * theta)
             while True:
                 theta = tau_next / tau
                 sigma = ss_ratio * tau_next
