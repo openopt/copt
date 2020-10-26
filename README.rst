@@ -5,7 +5,7 @@
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 .. image:: https://storage.googleapis.com/copt-doc/doc_status.svg
-   :target: https://storage.googleapis.com/copt-doc/index.html
+   :target: http://openo.pt/copt/
 .. image:: https://storage.googleapis.com/copt-doc/pylint.svg
    :target: https://storage.googleapis.com/copt-doc/pylint.txt
 
