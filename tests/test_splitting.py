@@ -37,7 +37,7 @@ def _get_prox(penalty):
 @pytest.mark.parametrize("name_solver, solver, tol", all_solvers)
 @pytest.mark.parametrize("loss", loss_funcs)
 @pytest.mark.parametrize("penalty", penalty_funcs)
-def test_optimize(name_solver, solver, tol, loss, penalty):
+def test_primal_dual_certificate(name_solver, solver, tol, loss, penalty):
     """Test a method on both the backtracking and fixed step size strategy."""
     max_iter = 1000
     for alpha in np.logspace(-1, 3, 3):
@@ -81,7 +81,7 @@ def test_PDHG_Lasso(line_search):
         np.zeros(n_features),
         prox_1=None,
         prox_2=copt.penalty.L1Norm(alpha).prox,
-        L = L,
+        L=L,
         tol=1e-14,
         line_search=line_search,
         step_size=0.4,
@@ -94,7 +94,7 @@ def test_PDHG_Lasso(line_search):
         tol=1e-12,
     )
 
-    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x)  < 1e-3
+    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-3
 
 
 @pytest.mark.parametrize("line_search", [False, True])
@@ -102,13 +102,13 @@ def test_PDHG_FusedLasso(line_search):
     # test the PDHG on a 1d-TV problem where we also
     loss = copt.loss.SquareLoss(A, b)
     alpha = 0.1
-    L = (np.diag(np.ones(A.shape[1]), k=0) - np.diag(np.ones(A.shape[1]-1), k=1))[:-1]
+    L = (np.diag(np.ones(A.shape[1]), k=0) - np.diag(np.ones(A.shape[1] - 1), k=1))[:-1]
     opt1 = copt.minimize_primal_dual(
         loss.f_grad,
         np.zeros(n_features),
         prox_1=None,
         prox_2=copt.penalty.L1Norm(alpha).prox,
-        L = L,
+        L=L,
         tol=1e-14,
         line_search=line_search,
         step_size=0.4,
@@ -121,4 +121,31 @@ def test_PDHG_FusedLasso(line_search):
         tol=1e-12,
     )
 
-    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x)  < 1e-3
+    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-3
+
+
+@pytest.mark.parametrize("line_search", [False, True])
+def test_PDHG_FusedLasso(line_search):
+    # test the PDHG on a 1d-TV problem where we also
+    loss = copt.loss.SquareLoss(A, b)
+    alpha = 0.1
+    L = (np.diag(np.ones(A.shape[1]), k=0) - np.diag(np.ones(A.shape[1] - 1), k=1))[:-1]
+    opt1 = copt.minimize_primal_dual(
+        loss.f_grad,
+        np.zeros(n_features),
+        prox_1=None,
+        prox_2=copt.penalty.L1Norm(alpha).prox,
+        L=L,
+        tol=1e-14,
+        line_search=line_search,
+        step_size=0.4,
+    )
+
+    opt2 = copt.minimize_proximal_gradient(
+        loss.f_grad,
+        np.zeros(n_features),
+        prox=copt.penalty.FusedLasso(alpha).prox,
+        tol=1e-12,
+    )
+
+    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-3

@@ -49,7 +49,7 @@ def loss(x, pen):
 
 # .. run the solver for different values ..
 # .. of the regularization parameter beta ..
-all_betas = [0, 1e-6, 5e-6]
+all_betas = [0, 1e-7, 1e-6]
 all_trace_ls, all_trace_nols, all_trace_pdhg, out_img = [], [], [], []
 all_trace_ls_time, all_trace_nols_time, all_trace_pdhg_time = [], [], []
 for i, beta in enumerate(all_betas):
@@ -108,7 +108,6 @@ for i, beta in enumerate(all_betas):
         callback=cb_pdhg,
         max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1.0 / step_size) / 2,
         tol=0,
     )
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])

@@ -25,12 +25,11 @@ Non-smooth terms accessed through their proximal operator
     copt.penalty.FusedLasso
     copt.penalty.TotalVariation2D
 
-
 Constraints can be incorporated in a similar way through 
 
 
 .. autosummary::
    :toctree: generated/
 
-    copt.contraint.L1Ball
-    copt.contraint.TraceBall
+    copt.constraint.L1Ball
+    copt.constraint.TraceBall
