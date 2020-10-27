@@ -29,7 +29,7 @@ def test_fw_api():
     cp.minimize_frank_wolfe(
         f.f_grad,
         [0] * n_features,
-        l1ball.lmo,
+        l1ball,
         tol=0,
         lipschitz=f.lipschitz,
         callback=cb,
@@ -38,7 +38,7 @@ def test_fw_api():
     # check that we riase an exception when the DR step-size is used
     # but no lipschitz constant is given
     with pytest.raises(ValueError):
-        cp.minimize_frank_wolfe(f.f_grad, [0] * n_features, l1ball.lmo, step="DR")
+        cp.minimize_frank_wolfe(f.f_grad, [0] * n_features, l1ball, step="DR")
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
@@ -51,7 +51,7 @@ def test_fw_l1(loss_grad, alpha):
     opt = cp.minimize_frank_wolfe(
         f.f_grad,
         np.zeros(n_features),
-        l1ball.lmo,
+        l1ball,
         tol=1e-3,
         lipschitz=f.lipschitz,
         callback=cb,
@@ -72,7 +72,7 @@ def test_callback():
 
     l1ball = cp.constraint.L1Ball(1)
     f = cp.loss.SquareLoss(A, b)
-    opt = cp.minimize_frank_wolfe(f.f_grad, np.zeros(n_features), l1ball.lmo, callback=cb)
+    opt = cp.minimize_frank_wolfe(f.f_grad, np.zeros(n_features), l1ball, callback=cb)
     assert opt.nit < 2
 
 
@@ -109,7 +109,7 @@ def test_fw_backtrack(obj, step, alpha):
     opt = cp.minimize_frank_wolfe(
         f.f_grad,
         np.zeros(n_features),
-        traceball.lmo,
+        traceball,
         tol=0,
         lipschitz=f.lipschitz,
         step=step,
@@ -135,7 +135,8 @@ def test_pairwise_fw(obj, step, alpha):
     x0[0] = alpha
     cb = cp.utils.Trace(f)
     opt = cp.minimize_frank_wolfe(
-        f.f_grad, x0, l1ball.lmo_pairwise, step=step, lipschitz=f.lipschitz, callback=cb
+        f.f_grad, x0, l1ball, step=step, lipschitz=f.lipschitz, callback=cb,
+        variant='pairwise'
     )
     assert np.isfinite(opt.x).sum() == n_features
 

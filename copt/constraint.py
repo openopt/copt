@@ -2,7 +2,7 @@ import numpy as np
 from numpy import ma as ma
 from scipy import linalg
 from scipy.sparse import linalg as splinalg
-
+from scipy import sparse
 
 class L1Ball:
     """Indicator function over the L1 ball
@@ -20,24 +20,24 @@ class L1Ball:
         else:
             return np.infty
 
-    def prox(self, x, step_size):
+    def prox(self, x, step_size=None):
         return euclidean_proj_l1ball(x, self.alpha)
 
-    def lmo(self, u, x):
-        """Return s - x, s solving the linear problem
+    def lmo(self, u, x, active_set=None):
+        """Return s, x, 1, with s solving the linear problem
     max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
 
-        update_direction = -x.copy()
-        update_direction[largest_coordinate] += self.alpha * np.sign(
+        fw_vertex = np.zeros_like(x)
+        fw_vertex[largest_coordinate] += self.alpha * np.sign(
             u[largest_coordinate]
         )
 
-        return update_direction, 1
+        return fw_vertex, x.copy(), 1
 
-    def lmo_pairwise(self, u, x):
+    def lmo_pairwise(self, u, x, active_set):
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
 
@@ -66,7 +66,41 @@ class L1Ball:
 
         return update_direction, max_step_size
 
+    def lmo_pairwise(self, u, x, active_set):
+        fw_vertex, _, _ = self.lmo(u, x)
 
+        def correlate(vertex_rep, u):
+            sign, idx = vertex_rep
+            return sign * u[idx]
+
+        away_vertex_rep, max_step_size = min(active_set.items(),
+                                             key=lambda x: correlate(x[0], u))
+
+        away_vertex = np.zeros_like(u)
+        sign, idx = away_vertex_rep
+        away_vertex[idx] = sign * self.alpha
+        return fw_vertex, away_vertex, max_step_size
+
+    def is_vertex(self, x):
+        simplex = SimplexConstraint(self.alpha)
+        return simplex.is_vertex(abs(x))
+
+    def represent(self, vertex):
+        if not self.is_vertex(vertex):
+            raise ValueError("Can only represent vertices.")
+
+        idx, = vertex.nonzero()
+        sign = np.sign(vertex[idx])
+        return int(sign), int(idx)
+
+    def update_active_set(self, active_set, fw_vertex, away_vertex, step_size):
+        fw_vertex_rep = self.represent(fw_vertex)
+        away_vertex_rep = self.represent(away_vertex)
+
+        active_set[fw_vertex_rep] += step_size
+        active_set[away_vertex_rep] -= step_size
+
+        return active_set
 
 class SimplexConstraint:
     def __init__(self, s=1):
@@ -87,6 +121,19 @@ class SimplexConstraint:
         )
 
         return update_direction, 1
+
+    def is_vertex(self, x):
+        if (x < 0).any():
+            return False
+
+        if x.sum() != self.s:
+            return False
+
+        if np.count_nonzero(x) != 1:
+            return False
+
+        return True
+
 
 
 def euclidean_proj_simplex(v, s=1.0):
@@ -197,12 +244,11 @@ class TraceBall:
     def prox_factory(self):
         raise NotImplementedError
 
-    def lmo(self, u, x):
+    def lmo(self, u, x, active_set=None):
         """Return s - x, with s solving the linear problem
     max_{ ||eig(s)||_1 <= alpha } <u, s>
     """
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
-        update_direction = vertex - x
-        return update_direction, 1
+        return vertex, x, 1

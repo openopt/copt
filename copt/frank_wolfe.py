@@ -1,5 +1,6 @@
 """Frank-Wolfe and related algorithms."""
 import warnings
+from collections import defaultdict
 import numpy as np
 from scipy import linalg
 from scipy import optimize
@@ -96,7 +97,8 @@ def backtracking_step_size(
 def minimize_frank_wolfe(
         fun,
         x0,
-        lmo,
+        constraint,
+        variant='vanilla',
         jac="2-point",
         step="backtracking",
         lipschitz=None,
@@ -198,6 +200,21 @@ def minimize_frank_wolfe(
     if tol < 0:
         raise ValueError("Tol must be non-negative")
     x = x0.copy()
+
+    if variant == 'vanilla':
+        lmo = constraint.lmo
+        active_set = None
+    elif variant == 'pairwise':
+        if not constraint.is_vertex(x):
+            raise ValueError("Starting point must be a vertex"
+                             "of the constraint set for Pairwise FW.")
+        active_set = defaultdict(float)
+        active_set[constraint.represent(x0)] = 1.
+        lmo = constraint.lmo_pairwise
+
+    else:
+        raise ValueError("Variant must be one of {'vanilla', 'pairwise'}.")
+
     lipschitz_t = None
     step_size = None
     if lipschitz is not None:
@@ -208,9 +225,9 @@ def minimize_frank_wolfe(
     f_t, grad = func_and_grad(x)
     old_f_t = None
 
-    it = 0
     for it in range(max_iter):
-        update_direction, max_step_size = lmo(-grad, x)
+        fw_vertex, away_vertex, max_step_size = lmo(-grad, x, active_set)
+        update_direction = fw_vertex - away_vertex
         norm_update_direction = linalg.norm(update_direction) ** 2
         certificate = np.dot(update_direction, -grad)
 
@@ -259,9 +276,12 @@ def minimize_frank_wolfe(
             if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
                 break
         x += step_size * update_direction
-
+        if variant == 'pairwise':
+            constraint.update_active_set(active_set,
+                                         fw_vertex, away_vertex,
+                                         step_size)
         old_f_t = f_t
         f_t, grad = f_next, grad_next
     if callback is not None:
         callback(locals())
-    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate, active_set=active_set)
