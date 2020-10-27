@@ -76,32 +76,17 @@ def test_callback():
     assert opt.nit < 2
 
 
-def bisection(kw):
-    # naive implementation of bisection method
+def exact_line_search(kw):
     def f_ls(gamma):
         return kw["func_and_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    a = 0
-    b = kw["max_step_size"]
-    fa = f_ls(a)
-    fb = f_ls(b)
-    for _ in range(10):
-        c = (a + b) / 2
-        fc = f_ls(c)
-        if fc * fa > 0:
-            a = c
-            fa = fc
-        else:
-            b = c
-            fb = fc
-
-    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, 1])
+    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, kw["max_step_size"]])
     return ls_sol.x
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", LOSS_FUNCS)
-@pytest.mark.parametrize("step", ["DR", "backtracking", "sublinear", bisection])
+@pytest.mark.parametrize("step", ["DR", "backtracking", "sublinear", exact_line_search])
 def test_fw_backtrack(obj, step, alpha):
     """Test FW with different options of the line-search strategy."""
     f = obj(A, b, 1.0 / n_samples)
@@ -125,7 +110,7 @@ def test_fw_backtrack(obj, step, alpha):
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
 @pytest.mark.parametrize("obj", LOSS_FUNCS)
-@pytest.mark.parametrize("step", ["DR", "backtracking", bisection])
+@pytest.mark.parametrize("step", ["DR", "backtracking", exact_line_search])
 def test_pairwise_fw(obj, step, alpha):
     """Test the Pairwise FW method."""
     f = obj(A, b, 1.0 / n_samples)
