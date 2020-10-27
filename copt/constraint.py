@@ -99,6 +99,8 @@ class L1Ball:
 
         active_set[fw_vertex_rep] += step_size
         active_set[away_vertex_rep] -= step_size
+        if active_set[away_vertex_rep] < 0.:
+            raise ValueError("The step size used is too large.")
 
         return active_set
 
