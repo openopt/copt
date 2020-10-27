@@ -58,17 +58,6 @@ class L1Ball:
         simplex = SimplexConstraint(self.alpha)
         return simplex.is_vertex(abs(x))
 
-    def update_active_set(self, active_set,
-                          fw_vertex_rep, away_vertex_rep,
-                          step_size):
-
-        active_set[fw_vertex_rep] += step_size
-        active_set[away_vertex_rep] -= step_size
-        if active_set[away_vertex_rep] < 0.:
-            raise ValueError("The step size used is too large.")
-
-        return active_set
-
 
 class SimplexConstraint:
     def __init__(self, s=1):
