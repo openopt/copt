@@ -104,6 +104,7 @@ def test_fw_backtrack(obj, step, alpha):
 
     ss = 1 / f.lipschitz
     grad = f.f_grad(opt.x)[1]
+    # this is the proximal mapping, zero at optimum
     grad_map = (opt.x - traceball.prox(opt.x - ss * grad, ss)) / ss
     assert np.linalg.norm(grad_map) < 0.4
 
@@ -126,6 +127,7 @@ def test_pairwise_fw(obj, step, alpha):
 
     ss = 1 / f.lipschitz
     grad = f.f_grad(opt.x)[1]
+    # this is the proximal mapping, zero at optimum
     grad_map = (opt.x - l1ball.prox(opt.x - ss * grad, ss)) / ss
 
     assert np.linalg.norm(grad_map) < 0.2
