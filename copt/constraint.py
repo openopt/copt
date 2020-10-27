@@ -2,7 +2,7 @@ import numpy as np
 from numpy import ma as ma
 from scipy import linalg
 from scipy.sparse import linalg as splinalg
-from scipy import sparse
+
 
 class L1Ball:
     """Indicator function over the L1 ball
@@ -24,50 +24,24 @@ class L1Ball:
         return euclidean_proj_l1ball(x, self.alpha)
 
     def lmo(self, u, x, active_set=None):
-        """Return s, x, 1, with s solving the linear problem
+        """Return (s - x, s_rep, None, 1), with s solving the linear problem
     max_{||s||_1 <= alpha} <u, s>
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
+        sign = np.sign(u[largest_coordinate])
 
-        fw_vertex = np.zeros_like(x)
-        fw_vertex[largest_coordinate] += self.alpha * np.sign(
-            u[largest_coordinate]
-        )
+        update_direction = -x.copy()
+        update_direction[largest_coordinate] += self.alpha * sign
 
-        return fw_vertex, x.copy(), 1
+        # Only useful for active_set management in pairwise FW
+        fw_vertex_rep = (sign, largest_coordinate)
 
-    def lmo_pairwise(self, u, x, active_set):
-        abs_u = np.abs(u)
-        largest_coordinate = np.argmax(abs_u)
-
-        update_direction = np.zeros_like(u)
-        update_direction[largest_coordinate] += self.alpha * np.sign(
-            u[largest_coordinate]
-        )
-
-        u_active = -u * np.sign(x)
-        ma_u_active = ma.array(u_active, mask=(u_active == 0))
-        largest_active = np.argmax(ma_u_active)
-        if largest_active == largest_coordinate:
-            # .. if s and v are the same vertex ..
-            # .. take a FW step ..
-            update_direction -= x
-            max_step_size = 1.0
-        if u_active[largest_active] > 0:
-            update_direction[largest_active] -= self.alpha * np.sign(x[largest_active])
-            max_step_size = np.abs(x[largest_active]) / self.alpha
-        else:
-            # the zero vertex wins
-            max_step_size = max(self.alpha - np.sum(np.abs(x)), 0) / self.alpha
-            if max_step_size == 0:
-                # .. early termination ..
-                update_direction[:] = 0
-
-        return update_direction, max_step_size
+        return update_direction, fw_vertex_rep, None, 1.
 
     def lmo_pairwise(self, u, x, active_set):
-        fw_vertex, _, _ = self.lmo(u, x)
+        update_direction, fw_vertex_rep, _,  _ = self.lmo(u, x)
+        update_direction += x
 
         def correlate(vertex_rep, u):
             sign, idx = vertex_rep
@@ -76,26 +50,17 @@ class L1Ball:
         away_vertex_rep, max_step_size = min(active_set.items(),
                                              key=lambda x: correlate(x[0], u))
 
-        away_vertex = np.zeros_like(u)
         sign, idx = away_vertex_rep
-        away_vertex[idx] = sign * self.alpha
-        return fw_vertex, away_vertex, max_step_size
+        update_direction[idx] -= sign * self.alpha
+        return update_direction, fw_vertex_rep, away_vertex_rep, max_step_size
 
     def is_vertex(self, x):
         simplex = SimplexConstraint(self.alpha)
         return simplex.is_vertex(abs(x))
 
-    def represent(self, vertex):
-        if not self.is_vertex(vertex):
-            raise ValueError("Can only represent vertices.")
-
-        idx, = vertex.nonzero()
-        sign = np.sign(vertex[idx])
-        return int(sign), int(idx)
-
-    def update_active_set(self, active_set, fw_vertex, away_vertex, step_size):
-        fw_vertex_rep = self.represent(fw_vertex)
-        away_vertex_rep = self.represent(away_vertex)
+    def update_active_set(self, active_set,
+                          fw_vertex_rep, away_vertex_rep,
+                          step_size):
 
         active_set[fw_vertex_rep] += step_size
         active_set[away_vertex_rep] -= step_size
@@ -103,6 +68,7 @@ class L1Ball:
             raise ValueError("The step size used is too large.")
 
         return active_set
+
 
 class SimplexConstraint:
     def __init__(self, s=1):
@@ -122,7 +88,7 @@ class SimplexConstraint:
             u[largest_coordinate]
         )
 
-        return update_direction, 1
+        return update_direction, int(largest_coordinate), None, 1
 
     def is_vertex(self, x):
         if (x < 0).any():
@@ -253,4 +219,4 @@ class TraceBall:
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()
-        return vertex, x, 1
+        return vertex - x, None, None, 1.

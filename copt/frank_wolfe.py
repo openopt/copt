@@ -94,10 +94,23 @@ def backtracking_step_size(
     return step_size_t, lipschitz_t, f_next, grad_next
 
 
+def update_active_set(active_set,
+                      fw_vertex_rep, away_vertex_rep,
+                      step_size):
+
+    active_set[fw_vertex_rep] += step_size
+    active_set[away_vertex_rep] -= step_size
+    if active_set[away_vertex_rep] < 0.:
+        raise ValueError("The step size used is too large.")
+
+    return active_set
+
+
 def minimize_frank_wolfe(
         fun,
         x0,
-        constraint,
+        lmo,
+        x0_rep=None,
         variant='vanilla',
         jac="2-point",
         step="backtracking",
@@ -202,15 +215,10 @@ def minimize_frank_wolfe(
     x = x0.copy()
 
     if variant == 'vanilla':
-        lmo = constraint.lmo
         active_set = None
     elif variant == 'pairwise':
-        if not constraint.is_vertex(x):
-            raise ValueError("Starting point must be a vertex"
-                             "of the constraint set for Pairwise FW.")
         active_set = defaultdict(float)
-        active_set[constraint.represent(x0)] = 1.
-        lmo = constraint.lmo_pairwise
+        active_set[x0_rep] = 1.
 
     else:
         raise ValueError("Variant must be one of {'vanilla', 'pairwise'}.")
@@ -226,8 +234,7 @@ def minimize_frank_wolfe(
     old_f_t = None
 
     for it in range(max_iter):
-        fw_vertex, away_vertex, max_step_size = lmo(-grad, x, active_set)
-        update_direction = fw_vertex - away_vertex
+        update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad, x, active_set)
         norm_update_direction = linalg.norm(update_direction) ** 2
         certificate = np.dot(update_direction, -grad)
 
@@ -277,11 +284,11 @@ def minimize_frank_wolfe(
                 break
         x += step_size * update_direction
         if variant == 'pairwise':
-            constraint.update_active_set(active_set,
-                                         fw_vertex, away_vertex,
-                                         step_size)
+            update_active_set(active_set, fw_vertex_rep, away_vertex_rep,
+                              step_size)
         old_f_t = f_t
         f_t, grad = f_next, grad_next
     if callback is not None:
         callback(locals())
-    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate, active_set=active_set)
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate,
+                                   active_set=active_set)
