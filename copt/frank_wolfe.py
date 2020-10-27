@@ -98,10 +98,16 @@ def update_active_set(active_set,
                       fw_vertex_rep, away_vertex_rep,
                       step_size):
 
+    max_step_size = active_set[away_vertex_rep]
     active_set[fw_vertex_rep] += step_size
     active_set[away_vertex_rep] -= step_size
+    
+    if active_set[away_vertex_rep] == 0.:
+        # drop step: remove vertex from active set
+        del active_set[away_vertex_rep]
     if active_set[away_vertex_rep] < 0.:
-        raise ValueError("The step size used is too large.")
+        raise ValueError(f"The step size used is too large. "
+                         f"{step_size: .3f} vs. {max_step_size:.3f}")
 
     return active_set
 

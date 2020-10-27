@@ -77,10 +77,13 @@ def test_callback():
 
 
 def exact_line_search(kw):
+    print(kw["max_step_size"])
+
     def f_ls(gamma):
         return kw["func_and_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, kw["max_step_size"]])
+    ls_sol = optimize.minimize_scalar(f_ls, method='bounded', bounds=[0, kw["max_step_size"]])
+    print(ls_sol.x < kw["max_step_size"])
     return ls_sol.x
 
 
