@@ -1,8 +1,10 @@
 """Module that contains randomized (also known as stochastic) algorithms."""
+from collections import defaultdict
 import numpy as np
 from scipy import sparse, optimize
 
-from . import utils
+from copt import utils
+from copt.frank_wolfe import update_active_set
 
 
 @utils.njit(nogil=True)
@@ -695,33 +697,38 @@ def _factory_sparse_vrtos(
 
 def step_size_sfw(variant):
     if variant in {'SAG', 'SAGA'}:
-        @utils.njit
-        def step_sizes_SAG_A(t, n_samples=None, batch_size=1):
-            step_size_x = 2. / (t+2)
+        def step_sizes_SAG_A(kwargs):
+            step_size_x = 2. / (kwargs['step']+2)
             return step_size_x, None
         return step_sizes_SAG_A
 
     if variant == 'MHK':
-        @utils.njit
-        def step_sizes_MHK(t, n_samples=None, batch_size=1):
-            step_size_x = 2. / (t + 8)
+        def step_sizes_MHK(kwargs):
+            step_size_x = 2. / (kwargs['step'] + 8)
             step_size_agg = step_size_x ** (2/3)
             return step_size_x, step_size_agg
         return step_sizes_MHK
 
     if variant == 'LF':
-        @utils.njit
-        def step_sizes_LF(t, n_samples=None, batch_size=1):
-            if n_samples is None:
-                raise ValueError("n_samples must be the number of samples in the dataset.")
-            m = n_samples / batch_size
+        def step_sizes_LF(kwargs):
+            m = kwargs['n_samples'] / kwargs['batch_size']
+            t = kwargs['step']
             step_x = 2 * (2 * m + t) / ((t+1) * (4 * m + t))
             step_agg = 2 * m / (2 * m + t + 1)
             return step_x, step_agg
         return step_sizes_LF
 
 
+def step_size_DR(kwargs):
+    norm_update_direction = (kwargs['update_direction'] ** 2).sum()
+    lipschitz = kwargs['lipschitz']
+    return min(kwargs['certificate'] / (norm_update_direction * lipschitz),
+               kwargs['max_step_size']), None
+
+
+
 SFW_VARIANTS = {'SAG', 'SAGA', 'MHK', 'LF'}
+LMO_VARIANTS = {'vanilla', 'pairwise'}
 
 
 def minimize_sfw(
@@ -730,13 +737,16 @@ def minimize_sfw(
         b,
         x0,
         lmo,
+        x0_rep=None,
         batch_size=1,
         step_size="sublinear",
+        lipschitz=None,
         max_iter=500,
         tol=1e-6,
         verbose=False,
         callback=None,
-        variant='SAGA'
+        variant='SAGA',
+        lmo_variant='vanilla'
 ):
     r"""Stochastic Frank-Wolfe (SFW) algorithm.
 
@@ -751,10 +761,14 @@ def minimize_sfw(
       x0: np.ndarray
           Starting point for optimization.
 
-      step_size: function or None, optional
-          Step size for the optimization. If None is given, this will be set as the
-          default for `variant`. The function should return a tuple of floats.
-          One is needed for `SAG` and `SAGA` variants. Two are needed for `MHK` and `LF`.
+      step_size: Step size for the optimization. should be one of 
+          - callable: should return a tuple of floats.
+          - 'sublinear': sets the step size as the default for `variant`.
+          - 'DR': uses the Demyanov-Rubinov step size scheme, using the Lipschitz estimate given in 
+        the lipschitz parameter.
+
+      lipschitz: None or float, optional
+        Estimate for the Lipschitz constant of the gradient. Required when step_size="DR".
 
       lmo: function
           returns the update direction
@@ -781,6 +795,10 @@ def minimize_sfw(
           'SAGA' is yet to be described.
           'MHK' is described in [MHK2020],
           'LF' is described in [LF2020].
+          
+      lmo_variant: str in {'vanilla', 'pairwise'}
+        Controls which variant of the LMO we're using.
+        Using 'pairwise' will create and update an active set of vertices.
 
     Returns:
       opt: OptimizeResult
@@ -804,7 +822,11 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
     """
 
     if variant not in SFW_VARIANTS:
-        raise ValueError("This variant is not implemented. Please use one from {}.".format(SFW_VARIANTS))
+        raise ValueError(f"This variant is not implemented. "
+                         f"Please use one from {SFW_VARIANTS}.")
+    if lmo_variant not in LMO_VARIANTS:
+        raise ValueError(f"This LMO variant is not implemented. "
+                         f"Please use one from {LMO_VARIANTS}.")
 
     n_samples, n_features = A.shape
     x = np.reshape(x0, n_features).astype(float)
@@ -830,7 +852,19 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
 
     if step_size == 'sublinear':
         # then use sublinear step size according to variant
-        step_size = step_size_sfw(variant)
+        step_size_fun = step_size_sfw(variant)
+    elif step_size == 'DR':
+        if lipschitz is None:
+            raise ValueError('lipschitz needs to be specified with step_size="DR"')
+        step_size_fun = step_size_DR
+        
+
+    if lmo_variant == 'vanilla':
+        active_set = None
+        
+    elif lmo_variant == 'pairwise':
+        active_set = defaultdict(float)
+        active_set[x0_rep] = 1.
 
     step = 0
 
@@ -848,7 +882,8 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
             batch_idx = idx[i: min(i + batch_size, n_samples)]
 
             x_prev = x.copy()
-            step_size_x, step_size_agg = step_size(step, n_samples, batch_size)
+            if step_size != 'DR':
+                step_size_x, step_size_agg = step_size_fun(locals())
             dual_var_prev = dual_var[batch_idx].copy()
 
             if variant in {'SAG', 'SAGA'}:
@@ -860,7 +895,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
                 dual_var[batch_idx] += step_size_agg * (f_deriv(p, b[batch_idx]) - dual_var[batch_idx])
 
             elif variant == 'LF':
-                update_direction, _ = lmo(-grad_agg, x)
+                update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad_agg, x, active_set)
                 extr_point = update_direction + x
                 agg[batch_idx] += step_size_agg * (utils.fast_csr_mv(A_data, A_indptr, A_indices, extr_point,
                                                                      batch_idx)
@@ -873,15 +908,23 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
             grad_agg += grad_agg_update
 
             if variant in {'SAG', 'MHK'}:
-                update_direction, _ = lmo(-grad_agg, x)
+                update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad_agg, x, active_set)
 
             elif variant == 'SAGA':
                 grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
                                                                                                A_data, A_indptr, A_indices,
                                                                                                n_features, batch_idx))
-                update_direction, _ = lmo(-grad_est, x)
+                update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad_est, x, active_set)
+
+            if step_size == 'DR':
+                certificate = utils.safe_sparse_dot(-grad_agg, update_direction)
+                step_size_x, _ = step_size_fun(locals())
 
             x += step_size_x * update_direction
+            
+            if lmo_variant == 'pairwise':
+                update_active_set(active_set, fw_vertex_rep, away_vertex_rep,
+                                  step_size_x)
 
             if callback is not None:
                 callback(locals())

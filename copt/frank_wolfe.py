@@ -147,6 +147,15 @@ def minimize_frank_wolfe(
     lmo: callable
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
+      
+    x0_rep: immutable
+        Is used to initialize the active set when variant == 'pairwise'.
+
+    variant: {'vanilla, 'pairwise'}
+        Determines which Frank-Wolfe variant to use, along with lmo.
+        Pairwise sets up and updates an active set of vertices.
+        This is needed to make sure to not move out of the constraint set
+        when using a pairwise LMO.
 
     jac : {callable,  '2-point', bool}, optional
         Method for computing the gradient vector. If it is a callable,

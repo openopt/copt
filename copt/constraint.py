@@ -24,8 +24,21 @@ class L1Ball:
         return euclidean_proj_l1ball(x, self.alpha)
 
     def lmo(self, u, x, active_set=None):
-        """Return (s - x, s_rep, None, 1), with s solving the linear problem
-    max_{||s||_1 <= alpha} <u, s>
+        """Linear Minimization Oracle.
+        
+        Return s - x with s solving the linear problem
+            max_{||s||_1 <= alpha} <u, s>
+        
+        Args:
+          u: usually -gradient
+          x: usually the iterate of the considered algorithm
+          active_set: no effect here.
+          
+        Returns:
+          update_direction: s - x, where s is the vertex of the constraint most correlated with u
+          fw_vertex_rep: a hashable representation of s, for active set management
+          None: not used here
+          max_step_size: 1. for a Frank-Wolfe step.
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
@@ -36,10 +49,29 @@ class L1Ball:
 
         # Only useful for active_set management in pairwise FW
         fw_vertex_rep = (sign, largest_coordinate)
-
-        return update_direction, fw_vertex_rep, None, 1.
+        max_step_size = 1.
+        return update_direction, fw_vertex_rep, None, max_step_size
 
     def lmo_pairwise(self, u, x, active_set):
+        """Pairwise Linear Minimization Oracle.
+        
+        Return s - v with s solving the linear problem
+            max_{||s||_1 <= alpha} <u, s>
+        and v solving the linear problem
+            min_{v \in active_set} <u, s>
+        
+        Args:
+          u: usually -gradient
+          x: usually the iterate of the considered algorithm
+          active_set: used to compute v
+          
+        Returns:
+          update_direction: s - v, where s is the vertex of the constraint most correlated with u
+          and v is the vertex of the active set least correlated with u
+          fw_vertex_rep: a hashable representation of s, for active set management
+          away_vertex_rep: a hashable representation of v, for active set management
+          max_step_size: max_step_size to not move out of the constraint. Given by active_set[away_vertex_rep].
+        """
         update_direction, fw_vertex_rep, _,  _ = self.lmo(u, x)
         update_direction += x
 
@@ -48,7 +80,7 @@ class L1Ball:
             return sign * u[idx]
 
         away_vertex_rep, max_step_size = min(active_set.items(),
-                                             key=lambda x: correlate(x[0], u))
+                                             key=lambda item: correlate(item[0], u))
 
         sign, idx = away_vertex_rep
         update_direction[idx] -= sign * self.alpha
@@ -201,8 +233,21 @@ class TraceBall:
         raise NotImplementedError
 
     def lmo(self, u, x, active_set=None):
-        """Return s - x, with s solving the linear problem
-    max_{ ||eig(s)||_1 <= alpha } <u, s>
+        """Linear Minimization Oracle.
+        
+        Return s - x with s solving the linear problem
+            max_{||s||_nuc <= alpha} <u, s>
+        
+        Args:
+          u: usually -gradient
+          x: usually the iterate of the considered algorithm
+          active_set: no effect here.
+          
+        Returns:
+          update_direction: s - x, where s is the vertex of the constraint most correlated with u
+          None: not used here
+          None: not used here
+          max_step_size: 1. for a Frank-Wolfe step.
     """
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
