@@ -26,10 +26,11 @@ freq = max(n_batches, max_iter // 1000)
 
 # .. objective function and regularizer ..
 f = copt.loss.LogLoss(X, y)
+alpha = 1.
 constraint = copt.constraint.L1Ball(1.)
 
 x0 = [0] * n_features
-x0[0] += 1.
+x0[0] += alpha
 
 # .. callbacks to track progress ..
 def fw_gap(x):
@@ -55,7 +56,7 @@ cb_sfw_mokhtari = TraceGaps(f, freq=freq)
 cb_sfw_lu_freund = TraceGaps(f, freq=freq)
 
 # .. run the SFW algorithm ..
-print("Running SAGFW Pairwise")
+print("Running SAGFW Pairwise with DR step size")
 result_sfw_SAG_pairwise = cp.minimize_sfw(
     f.partial_deriv,
     X,
@@ -69,7 +70,7 @@ result_sfw_SAG_pairwise = cp.minimize_sfw(
     max_iter=max_iter,
     variant='SAG',
     step_size='DR',
-    lipschitz=f.lipschitz,
+    lipschitz=f.max_lipschitz / n_samples,
     lmo_variant='pairwise'
 )
 
