@@ -69,7 +69,7 @@ result_sfw_SAG_pairwise = cp.minimize_sfw(
     max_iter=max_iter,
     variant='SAG',
     step_size='DR',
-    lipschitz=f.max_lipschitz / n_samples,
+    lipschitz=f.lipschitz,
     lmo_variant='pairwise'
 )
 
