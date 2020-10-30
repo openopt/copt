@@ -75,20 +75,17 @@ class L1Ball:
         update_direction, fw_vertex_rep, _,  _ = self.lmo(u, x)
         update_direction += x
 
-        def correlate(vertex_rep, u):
+        def _correlation(vertex_rep, u):
+            """Compute the correlation between vertex represented by vertex_rep and vector u."""
             sign, idx = vertex_rep
             return sign * u[idx]
 
         away_vertex_rep, max_step_size = min(active_set.items(),
-                                             key=lambda item: correlate(item[0], u))
+                                             key=lambda item: _correlation(item[0], u))
 
         sign, idx = away_vertex_rep
         update_direction[idx] -= sign * self.alpha
         return update_direction, fw_vertex_rep, away_vertex_rep, max_step_size
-
-    def is_vertex(self, x):
-        simplex = SimplexConstraint(self.alpha)
-        return simplex.is_vertex(abs(x))
 
 
 class SimplexConstraint:
@@ -110,19 +107,6 @@ class SimplexConstraint:
         )
 
         return update_direction, int(largest_coordinate), None, 1
-
-    def is_vertex(self, x):
-        if (x < 0).any():
-            return False
-
-        if x.sum() != self.s:
-            return False
-
-        if np.count_nonzero(x) != 1:
-            return False
-
-        return True
-
 
 def euclidean_proj_simplex(v, s=1.0):
     r""" Compute the Euclidean projection on a positive simplex

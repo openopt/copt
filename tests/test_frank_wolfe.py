@@ -77,14 +77,12 @@ def test_callback():
 
 
 def exact_line_search(kw):
-    print(kw["max_step_size"])
 
-    def f_ls(gamma):
+    def f_on_line(gamma):
         return kw["func_and_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    ls_sol = optimize.minimize_scalar(f_ls, method='bounded', bounds=[0, kw["max_step_size"]])
-    print(ls_sol.x < kw["max_step_size"])
-    return ls_sol.x
+    line_sol = optimize.minimize_scalar(f_on_line, method='bounded', bounds=[0, kw["max_step_size"]])
+    return line_sol.x
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
