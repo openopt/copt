@@ -30,7 +30,8 @@ class L1Ball:
             max_{||s||_1 <= alpha} <u, s>
         
         Args:
-          u: usually -gradient
+          u: array
+              usually -gradient
           x: usually the iterate of the considered algorithm
           active_set: no effect here.
           
