@@ -32,14 +32,17 @@ class L1Ball:
         Args:
           u: array
               usually -gradient
-          x: usually the iterate of the considered algorithm
+          x: array
+              usually the iterate of the considered algorithm
           active_set: no effect here.
           
         Returns:
-          update_direction: s - x, where s is the vertex of the constraint most correlated with u
+          update_direction: array,
+                  s - x, where s is the vertex of the constraint most correlated with u
           fw_vertex_rep: a hashable representation of s, for active set management
           None: not used here
-          max_step_size: 1. for a Frank-Wolfe step.
+          max_step_size: float
+              1. for a Frank-Wolfe step.
     """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
@@ -62,8 +65,10 @@ class L1Ball:
             min_{v \in active_set} <u, s>
         
         Args:
-          u: usually -gradient
-          x: usually the iterate of the considered algorithm
+          u: array,
+              usually -gradient
+          x: array,
+              usually the iterate of the considered algorithm
           active_set: used to compute v
           
         Returns:
