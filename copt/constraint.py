@@ -38,8 +38,9 @@ class L1Ball:
           
         Returns:
           update_direction: array,
-                  s - x, where s is the vertex of the constraint most correlated with u
-          fw_vertex_rep: a hashable representation of s, for active set management
+              s - x, where s is the vertex of the constraint most correlated with u
+          fw_vertex_rep: (float, int) 
+              a hashable representation of s, for active set management
           None: not used here
           max_step_size: float
               1. for a Frank-Wolfe step.
@@ -72,11 +73,15 @@ class L1Ball:
           active_set: used to compute v
           
         Returns:
-          update_direction: s - v, where s is the vertex of the constraint most correlated with u
-          and v is the vertex of the active set least correlated with u
-          fw_vertex_rep: a hashable representation of s, for active set management
-          away_vertex_rep: a hashable representation of v, for active set management
-          max_step_size: max_step_size to not move out of the constraint. Given by active_set[away_vertex_rep].
+          update_direction: array
+              s - v, where s is the vertex of the constraint most correlated with u
+              and v is the vertex of the active set least correlated with u
+          fw_vertex_rep: (float, int)
+              a hashable representation of s, for active set management
+          away_vertex_rep: (float, int)
+              a hashable representation of v, for active set management
+          max_step_size: float
+              max_step_size to not move out of the constraint. Given by active_set[away_vertex_rep].
         """
         update_direction, fw_vertex_rep, _,  _ = self.lmo(u, x)
         update_direction += x
