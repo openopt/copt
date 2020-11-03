@@ -54,7 +54,7 @@ variants_fw = [
     ["DR", "Lipschitz step-size", "<"],
 ]
 
-for d in datasets[:2]:
+for d in datasets:
     plt.figure()
     print(f"Running on the {d['name']} dataset.")
 
