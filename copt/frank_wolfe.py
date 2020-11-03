@@ -1,5 +1,6 @@
 """Frank-Wolfe and related algorithms."""
 import warnings
+from collections import defaultdict
 import numpy as np
 from scipy import linalg
 from scipy import optimize
@@ -93,10 +94,30 @@ def backtracking_step_size(
     return step_size_t, lipschitz_t, f_next, grad_next
 
 
+def update_active_set(active_set,
+                      fw_vertex_rep, away_vertex_rep,
+                      step_size):
+
+    max_step_size = active_set[away_vertex_rep]
+    active_set[fw_vertex_rep] += step_size
+    active_set[away_vertex_rep] -= step_size
+    
+    if active_set[away_vertex_rep] == 0.:
+        # drop step: remove vertex from active set
+        del active_set[away_vertex_rep]
+    if active_set[away_vertex_rep] < 0.:
+        raise ValueError(f"The step size used is too large. "
+                         f"{step_size: .3f} vs. {max_step_size:.3f}")
+
+    return active_set
+
+
 def minimize_frank_wolfe(
         fun,
         x0,
         lmo,
+        x0_rep=None,
+        variant='vanilla',
         jac="2-point",
         step="backtracking",
         lipschitz=None,
@@ -126,6 +147,15 @@ def minimize_frank_wolfe(
     lmo: callable
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
+      
+    x0_rep: immutable
+        Is used to initialize the active set when variant == 'pairwise'.
+
+    variant: {'vanilla, 'pairwise'}
+        Determines which Frank-Wolfe variant to use, along with lmo.
+        Pairwise sets up and updates an active set of vertices.
+        This is needed to make sure to not move out of the constraint set
+        when using a pairwise LMO.
 
     jac : {callable,  '2-point', bool}, optional
         Method for computing the gradient vector. If it is a callable,
@@ -198,6 +228,16 @@ def minimize_frank_wolfe(
     if tol < 0:
         raise ValueError("Tol must be non-negative")
     x = x0.copy()
+
+    if variant == 'vanilla':
+        active_set = None
+    elif variant == 'pairwise':
+        active_set = defaultdict(float)
+        active_set[x0_rep] = 1.
+
+    else:
+        raise ValueError("Variant must be one of {'vanilla', 'pairwise'}.")
+
     lipschitz_t = None
     step_size = None
     if lipschitz is not None:
@@ -208,9 +248,8 @@ def minimize_frank_wolfe(
     f_t, grad = func_and_grad(x)
     old_f_t = None
 
-    it = 0
     for it in range(max_iter):
-        update_direction, max_step_size = lmo(-grad, x)
+        update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad, x, active_set)
         norm_update_direction = linalg.norm(update_direction) ** 2
         certificate = np.dot(update_direction, -grad)
 
@@ -259,9 +298,12 @@ def minimize_frank_wolfe(
             if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
                 break
         x += step_size * update_direction
-
+        if variant == 'pairwise':
+            update_active_set(active_set, fw_vertex_rep, away_vertex_rep,
+                              step_size)
         old_f_t = f_t
         f_t, grad = f_next, grad_next
     if callback is not None:
         callback(locals())
-    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate)
+    return optimize.OptimizeResult(x=x, nit=it, certificate=certificate,
+                                   active_set=active_set)

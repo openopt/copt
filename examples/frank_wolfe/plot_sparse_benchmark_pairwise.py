@@ -12,18 +12,18 @@ import numpy as np
 import copt as cp
 
 # .. datasets and their loading functions ..
-# .. last value si the regularization parameter ..
+# .. alpha is the regularization parameter ..
 # .. which has been chosen to give 10% feature sparsity ..
 import copt.constraint
 import copt.loss
 
 datasets = (
     {
-        "name": "RCV1",
-        "loader": cp.datasets.load_rcv1,
-        "alpha": 1e3,
+        "name": "madelon",
+        "loader": cp.datasets.load_madelon,
+        "alpha": 1e4,
         "max_iter": 5000,
-        "f_star": 0.3114744279728717,
+        "f_star": 0.0,
     },
     {
         "name": "gisette",
@@ -33,18 +33,18 @@ datasets = (
         "f_star": 2.293654421822428,
     },
     {
-        "name": "madelon",
-        "loader": cp.datasets.load_madelon,
-        "alpha": 1e4,
-        "max_iter": 5000,
-        "f_star": 0.0,
-    },
-    {
         "name": "covtype",
         "loader": cp.datasets.load_covtype,
         "alpha": 1e4,
         "max_iter": 5000,
         "f_star": 0,
+    },
+    {
+        "name": "RCV1",
+        "loader": cp.datasets.load_rcv1,
+        "alpha": 1e3,
+        "max_iter": 5000,
+        "f_star": 0.3114744279728717,
     },
 )
 
@@ -56,7 +56,7 @@ variants_fw = [
 
 for d in datasets:
     plt.figure()
-    print("Running on the %s dataset" % d["name"])
+    print(f"Running on the {d['name']} dataset.")
 
     X, y = d["loader"]()
     print(X.shape)
@@ -74,6 +74,8 @@ for d in datasets:
             f.f_grad,
             x0,
             l1_ball.lmo_pairwise,
+            variant='pairwise',
+            x0_rep=(1., 0),
             callback=cb,
             step=step,
             lipschitz=f.lipschitz,
@@ -90,13 +92,15 @@ for d in datasets:
             markevery=10,
         )
 
-    print("Sparsity of solution: %s" % np.mean(np.abs(sol.x) > 1e-8))
-    print(f(sol.x))
+        print("Sparsity of solution: %s" % np.mean(np.abs(sol.x) > 1e-8))
+        print(f(sol.x))
     plt.legend()
     plt.xlabel("Time (in seconds)")
     plt.ylabel("Objective function")
+    plt.yscale("log")
     plt.title(d["name"])
     plt.tight_layout()  # otherwise the right y-label is slightly clipped
     #    plt.xlim((0, 0.7 * cb.trace_time[-1]))  # for aesthetics
     plt.grid()
+    plt.savefig(f"figures/pairwise_benchmark_{d['name']}.png")
     plt.show()

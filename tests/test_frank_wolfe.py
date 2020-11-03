@@ -77,11 +77,12 @@ def test_callback():
 
 
 def exact_line_search(kw):
-    def f_ls(gamma):
+
+    def f_on_line(gamma):
         return kw["func_and_grad"](kw["x"] + gamma * kw["update_direction"])[0]
 
-    ls_sol = optimize.minimize_scalar(f_ls, bounds=[0, kw["max_step_size"]])
-    return ls_sol.x
+    line_sol = optimize.minimize_scalar(f_on_line, method='bounded', bounds=[0, kw["max_step_size"]])
+    return line_sol.x
 
 
 @pytest.mark.parametrize("alpha", [0.1, 1.0, 10.0, 100.0])
@@ -121,7 +122,9 @@ def test_pairwise_fw(obj, step, alpha):
     x0[0] = alpha
     cb = cp.utils.Trace(f)
     opt = cp.minimize_frank_wolfe(
-        f.f_grad, x0, l1ball.lmo_pairwise, step=step, lipschitz=f.lipschitz, callback=cb
+        f.f_grad, x0, l1ball.lmo_pairwise, x0_rep=(1., 0),
+        step=step, lipschitz=f.lipschitz, callback=cb,
+        variant='pairwise'
     )
     assert np.isfinite(opt.x).sum() == n_features
 
