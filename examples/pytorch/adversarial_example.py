@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 n_examples = 100
 data, target = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
-# np.random.seed(3)
 idx = np.random.randint(n_examples)
 data, target = data[idx].unsqueeze(0), target[idx].unsqueeze(0)
 
