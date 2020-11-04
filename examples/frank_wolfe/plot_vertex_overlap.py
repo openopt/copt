@@ -38,7 +38,8 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
     x0 = np.zeros(n_features)
 
     for i, (step, label, marker) in enumerate(
-        [["backtracking", "backtracking", "^"], ["DR", "DR step-size", "d"]]
+        [["backtracking", "backtracking", "^"], ["DR", "DR step-size", "d"],
+         ["sublinear", "sublinear", "s"]]
     ):
         print("Running %s variant" % label)
         st_prev = []
@@ -66,7 +67,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
             x0,
             l1_ball.lmo,
             callback=trace,
-            max_iter=int(1e4),
+            max_iter=int(1e2),
             step=step,
             verbose=True,
             lipschitz=f.lipschitz,
