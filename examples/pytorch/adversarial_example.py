@@ -8,10 +8,10 @@ from robustbench.utils import load_model
 
 import matplotlib.pyplot as plt
 
-n_examples = 10
+n_examples = 20
 data_batch, target_batch = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
-for k, (data, target) in enumerate(zip(data_batch, target_batch)):
+for data, target in zip(data_batch, target_batch):
     data, target = data.unsqueeze(0), target.unsqueeze(0)
 
     model = load_model("Engstrom2019Robustness")  # loads a standard trained model
@@ -55,7 +55,7 @@ for k, (data, target) in enumerate(zip(data_batch, target_batch)):
     ax.set_xlabel("# Iterations")
     ax.set_ylabel("Objective value")
     ax.grid()
-    plt.savefig(f"figures/adv_loss_{k}.png")
+
     plt.show()
 
     classes = ('plane', 'car', 'bird', 'cat',
@@ -94,5 +94,5 @@ for k, (data, target) in enumerate(zip(data_batch, target_batch)):
     adv_img_ax.set_title(f"Perturbed image: {classes[adv_label]}, p={adv_output[:, adv_label].item():.2f}")
     adv_img_ax.imshow(adv_img)
     plt.tight_layout()
-    plt.savefig(f"figures/adv_example_{k}.png")
+
     plt.show()
