@@ -41,21 +41,12 @@ sol = copt.minimize_three_split(f_grad, delta0, constraint.prox,
                                 img_constraint.prox, callback=callback,
                                 )
 
-# sol = copt.minimize_frank_wolfe(f_grad, delta0,
-#                                 constraint.lmo,
-#                                 # constraint.lmo_pairwise,
-#                                 max_iter=300,
-#                                 x0_rep=(1., 0),
-#                                 # variant='pairwise',
-#                                 callback=callback)
-
 fig, ax = plt.subplots()
 ax.plot([-loss_val for loss_val in callback.trace_fx], lw=3)
 ax.set_yscale("log")
 ax.set_xlabel("# Iterations")
 ax.set_ylabel("Objective value")
 ax.grid()
-plt.savefig("figures/adversarial_loss.png")
 plt.show()
 
 classes = ('plane', 'car', 'bird', 'cat',
@@ -95,5 +86,4 @@ adv_img_ax.set_title(f"Perturbed image: {classes[adv_label]}, p={adv_output[:, a
 adv_img_ax.imshow(adv_img)
 plt.tight_layout()
 
-plt.savefig("figures/adv_example.png")
 plt.show()
