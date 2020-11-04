@@ -8,7 +8,7 @@ from robustbench.utils import load_model
 
 import matplotlib.pyplot as plt
 
-n_examples = 10
+n_examples = 20
 data_batch, target_batch = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
 for data, target in zip(data_batch, target_batch):
