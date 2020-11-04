@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 n_examples = 100
 data, target = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
-np.random.seed(3)
+# np.random.seed(3)
 idx = np.random.randint(n_examples)
 data, target = data[idx].unsqueeze(0), target[idx].unsqueeze(0)
 
-model = load_model("Standard")  # loads a standard trained model
+model = load_model("Engstrom2019Robustness")  # loads a standard trained model
 
 criterion = torch.nn.CrossEntropyLoss()
 
@@ -31,14 +31,23 @@ f_grad = make_func_and_grad(loss_fun, data.shape, data.device, dtype=data.dtype)
 # Define the constraint set
 alpha = 10. 
 constraint = copt.constraint.L1Ball(alpha)
-img_constraint = copt.constraint.LinfBall(1.)
+
+img_np = data.cpu().numpy().squeeze().flatten()
+
+def image_constraint_prox(delta, step_size=None):
+    """Projects perturbation delta so that x + delta is in the set of images,
+    i.e. the (0, 1) range."""
+    adv_img_np = img_np + delta
+    delta = adv_img_np.clip(0, 1) - img_np
+    return delta
 
 delta0 = np.zeros(data.shape, dtype=float).flatten()
 
 callback = copt.utils.Trace(lambda delta: f_grad(delta)[0])
 
 sol = copt.minimize_three_split(f_grad, delta0, constraint.prox, 
-                                img_constraint.prox, callback=callback,
+                                image_constraint_prox, callback=callback,
+                                max_iter=50
                                 )
 
 fig, ax = plt.subplots()
@@ -85,5 +94,4 @@ pert_ax.imshow(abs(perturbation))
 adv_img_ax.set_title(f"Perturbed image: {classes[adv_label]}, p={adv_output[:, adv_label].item():.2f}")
 adv_img_ax.imshow(adv_img)
 plt.tight_layout()
-
 plt.show()
