@@ -3,7 +3,27 @@ from numpy import ma as ma
 from scipy import linalg
 from scipy.sparse import linalg as splinalg
 
+class LinfBall:
+    
+    def __init__(self, alpha):
+        self.alpha = alpha
+        
+    def prox(self, x, step_size=None):
+        return x.clip(-self.alpha, self.alpha)
+    
 
+class L2Ball:
+    
+    def __init__(self, alpha):
+        self.alpha = alpha
+        
+    def prox(self, x, step_size=None):
+        norm = np.sqrt((x ** 2).sum())
+        if norm <= self.alpha:
+            return x
+        return self.alpha * x / norm
+    
+    
 class L1Ball:
     """Indicator function over the L1 ball
 
