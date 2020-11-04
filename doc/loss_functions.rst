@@ -32,4 +32,6 @@ Constraints can be incorporated in a similar way through
    :toctree: generated/
 
     copt.constraint.L1Ball
+    copt.constraint.L2Ball
+    copt.constraint.LinfBall
     copt.constraint.TraceBall
