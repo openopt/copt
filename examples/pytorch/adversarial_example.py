@@ -17,7 +17,6 @@ criterion = torch.nn.CrossEntropyLoss()
 # Define the constraint set + initial point
 alpha = 10. 
 constraint = copt.constraint.L1Ball(alpha)
-delta0 = np.zeros(data.shape, dtype=float).flatten()
 
 for data, target in zip(data_batch, target_batch):
     data, target = data.unsqueeze(0), target.unsqueeze(0)
@@ -40,7 +39,9 @@ for data, target in zip(data_batch, target_batch):
         return delta
 
     callback = copt.utils.Trace(lambda delta: f_grad(delta)[0])
-
+    
+    delta0 = np.zeros(data.shape, dtype=float).flatten()
+    
     sol = copt.minimize_three_split(f_grad, delta0, constraint.prox, 
                                     image_constraint_prox, callback=callback,
                                     max_iter=50
