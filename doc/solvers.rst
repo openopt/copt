@@ -54,6 +54,7 @@ where $f$ is a differentiable function for which we have access to its gradient 
 .. admonition:: Examples
 
    * :ref:`sphx_glr_auto_examples_proximal_splitting_plot_tv_deblurring.py`
+   * :ref:`sphx_glr_auto_examples_proximal_splitting_plot_overlapping_group_lasso.py`
 
 
 .. topic:: References

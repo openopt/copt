@@ -89,7 +89,7 @@ for i, beta in enumerate(all_betas):
         f.f_grad, x0, G1.prox, G2.prox,
         callback=cb_pdhg, max_iter=max_iter,
         step_size=step_size,
-        step_size2=(1. / step_size) / 2, tol=0, line_search=False)
+        step_size2=(1. / step_size) / 2, tol=0, line_search=True)
     trace_pdhg = np.array([loss(x) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
     all_trace_pdhg_time.append(cb_pdhg.trace_time)

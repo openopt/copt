@@ -124,28 +124,38 @@ def test_PDHG_FusedLasso(line_search):
     assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-3
 
 
+@pytest.mark.parametrize("regularization", np.logspace(-5, 1, 4))
 @pytest.mark.parametrize("line_search", [False, True])
-def test_PDHG_FusedLasso(line_search):
-    # test the PDHG on a 1d-TV problem where we also
-    loss = copt.loss.SquareLoss(A, b)
-    alpha = 0.1
-    L = (np.diag(np.ones(A.shape[1]), k=0) - np.diag(np.ones(A.shape[1] - 1), k=1))[:-1]
+def test_PDHG_TV2D(regularization, line_search):
+    # test the PDHG on a 2d-TV problem where we also
+
+    img = np.random.randn(10, 10)
+    n_rows, n_cols = img.shape
+    n_features = n_rows * n_cols
+    loss = copt.loss.SquareLoss(np.eye(n_features), img.ravel())
+
+    def g_prox(x, gamma, pen=regularization):
+        return cp.tv_prox.prox_tv1d_cols(gamma * pen, x, n_rows, n_cols)
+
+    def h_prox(x, gamma, pen=regularization):
+        return cp.tv_prox.prox_tv1d_rows(gamma * pen, x, n_rows, n_cols)
+
     opt1 = copt.minimize_primal_dual(
         loss.f_grad,
         np.zeros(n_features),
-        prox_1=None,
-        prox_2=copt.penalty.L1Norm(alpha).prox,
-        L=L,
+        prox_1=g_prox,
+        prox_2=h_prox,
         tol=1e-14,
         line_search=line_search,
-        step_size=0.4,
+        #step_size=0.4,
     )
 
-    opt2 = copt.minimize_proximal_gradient(
+    opt2 = copt.minimize_three_split(
         loss.f_grad,
         np.zeros(n_features),
-        prox=copt.penalty.FusedLasso(alpha).prox,
+        prox_1=g_prox,
+        prox_2=h_prox,
         tol=1e-12,
     )
 
-    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-3
+    assert np.linalg.norm(opt1.x - opt2.x) / np.linalg.norm(opt1.x) < 1e-2

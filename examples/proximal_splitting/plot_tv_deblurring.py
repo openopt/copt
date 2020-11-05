@@ -29,13 +29,11 @@ max_iter = 2000
 
 # .. compute blurred and noisy image ..
 A = sparse.load_npz("data/blur_matrix.npz")
-b = A.dot(img.ravel()) + 0 * np.random.randn(n_samples)
+b = A.dot(img.ravel())
 
 np.random.seed(0)
-n_samples = n_features
 
 # .. compute the step-size ..
-s = splinalg.svds(A, k=1, return_singular_vectors=False, tol=1e-3, maxiter=500)[0]
 f = copt.loss.SquareLoss(A, b)
 step_size = 1.0 / f.lipschitz
 
@@ -62,16 +60,14 @@ for i, beta in enumerate(all_betas):
         return cp.tv_prox.prox_tv1d_rows(gamma * pen, x, n_rows, n_cols)
 
     cb_adatos = cp.utils.Trace()
-    x0 = np.zeros(n_features)
     adatos = cp.minimize_three_split(
         f.f_grad,
-        x0,
+        np.zeros(n_features),
         g_prox,
         h_prox,
-        step_size=10 * step_size,
+        step_size=step_size,
         max_iter=max_iter,
-        tol=1e-14,
-        verbose=1,
+        tol=0,
         callback=cb_adatos,
         h_Lipschitz=beta,
     )
@@ -81,16 +77,14 @@ for i, beta in enumerate(all_betas):
     out_img.append(adatos.x.reshape(img.shape))
 
     cb_tos = cp.utils.Trace()
-    x0 = np.zeros(n_features)
     cp.minimize_three_split(
         f.f_grad,
-        x0,
+        np.zeros(n_features),
         g_prox,
         h_prox,
         step_size=step_size,
         max_iter=max_iter,
-        tol=1e-14,
-        verbose=1,
+        tol=0,
         callback=cb_tos,
         line_search=False,
     )
@@ -99,16 +93,16 @@ for i, beta in enumerate(all_betas):
     all_trace_nols_time.append(cb_tos.trace_time)
 
     cb_pdhg = cp.utils.Trace()
-    x0 = np.zeros(n_features)
     cp.minimize_primal_dual(
         f.f_grad,
-        x0,
+        np.zeros(n_features),
         g_prox,
         h_prox,
         callback=cb_pdhg,
         max_iter=max_iter,
         step_size=step_size,
-        tol=0,
+        step_size2=(1. / step_size) / 2,
+        line_search=False,
     )
     trace_pdhg = np.array([loss(x, beta) for x in cb_pdhg.trace_x])
     all_trace_pdhg.append(trace_pdhg)
@@ -163,8 +157,8 @@ plt.figlegend(
     (plot_tos, plot_tos_nols, plot_pdhg),
     (
         "Adaptive three operator splitting",
-        "three operator splitting",
-        "primal-dual hybrid gradient",
+        "Three operator splitting",
+        "Primal-dual hybrid gradient",
     ),
     "lower center",
     ncol=2,

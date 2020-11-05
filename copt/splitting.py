@@ -234,18 +234,14 @@ def minimize_primal_dual(
           the cause of the termination. See `scipy.optimize.OptimizeResult`
           for a description of other attributes.
 
-    References
-        The implemented algorithm corresponds to Algorithm 4 in:
-        Malitsky, Yura, and Thomas Pock. "A first-order primal-dual algorithm with
-        linesearch." SIAM Journal on Optimization (2018)
+    References:
 
-        Condat, Laurent. "A primal-dual splitting method for convex optimization
+        * Malitsky, Yura, and Thomas Pock. `A first-order primal-dual algorithm with linesearch <https://arxiv.org/pdf/1608.08883.pdf>`_,
+        SIAM Journal on Optimization (2018) (Algorithm 4 for the line-search variant)
+
+        * Condat, Laurent. "A primal-dual splitting method for convex optimization
         involving Lipschitzian, proximable and linear composite terms." Journal of
         Optimization Theory and Applications (2013).
-
-        Chambolle, Antonin, and Thomas Pock. "On the ergodic convergence rates of a
-        first-order primal-dual algorithm." Mathematical Programming (2015)
-
     """
     x = np.array(x0, copy=True)
     n_features = x.size
@@ -276,12 +272,14 @@ def minimize_primal_dual(
 
     # .. main iteration ..
     theta = 1.0
-    delta = 0.99
+    delta = 0.5
     sigma = step_size
-    tau = step_size2
-    ss_ratio = 0.5
-    if tau is None:
+    if step_size2 is None:
+        ss_ratio = 0.5
         tau = ss_ratio * sigma
+    else:
+        tau = step_size2
+        ss_ratio = tau / sigma
 
     fk, grad_fk = f_grad(x)
     norm_incr = np.infty
@@ -290,24 +288,24 @@ def minimize_primal_dual(
     for it in range(max_iter):
         y_next = prox_2_conj(y + tau * L.matvec(x), tau)
         if line_search:
-            tau_next = tau * np.sqrt(1 + 0.5 * theta)
+            tau_next = tau * (1 + np.sqrt(1 + theta)) / 2
             while True:
                 theta = tau_next / tau
                 sigma = ss_ratio * tau_next
                 y_bar = y_next + theta * (y_next - y)
                 x_next = prox_1(x - sigma * (L.rmatvec(y_bar) + grad_fk), sigma)
                 incr_x = np.linalg.norm(L.matvec(x_next) - L.matvec(x))
+                f_next, f_grad_next = f_grad(x_next)
                 if incr_x <= 1e-10:
                     break
 
-                f_next, f_grad_next = f_grad(x_next)
                 tmp = (sigma * tau_next) * (incr_x ** 2)
                 tmp += 2 * sigma * (f_next - fk - grad_fk.dot(x_next - x))
-                if tmp <= delta * (incr_x ** 2) + np.finfo(np.float).eps:
+                if tmp / delta <= (incr_x ** 2):
                     tau = tau_next
                     break
                 else:
-                    tau_next *= 0.5
+                    tau_next *= 0.9
         else:
             y_bar = 2 * y_next - y
             x_next = prox_1(x - sigma * (L.rmatvec(y_bar) + grad_fk), sigma)
@@ -334,4 +332,6 @@ def minimize_primal_dual(
             RuntimeWarning,
         )
 
-    return optimize.OptimizeResult(x=x, success=success, nit=it, certificate=norm_incr)
+    return optimize.OptimizeResult(
+        x=x, success=success, nit=it, certificate=norm_incr, step_size=sigma
+    )

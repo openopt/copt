@@ -141,6 +141,7 @@ def parse_step_size(step_size):
 
 
 class Trace:
+    """Trace callback."""
     def __init__(self, f=None, freq=1):
         self.trace_x = []
         self.trace_time = []
