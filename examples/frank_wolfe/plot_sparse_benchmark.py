@@ -24,8 +24,8 @@ datasets = [
 
 
 variants_fw = [
-    ["backtracking", "adaptive step-size", "s"],
-    ["DR", "Lipschitz step-size", "<"],
+    ["backtracking", "adaptive step-size"],
+    ["DR", "Lipschitz step-size"],
 ]
 
 for dataset_title, load_data, alpha in datasets:
@@ -39,14 +39,14 @@ for dataset_title, load_data, alpha in datasets:
     f = copt.loss.LogLoss(X, y)
     x0 = np.zeros(n_features)
 
-    for step, label, marker in variants_fw:
+    for step, label in variants_fw:
 
         cb = cp.utils.Trace(f)
         sol = cp.minimize_frank_wolfe(
             f.f_grad, x0, l1_ball.lmo, callback=cb, step=step, lipschitz=f.lipschitz
         )
 
-        plt.plot(cb.trace_time, cb.trace_fx, label=label, marker=marker, markevery=10)
+        plt.plot(cb.trace_time, cb.trace_fx, label=label, markevery=10)
 
     print("Sparsity of solution: %s" % np.mean(np.abs(sol.x) > 1e-8))
     plt.legend()
