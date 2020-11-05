@@ -11,12 +11,13 @@ from robustbench.data import load_cifar10
 from robustbench.utils import load_model
 
 
-n_examples = 6000
+n_examples = 10000
 data_batch, target_batch = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
 model_name = "Engstrom2019Robustness"
-model = load_model(model_name)  # loads a standard trained model
+model = load_model(model_name)
 criterion = torch.nn.CrossEntropyLoss()
+
 # Define the constraint set
 alpha = 0.5
 constraint = copt.constraint.L2Ball(alpha)
@@ -65,12 +66,6 @@ for k, (data, target) in tqdm(enumerate(zip(data_batch, target_batch))):
 
     n_correct += (label == target).item()
     n_correct_adv += (adv_label == target).item()
-
-    if k % 100 == 1:
-        curr_acc = n_correct / (k + 1)
-        curr_acc_adv = n_correct_adv / (k + 1)
-        print(f"\nAccuracy so far: {curr_acc:.3f}")
-        print(f"Robust Accuracy so far: {curr_acc_adv:.3f}")
 
 accuracy = n_correct / n_examples
 accuracy_adv = n_correct_adv / n_examples
