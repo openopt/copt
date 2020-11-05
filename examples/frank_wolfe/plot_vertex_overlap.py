@@ -37,8 +37,8 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
     f = copt.loss.LogLoss(X, y)
     x0 = np.zeros(n_features)
 
-    for i, (step, label, marker) in enumerate(
-        [["backtracking", "backtracking", "^"], ["DR", "DR step-size", "d"]]
+    for i, (step, label) in enumerate(
+        [["backtracking", "backtracking"], ["DR", "DR step-size"]]
     ):
         print("Running %s variant" % label)
         st_prev = []
@@ -71,7 +71,7 @@ for ax, (dataset_title, load_data) in zip(axes.ravel(), datasets):
             verbose=True,
             lipschitz=f.lipschitz,
         )
-        ax.plot(overlap, label=label, marker=marker, markevery=7 + i)
+        ax.plot(overlap, label=label)
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax.legend()
     ax.set_xlabel("number of iterations")
