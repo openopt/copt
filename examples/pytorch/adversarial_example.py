@@ -11,13 +11,16 @@ import matplotlib.pyplot as plt
 n_examples = 20
 data_batch, target_batch = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
 
+model = load_model("Standard")
+criterion = torch.nn.CrossEntropyLoss()
+
+# Define the constraint set + initial point
+alpha = 10. 
+constraint = copt.constraint.L1Ball(alpha)
+delta0 = np.zeros(data.shape, dtype=float).flatten()
+
 for data, target in zip(data_batch, target_batch):
     data, target = data.unsqueeze(0), target.unsqueeze(0)
-
-    model = load_model("Engstrom2019Robustness")  # loads a standard trained model
-
-    criterion = torch.nn.CrossEntropyLoss()
-
 
     # Define the loss function to be minimized, using Pytorch
     def loss_fun(delta):
@@ -27,10 +30,6 @@ for data, target in zip(data_batch, target_batch):
     # Change the function to f_grad: returns loss_val, grad in flattened, numpy array
     f_grad = make_func_and_grad(loss_fun, data.shape, data.device, dtype=data.dtype)
 
-    # Define the constraint set
-    alpha = 10. 
-    constraint = copt.constraint.L1Ball(alpha)
-
     img_np = data.cpu().numpy().squeeze().flatten()
 
     def image_constraint_prox(delta, step_size=None):
@@ -39,8 +38,6 @@ for data, target in zip(data_batch, target_batch):
         adv_img_np = img_np + delta
         delta = adv_img_np.clip(0, 1) - img_np
         return delta
-
-    delta0 = np.zeros(data.shape, dtype=float).flatten()
 
     callback = copt.utils.Trace(lambda delta: f_grad(delta)[0])
 
