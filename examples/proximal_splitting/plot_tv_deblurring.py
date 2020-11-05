@@ -5,15 +5,13 @@ Total variation regularization
 
 Comparison of solvers with total variation regularization.
 """
-import copt as cp
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-import matplotlib.pyplot as plt
 from scipy import misc
 from scipy import sparse
-from scipy.sparse import linalg as splinalg
 
-import copt.loss
+import copt as cp
 
 np.random.seed(0)
 
@@ -34,7 +32,7 @@ b = A.dot(img.ravel())
 np.random.seed(0)
 
 # .. compute the step-size ..
-f = copt.loss.SquareLoss(A, b)
+f = cp.loss.SquareLoss(A, b)
 step_size = 1.0 / f.lipschitz
 
 

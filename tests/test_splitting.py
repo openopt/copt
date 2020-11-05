@@ -1,6 +1,5 @@
 """Tests for gradient-based methods."""
 import copt as cp
-from scipy import sparse
 import numpy as np
 import pytest
 
@@ -99,7 +98,7 @@ def test_PDHG_Lasso(line_search):
 
 @pytest.mark.parametrize("line_search", [False, True])
 def test_PDHG_FusedLasso(line_search):
-    # test the PDHG on a 1d-TV problem where we also
+    """PDHG on a 1d-TV problem (aka FusedLasso)."""
     loss = copt.loss.SquareLoss(A, b)
     alpha = 0.1
     L = (np.diag(np.ones(A.shape[1]), k=0) - np.diag(np.ones(A.shape[1] - 1), k=1))[:-1]
@@ -127,12 +126,12 @@ def test_PDHG_FusedLasso(line_search):
 @pytest.mark.parametrize("regularization", np.logspace(-5, 1, 4))
 @pytest.mark.parametrize("line_search", [False, True])
 def test_PDHG_TV2D(regularization, line_search):
-    # test the PDHG on a 2d-TV problem where we also
+    """PDHG on a 2d-TV problem."""
 
     img = np.random.randn(10, 10)
     n_rows, n_cols = img.shape
-    n_features = n_rows * n_cols
-    loss = copt.loss.SquareLoss(np.eye(n_features), img.ravel())
+    n_feat = n_rows * n_cols
+    loss = copt.loss.SquareLoss(np.eye(n_feat), img.ravel())
 
     def g_prox(x, gamma, pen=regularization):
         return cp.tv_prox.prox_tv1d_cols(gamma * pen, x, n_rows, n_cols)
@@ -142,7 +141,7 @@ def test_PDHG_TV2D(regularization, line_search):
 
     opt1 = copt.minimize_primal_dual(
         loss.f_grad,
-        np.zeros(n_features),
+        np.zeros(n_feat),
         prox_1=g_prox,
         prox_2=h_prox,
         tol=1e-14,
@@ -152,7 +151,7 @@ def test_PDHG_TV2D(regularization, line_search):
 
     opt2 = copt.minimize_three_split(
         loss.f_grad,
-        np.zeros(n_features),
+        np.zeros(n_feat),
         prox_1=g_prox,
         prox_2=h_prox,
         tol=1e-12,
