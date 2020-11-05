@@ -4,32 +4,35 @@ from scipy import linalg
 from scipy.sparse import linalg as splinalg
 
 class LinfBall:
-    
+    p = np.inf
+
     def __init__(self, alpha):
         self.alpha = alpha
-        
+
     def prox(self, x, step_size=None):
         return x.clip(-self.alpha, self.alpha)
-    
+
 
 class L2Ball:
-    
+    p = 2
+
     def __init__(self, alpha):
         self.alpha = alpha
-        
+
     def prox(self, x, step_size=None):
         norm = np.sqrt((x ** 2).sum())
         if norm <= self.alpha:
             return x
         return self.alpha * x / norm
-    
-    
+
+
 class L1Ball:
     """Indicator function over the L1 ball
 
   This function is 0 if the sum of absolute values is less than or equal to
   alpha, and infinity otherwise.
   """
+    p = 1
 
     def __init__(self, alpha):
         self.alpha = alpha
@@ -45,21 +48,22 @@ class L1Ball:
 
     def lmo(self, u, x, active_set=None):
         """Linear Minimization Oracle.
-        
+
         Return s - x with s solving the linear problem
             max_{||s||_1 <= alpha} <u, s>
-        
+
         Args:
           u: array
               usually -gradient
           x: array
               usually the iterate of the considered algorithm
           active_set: no effect here.
-          
+
         Returns:
           update_direction: array,
-              s - x, where s is the vertex of the constraint most correlated with u
-          fw_vertex_rep: (float, int) 
+              s - x, where s is the vertex of the constraint most correlated
+              with u
+          fw_vertex_rep: (float, int)
               a hashable representation of s, for active set management
           None: not used here
           max_step_size: float
