@@ -50,8 +50,8 @@ datasets = (
 
 
 variants_fw = [
-    ["backtracking", "backtracking line-search", "s"],
-    ["DR", "Lipschitz step-size", "<"],
+    ["backtracking", "backtracking line-search"],
+    ["DR", "Lipschitz step-size"],
 ]
 
 for d in datasets:
@@ -67,7 +67,7 @@ for d in datasets:
     x0 = np.zeros(n_features)
     x0[0] = d["alpha"]  # start from a (random) vertex
 
-    for step, label, marker in variants_fw:
+    for step, label in variants_fw:
 
         cb = cp.utils.Trace(f)
         sol = cp.minimize_frank_wolfe(
@@ -88,7 +88,6 @@ for d in datasets:
             cb.trace_time,
             np.array(cb.trace_fx) - d["f_star"],
             label=label,
-            marker=marker,
             markevery=10,
         )
 
