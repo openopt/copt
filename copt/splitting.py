@@ -38,42 +38,45 @@ def minimize_three_split(
       x0 : array-like
         Initial guess
 
-      prox_1 : callable or None
+      prox_1 : callable or None, optional
         prox_1(x, alpha, *args) returns the proximal operator of g at xa
         with parameter alpha.
 
-      prox_2 : callable or None
+      prox_2 : callable or None, optional
         prox_2(x, alpha, *args) returns the proximal operator of g at xa
         with parameter alpha.
 
-      tol: float
+      tol: float, optional
         Tolerance of the stopping criterion.
 
-      max_iter : int
+      max_iter : int, optional
         Maximum number of iterations.
 
-      verbose : int
+      verbose : int, optional
         Verbosity level, from 0 (no output) to 2 (output on each iteration)
 
-      callback : callable.
-        callback function (optional). Takes a single argument (x) with the
+      callback : callable, optional
+        Callback function. Takes a single argument (x) with the
         current coefficients in the algorithm. The algorithm will exit if
         callback returns False.
 
-      line_search : boolean
+      line_search : boolean, optional
         Whether to perform line-search to estimate the step size.
 
-      step_size : float
+      step_size : float, optional
         Starting value for the line-search procedure.
 
-      max_iter_backtracking: int
-        maximun number of backtracking iterations.  Used in line search.
+      max_iter_backtracking : int, optional
+        Maximun number of backtracking iterations.  Used in line search.
 
-      backtracking_factor: float
-        the amount to backtrack by during line search.
+      backtracking_factor : float, optional
+        The amount to backtrack by during line search.
 
-      args_prox: tuple
-        optional Extra arguments passed to the prox functions
+      args_prox : tuple, optional
+        Optional Extra arguments passed to the prox functions.
+      
+      h_Lipschitz : float, optional
+        If given, h is assumed to be Lipschitz continuous with constant h_Lipschitz.
 
 
     Returns:
