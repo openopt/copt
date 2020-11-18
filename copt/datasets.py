@@ -23,11 +23,14 @@ DATA_DIR = os.environ.get(
 
 def load_img1(n_rows=20, n_cols=20):
     """Load sample image."""
+    from PIL import Image
+
     dir_path = os.path.dirname(os.path.realpath(__file__))
     grid = np.loadtxt(os.path.join(dir_path, "data", "img1.csv"), delimiter=",")
     dim1 = int(np.sqrt(grid.shape[0]))
     grid = grid.reshape((dim1, dim1))
-    return misc.imresize(grid, (n_rows, n_cols))
+    img = Image.fromarray(grid).resize((n_rows, n_cols))
+    return np.array(img)
 
 
 def _load_dataset(name, subset, data_dir):
