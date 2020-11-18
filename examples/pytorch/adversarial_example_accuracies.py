@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 import copt
 from copt.utils_pytorch import make_func_and_grad
@@ -11,11 +12,12 @@ from robustbench.data import load_cifar10
 from robustbench.utils import load_model
 
 
-n_examples = 10000
+n_examples = 10000 
 data_batch, target_batch = load_cifar10(n_examples=n_examples, data_dir='~/datasets')
+data_batch_np = data_batch.cpu().numpy()
 
 model_name = "Engstrom2019Robustness"
-model = load_model(model_name)
+model = load_model(model_name, norm='L2')  # loads a standard trained model
 criterion = torch.nn.CrossEntropyLoss()
 
 # Define the constraint set
@@ -36,12 +38,7 @@ print(f"Evaluating model {model_name}, on L{constraint.p}Ball({alpha}).")
 
 for k, (data, target) in tqdm(enumerate(zip(data_batch, target_batch))):
     data, target = data.unsqueeze(0), target.unsqueeze(0)
-
-    loss_fun_data = partial(loss_fun, data=data)
-    # Change the function to f_grad: returns loss_val, grad in flattened, numpy array
-    f_grad = make_func_and_grad(loss_fun_data, data.shape, data.device, dtype=data.dtype)
-
-    img_np = data.cpu().numpy().squeeze().flatten()
+    img_np = data_batch_np[k].flatten()
 
     def image_constraint_prox(delta, step_size=None):
         """Projects perturbation delta so that x + delta is in the set of images,
@@ -50,12 +47,15 @@ for k, (data, target) in tqdm(enumerate(zip(data_batch, target_batch))):
         delta = adv_img_np.clip(0, 1) - img_np
         return delta
 
+    loss_fun_data = partial(loss_fun, data=data)
+
+    # Change the function to f_grad: returns loss_val, grad in flattened, numpy array
+    f_grad = make_func_and_grad(loss_fun_data, data.shape, data.device, dtype=data.dtype)
+
     delta0 = np.zeros(data.shape, dtype=float).flatten()
 
-    callback = copt.utils.Trace(lambda delta: f_grad(delta)[0])
-
     sol = copt.minimize_three_split(f_grad, delta0, constraint.prox,
-                                    image_constraint_prox, callback=callback,
+                                    image_constraint_prox,
                                     max_iter=25
                                     )
     label = torch.argmax(model(data), dim=-1)
