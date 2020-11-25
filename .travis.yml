@@ -9,10 +9,10 @@ install:
 - # run _one_ test file, just to make sure everything imports fine
 - py.test -v copt tests/test_proximal_gradient.py
 - # the following are only needed for the examples and coverage tests
-- pip install scikit-image coverage pytest-cov scikit-learn h5py Pillow
+- pip install pytest-parallel scikit-image coverage pytest-cov scikit-learn h5py Pillow
 - py.test --version
 script:
-- NUMBA_DISABLE_JIT=1 py.test -v --cov=copt
+- NUMBA_DISABLE_JIT=1 pytest -v --cov=copt --workers auto
 after_success: coveralls
 cache:
   directories:
