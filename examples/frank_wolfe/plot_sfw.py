@@ -175,5 +175,4 @@ ax2.grid(True)
 
 plt.xlim(1e4, 4e8)
 plt.legend()
-plt.savefig("figures/plot_sfw.png")
 plt.show()
