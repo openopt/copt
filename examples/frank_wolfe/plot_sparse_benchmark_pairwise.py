@@ -99,7 +99,5 @@ for d in datasets:
     plt.yscale("log")
     plt.title(d["name"])
     plt.tight_layout()  # otherwise the right y-label is slightly clipped
-    #    plt.xlim((0, 0.7 * cb.trace_time[-1]))  # for aesthetics
     plt.grid()
-    plt.savefig(f"figures/pairwise_benchmark_{d['name']}.png")
     plt.show()
