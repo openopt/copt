@@ -254,6 +254,14 @@ class SquareLoss:
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
 
+    @property
+    def max_lipschitz(self):
+        from sklearn.utils.extmath import row_norms
+
+        max_squared_sum = row_norms(self.A, squared=True).max()
+
+        return max_squared_sum + self.alpha
+
 
 class HuberLoss:
     """Huber loss"""
