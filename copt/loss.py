@@ -178,6 +178,7 @@ class LogLoss:
 
     @property
     def partial_deriv(self):
+        """Note: this will ignore the regularization parameter alpha"""
         @njit(parallel=True)
         def log_deriv(p, y):
             # derivative of logistic loss
