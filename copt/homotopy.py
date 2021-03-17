@@ -20,7 +20,7 @@ EPS = np.finfo(np.float32).eps
 def minimize_homotopy_cgm(objective_fun, smoothed_constraint_fun, x0, lmo, beta0, max_iter, tol, callback):
     pass
 
-
+# TODO refactor this dataset stuff
 def reduced_digits():
     mat = sio.loadmat(os.path.join(datasets.DATA_DIR, "sdp_mnist", "reduced_clustering_mnist_digits.mat"))
     C = mat['Problem']['C'][0][0]
@@ -35,6 +35,7 @@ C_mat = reduced_digits()
 
 class LinearObjective:
     def __init__(self, M):
+        # TODO just flatten from the outset
         self.M = M
 
     def __call__(self, X):
@@ -56,17 +57,49 @@ class LinearObjective:
         largest_eigv = max(D)
         return largest_eigv / self.M.shape[0]
 
+class RowEqualityConstraint:
+    def __init__(self, shape, operator, offset):
+        self.shape = shape
+        self.operator = operator
+        self.offset = offset
 
-minimize_homotopy_cgm(
-    linear_objective.f_grad,
-    EqualityConstraint, # TODO figure out some way reasonable way to implement this
-    x_init,
-    traceball.lmo,
-    tol = 0,
-    callback=cb,
-    step="sublinear",
-    max_iter=1000
-)
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        z = np.matmul(X, self.operator)
+        return np.all(z == self.offset)
+
+    def feasibility_dist_squared(self, x):
+        X = x.reshape(self.shape)
+        z = np.matmul(X, self.operator)
+        return np.sum((np.z-self.offset) ** 2)
+
+    def smoothed(self, x, beta):
+        return .5/self.beta * self.feasibility_dist_squared(x)
+
+    def smoothed_g_grad(self, x, beta):
+        X = x.reshape(self.shape)
+        z = np.matmul(X, self.operator)
+        grad = 1/self.beta * np.outer((z-self.offset), self.offset)
+
+        g_beta_val = self.smoothed(x, beta)
+        return g_beta_val, grad
+
+linear_objective = LinearObjective(C_mat)
+
+sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
+                                                  np.ones(C_mat.shape[1]),
+                                                  np.ones(C_mat.shape[1]))
+
+# minimize_homotopy_cgm(
+#     linear_objective.f_grad,
+#     EqualityConstraint, # TODO figure out some way reasonable way to implement this
+#     x_init,
+#     traceball.lmo,
+#     tol = 0,
+#     callback=cb,
+#     step="sublinear",
+#     max_iter=1000
+# )
 
 def test_linear_objective():
     # TODO dependency on C_mat
