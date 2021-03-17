@@ -98,7 +98,7 @@ beta0 = 1.
 
 minimize_homotopy_cgm(
     linear_objective.f_grad,
-    sum_to_one_row_constraint,
+    [sum_to_one_row_constraint],
     x_init,
     traceball.lmo,
     beta0,
