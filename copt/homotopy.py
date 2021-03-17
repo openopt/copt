@@ -90,16 +90,22 @@ sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]),
                                                   np.ones(C_mat.shape[1]))
 
-# minimize_homotopy_cgm(
-#     linear_objective.f_grad,
-#     EqualityConstraint, # TODO figure out some way reasonable way to implement this
-#     x_init,
-#     traceball.lmo,
-#     tol = 0,
-#     callback=cb,
-#     step="sublinear",
-#     max_iter=1000
-# )
+cb = copt.utils.Trace(linear_objective)
+alpha = 1.
+traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
+x_init = np.zeros(C_mat.shape).flatten()
+beta0 = 1.
+
+minimize_homotopy_cgm(
+    linear_objective.f_grad,
+    sum_to_one_row_constraint,
+    x_init,
+    traceball.lmo,
+    beta0,
+    tol = 0,
+    callback=cb,
+    max_iter=1000
+)
 
 def test_linear_objective():
     # TODO dependency on C_mat
