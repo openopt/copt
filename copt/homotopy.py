@@ -30,11 +30,11 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
 
         g_beta_t_grad = np.zeros(x.shape, dtype=np.float)
         for constraint in smoothed_constraints:
-            g_beta_t, constraint_grad = constraint.smoothed_g_grad(x, beta_k)
+            g_beta_t, constraint_grad = constraint.smoothed_g_grad(x, 1.)
             g_beta_t_grad += constraint_grad
 
         f_t, f_grad = objective_fun(x)
-        grad = f_grad + g_beta_t_grad
+        grad = beta_k*f_grad + g_beta_t_grad
 
         active_set = None # vanilla FW
         update_direction, _, _, _ = lmo(-grad, x, active_set)
@@ -156,28 +156,27 @@ non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0)
 
 cb = copt.utils.Trace(linear_objective)
 n_labels = 10 # TODO (since it's MNIST)
-alpha = np.sqrt(n_labels)
+alpha = n_labels
 traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
 x_init = np.zeros(C_mat.shape).flatten()
 beta0 = 1.
 
-if True:
-    minimize_homotopy_cgm(
-        linear_objective.f_grad,
-        [sum_to_one_row_constraint, non_negativity_constraint],
-        x_init,
-        traceball.lmo,
-        beta0,
-        tol = 0,
-        callback=cb,
-        max_iter=int(1e6)
-    )
+minimize_homotopy_cgm(
+    linear_objective.f_grad,
+    [sum_to_one_row_constraint, non_negativity_constraint],
+    x_init,
+    traceball.lmo,
+    beta0,
+    tol = 0,
+    callback=cb,
+    max_iter=int(1e6)
+)
 
 def test_linear_objective():
     # TODO dependency on C_mat
     linear_objective = LinearObjective(C_mat)
     cb = copt.utils.Trace(linear_objective)
-    alpha = 1.
+    alpha = 3.
     traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
 
     x_init = np.zeros(C_mat.shape)
