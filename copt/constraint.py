@@ -4,22 +4,53 @@ from scipy import linalg
 from scipy.sparse import linalg as splinalg
 
 class LinfBall:
+    """L-infinity ball.
+    
+    Args:
+        alpha: float
+            radius of the ball.
+    """
     p = np.inf
 
     def __init__(self, alpha):
         self.alpha = alpha
 
     def prox(self, x, step_size=None):
+        """Projection onto the L-infinity ball.
+        
+        Args:
+            x: array-like
+
+        Returns:
+            p : array-like, same shape as x
+                projection of x onto the L-infinity ball.
+        """
         return x.clip(-self.alpha, self.alpha)
 
 
 class L2Ball:
+    """L2 ball.
+    
+    Args:
+        alpha: float
+            radius of the ball.
+    """
     p = 2
 
     def __init__(self, alpha):
         self.alpha = alpha
 
     def prox(self, x, step_size=None):
+        """Projection onto the L-2 ball.
+        
+        Args:
+            x: array-like
+
+        Returns:
+            p : array-like, same shape as x
+                projection of x onto the L-2 ball.
+        """
+
         norm = np.sqrt((x ** 2).sum())
         if norm <= self.alpha:
             return x
@@ -29,9 +60,13 @@ class L2Ball:
 class L1Ball:
     """Indicator function over the L1 ball
 
-  This function is 0 if the sum of absolute values is less than or equal to
-  alpha, and infinity otherwise.
-  """
+    This function is 0 if the sum of absolute values is less than or equal to
+    alpha, and infinity otherwise.
+
+    Args:
+        alpha: float
+            radius of the ball.
+    """
     p = 1
 
     def __init__(self, alpha):
@@ -44,6 +79,17 @@ class L1Ball:
             return np.infty
 
     def prox(self, x, step_size=None):
+        """Projection onto the L-infinity ball.
+        
+        Parameters
+        ----------
+        x: array-like
+
+        Returns
+        -------
+        p : array-like, same shape as x
+            projection of x onto the L-infinity ball.
+        """
         return euclidean_proj_l1ball(x, self.alpha)
 
     def lmo(self, u, x, active_set=None):
@@ -53,9 +99,9 @@ class L1Ball:
             max_{||s||_1 <= alpha} <u, s>
 
         Args:
-          u: array
+          u: array-like
               usually -gradient
-          x: array
+          x: array-like
               usually the iterate of the considered algorithm
           active_set: no effect here.
 
@@ -68,7 +114,7 @@ class L1Ball:
           None: not used here
           max_step_size: float
               1. for a Frank-Wolfe step.
-    """
+        """
         abs_u = np.abs(u)
         largest_coordinate = np.argmax(abs_u)
         sign = np.sign(u[largest_coordinate])
@@ -145,30 +191,31 @@ class SimplexConstraint:
 
 def euclidean_proj_simplex(v, s=1.0):
     r""" Compute the Euclidean projection on a positive simplex
-  Solves the optimisation problem (using the algorithm from [1]):
-      min_w 0.5 * || w - v ||_2^2 , s.t. \sum_i w_i = s, w_i >= 0
-  Parameters
-  ----------
-  v: (n,) numpy array,
-      n-dimensional vector to project
-  s: float, optional, default: 1,
-      radius of the simplex
-  Returns
-  -------
-  w: (n,) numpy array,
-      Euclidean projection of v on the simplex
-  Notes
-  -----
-  The complexity of this algorithm is in O(n log(n)) as it involves sorting v.
-  Better alternatives exist for high-dimensional sparse vectors (cf. [1])
-  However, this implementation still easily scales to millions of dimensions.
-  References
-  ----------
-  [1] Efficient Projections onto the .1-Ball for Learning in High Dimensions
-      John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Tushar Chandra.
-      International Conference on Machine Learning (ICML 2008)
-      http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf
-  """
+
+    Solves the optimization problem (using the algorithm from [1]):
+        min_w 0.5 * || w - v ||_2^2 , s.t. \sum_i w_i = s, w_i >= 0
+
+    Args:
+    v: (n,) numpy array,
+        n-dimensional vector to project
+    s: float, optional, default: 1,
+        radius of the simplex
+
+    Returns:
+    w: (n,) numpy array,
+        Euclidean projection of v on the simplex
+
+    Notes:
+    The complexity of this algorithm is in O(n log(n)) as it involves sorting v.
+    Better alternatives exist for high-dimensional sparse vectors (cf. [1])
+    However, this implementation still easily scales to millions of dimensions.
+
+    References:
+    [1] Efficient Projections onto the .1-Ball for Learning in High Dimensions
+        John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Tushar Chandra.
+        International Conference on Machine Learning (ICML 2008)
+        http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf
+    """
     assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
     (n,) = v.shape  # will raise ValueError if v is not 1-D
     # check if we are already on the simplex
@@ -189,25 +236,24 @@ def euclidean_proj_simplex(v, s=1.0):
 
 def euclidean_proj_l1ball(v, s=1):
     """ Compute the Euclidean projection on a L1-ball
-  Solves the optimisation problem (using the algorithm from [1]):
-      min_w 0.5 * || w - v ||_2^2 , s.t. || w ||_1 <= s
-  Parameters
-  ----------
-  v: (n,) numpy array,
-      n-dimensional vector to project
-  s: float, optional, default: 1,
-      radius of the L1-ball
-  Returns
-  -------
-  w: (n,) numpy array,
-      Euclidean projection of v on the L1-ball of radius s
-  Notes
-  -----
-  Solves the problem by a reduction to the positive simplex case
-  See also
-  --------
-  euclidean_proj_simplex
-  """
+
+    Solves the optimisation problem (using the algorithm from [1]):
+        min_w 0.5 * || w - v ||_2^2 , s.t. || w ||_1 <= s
+
+    Args:
+        v: (n,) numpy array,
+            n-dimensional vector to project
+        s: float, optional, default: 1,
+            radius of the L1-ball
+
+    Returns:
+        w: (n,) numpy array,
+            Euclidean projection of v on the L1-ball of radius s
+
+    Notes:
+        Solves the problem by a reduction to the positive simplex case
+        See also :ref:`euclidean_proj_simplex`
+    """
     assert s > 0, "Radius s must be strictly positive (%d <= 0)" % s
     if len(v.shape) > 1:
         raise ValueError
@@ -226,7 +272,13 @@ def euclidean_proj_l1ball(v, s=1):
 
 
 class TraceBall:
-    """Projection onto the trace (aka nuclear) norm, sum of singular values"""
+    """Projection onto the trace (aka nuclear) norm, sum of singular values
+
+    Args:
+        alpha: float
+            radius of the ball.
+
+    """
 
     is_separable = False
 
@@ -267,7 +319,7 @@ class TraceBall:
           None: not used here
           None: not used here
           max_step_size: 1. for a Frank-Wolfe step.
-    """
+        """
         u_mat = u.reshape(self.shape)
         ut, _, vt = splinalg.svds(u_mat, k=1)
         vertex = self.alpha * np.outer(ut, vt).ravel()

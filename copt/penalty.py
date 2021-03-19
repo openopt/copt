@@ -7,14 +7,14 @@ from copt.utils import njit
 class L1Norm:
     """L1 norm, that is, the sum of absolute values:
 
-  .. math::
-      \\alpha\\sum_i^d |x_i|
+    .. math::
+        \\alpha\\sum_i^d |x_i|
 
-  Args:
-  alpha: float
-      constant multiplying the L1 norm
+    Args:
+        alpha: float
+            constant multiplying the L1 norm
 
-  """
+    """
 
     def __init__(self, alpha):
         self.alpha = alpha
@@ -55,17 +55,15 @@ class L1Norm:
 
 class GroupL1:
     """
-  Group Lasso penalty
+    Group Lasso penalty
 
-  Parameters
-  ----------
+    Args:
+        alpha: float
+            Constant multiplying this loss
 
-  alpha: float
-      Constant multiplying this loss
+        blocks: list of lists
 
-  blocks: list of lists
-
-  """
+    """
 
     def __init__(self, alpha, groups):
         self.alpha = alpha
@@ -147,16 +145,12 @@ class GroupL1:
 
 class FusedLasso:
     """
-  Fused Lasso penalty
+    Fused Lasso penalty
 
-  Parameters
-  ----------
-
-  alpha: scalar
-
-  Examples
-  --------
-  """
+    Args:
+        alpha: float
+            Constant multiplying this function.
+    """
 
     def __init__(self, alpha):
         self.alpha = alpha
@@ -242,7 +236,15 @@ class FusedLasso:
 
 
 class TraceNorm:
-    """Trace (aka nuclear) norm, sum of singular values"""
+    """Trace (aka nuclear) norm, sum of singular values.
+
+    Args:
+        alpha: float
+            Constant multiplying this function.
+        shape: float
+            Shape of original matrix, since input is given as
+            a raveled vector.
+    """
 
     is_separable = False
 
@@ -268,7 +270,15 @@ class TraceNorm:
 
 
 class TotalVariation2D:
-    """2-dimensional Total Variation pseudo-norm"""
+    """2-dimensional Total Variation pseudo-norm.
+
+    Args:
+        alpha: float
+            Constant multiplying this function.
+        shape: float
+            Shape of original matrix, since input is given as
+            a raveled vector.
+    """
 
     def __init__(self, alpha, shape, max_iter=100, tol=1e-6):
         self.alpha = alpha
