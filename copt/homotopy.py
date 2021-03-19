@@ -30,8 +30,8 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
 
         g_beta_t_grad = np.zeros(x.shape, dtype=np.float)
         for constraint in smoothed_constraints:
-            g_beta_t, constraint_grad = constraint.smoothed_g_grad(x, beta0)
-            g_beta_t_grad += g_beta_t_grad
+            g_beta_t, constraint_grad = constraint.smoothed_g_grad(x, beta_k)
+            g_beta_t_grad += constraint_grad
 
         f_t, f_grad = objective_fun(x)
         grad = f_grad + g_beta_t_grad
@@ -49,9 +49,13 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
                 break
 
         if it % 100 == 0:
-            print("step_size", step_size, "betak", beta_k, "f_t", f_t)
+            print("step_size", step_size, "betak", beta_k, "f_t", np.abs(f_t-opt_val)/opt_val)
             for constraint in smoothed_constraints:
-                print("\t", type(constraint).__name__, constraint.feasibility_dist_squared(x))
+                name = type(constraint).__name__
+                if name == "RowEqualityConstraint":
+                    print("\t", name, constraint.feasibility_dist_squared(x)/linalg.norm(constraint.offset))
+                else:
+                    print("\t", name, constraint.feasibility_dist_squared(x))
 
     if callback is not None:
         callback(locals())
@@ -122,7 +126,7 @@ class RowEqualityConstraint:
         grad = 1./beta * np.outer((z-self.offset), self.offset)
 
         g_beta_val = self.smoothed(x, beta)
-        return g_beta_val, grad
+        return g_beta_val, grad.flatten()
 
 class ElementWiseInequalityConstraint:
     def __init__(self, shape, offset):
@@ -140,10 +144,7 @@ class ElementWiseInequalityConstraint:
         return .5/beta * self.feasibility_dist_squared(x)
 
     def smoothed_g_grad(self, x, beta):
-        grad = np.zeros(x.shape)
-        mask = x < self.offset
-        grad[mask] = 1./beta * (x[mask] - self.offset)
-        return self.smoothed(x, beta), grad
+        return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
 
 linear_objective = LinearObjective(C_mat)
 
@@ -154,10 +155,11 @@ sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
 non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0)
 
 cb = copt.utils.Trace(linear_objective)
-alpha = 1.
+n_labels = 10 # TODO (since it's MNIST)
+alpha = np.sqrt(n_labels)
 traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
 x_init = np.zeros(C_mat.shape).flatten()
-beta0 = 100.
+beta0 = 1.
 
 if True:
     minimize_homotopy_cgm(
@@ -168,7 +170,7 @@ if True:
         beta0,
         tol = 0,
         callback=cb,
-        max_iter=int(1e4)
+        max_iter=int(1e6)
     )
 
 def test_linear_objective():
