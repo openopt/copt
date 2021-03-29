@@ -1,14 +1,15 @@
 import numpy as np
-import copt as cp
+import pytest
+from numpy import testing
+
 import copt.constraint
 import copt.penalty
 from copt import tv_prox
-from numpy import testing
-import pytest
 
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
     copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
+    copt.penalty.GroupL1nc(1.0, np.array_split(np.arange(16), 5)),
     copt.penalty.TraceNorm(1.0, (4, 4)),
     copt.constraint.TraceBall(1.0, (4, 4)),
     copt.penalty.TotalVariation2D(1.0, (4, 4)),
@@ -59,6 +60,36 @@ def test_GroupL1():
 #             assert np.unique(blocks[g]).size == 1
 
 
+def test_GroupL1nc():
+    groups = [(0, 1), (2, 3)]
+    g1 = copt.penalty.GroupL1nc(1.0, groups)
+    _, B = g1.prox_factory(5)
+    assert np.all(
+        B.toarray()
+        == np.array(
+            [
+                [1.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1.0],
+            ]
+        )
+    )
+
+    groups = [(0, 1), (3, 4)]
+    g2 = copt.penalty.GroupL1nc(1.0, groups)
+    _, B = g2.prox_factory(5)
+    assert np.all(
+        B.toarray()
+        == np.array(
+            [
+                [1.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+                [0.0, 0.0, -1.0, 0.0, 0.0],
+            ]
+        )
+    )
+
+
 def test_tv1_prox():
     """
     Use the properties of strongly convex functions to test the implementation
@@ -99,7 +130,8 @@ def test_tv2_prox():
 
     for nrun in range(20):
         x = np.random.randn(n_features)
-        x_next = tv_prox.prox_tv2d(x, gamma, n_rows, n_cols, tol=1e-10, max_iter=10000)
+        x_next = tv_prox.prox_tv2d(x, gamma, n_rows, n_cols, tol=1e-10,
+                                   max_iter=10000)
         diff_obj = tv_norm(x, n_rows, n_cols) - tv_norm(x_next, n_rows, n_cols)
         testing.assert_array_less(
             ((x - x_next) ** 2).sum() / gamma, (1 + epsilon) * diff_obj
@@ -137,8 +169,8 @@ def test_three_inequality(pen):
 
         lhs = 2 * (pen(xi) - pen(u))
         rhs = (
-            np.linalg.norm(u - z) ** 2
-            - np.linalg.norm(u - xi) ** 2
-            - np.linalg.norm(xi - z) ** 2
+                np.linalg.norm(u - z) ** 2
+                - np.linalg.norm(u - xi) ** 2
+                - np.linalg.norm(xi - z) ** 2
         )
         assert lhs <= rhs, pen

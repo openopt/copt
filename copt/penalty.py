@@ -143,6 +143,97 @@ class GroupL1:
         return _prox_gl, B
 
 
+class GroupL1nc:
+    """
+    Group Lasso penalty with NON-CONTIGUOUS and NON-OVERLAPPING groups
+
+    Args:
+        alpha: float
+            Constant multiplying this loss
+
+        blocks: list of lists
+
+    """
+
+    def __init__(self, alpha, groups):
+        self.alpha = alpha
+
+        sum_groups = np.sum([len(g) for g in groups])
+        all_indices = list(groups[0])
+        for g in groups[1:]:
+            all_indices.extend(list(g))
+        n_unique = np.unique(all_indices).size
+        if sum_groups != n_unique:
+            raise ValueError('Groups must not overlap.')
+        self.groups = groups
+
+    def __call__(self, x):
+        return self.alpha * np.sum([np.linalg.norm(x[g]) for g in self.groups])
+
+    def prox(self, x, step_size):
+        out = x.copy()
+        for g in self.groups:
+            norm = np.linalg.norm(x[g])
+            if norm > self.alpha * step_size:
+                out[g] -= step_size * self.alpha * out[g] / norm
+            else:
+                out[g] = 0
+        return out
+
+    def prox_factory(self, n_features):
+        B_data = np.zeros(n_features)
+        B_indices = np.zeros(n_features, dtype=np.int32)
+        B_indptr = np.zeros(n_features + 1, dtype=np.int32)
+
+        feature_pointer = 0
+        block_pointer = 0
+        for g in self.groups:
+            for atom in g:
+                B_data[feature_pointer] = 1.
+                B_indices[feature_pointer] = atom
+                feature_pointer += 1
+            B_indptr[block_pointer + 1] = B_indptr[block_pointer] + len(g)
+            block_pointer += 1
+
+        excluded_indices = np.ones(n_features, dtype=np.int32)
+        excluded_indices[B_indices[: feature_pointer + 1]] = 0.
+        for i in np.where(excluded_indices)[0]:
+            B_data[feature_pointer] = -1.
+            B_indices[feature_pointer] = i
+            feature_pointer += 1
+
+            B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
+            block_pointer += 1
+
+        B_indptr = B_indptr[: block_pointer + 1]
+        B = sparse.csr_matrix((B_data, B_indices, B_indptr))
+
+        alpha = self.alpha
+
+        @njit
+        def _prox_gl(x, i, indices, indptr, d, step_size):
+            for b in range(indptr[i], indptr[i + 1]):
+                h = indices[b]
+                if B_data[B_indices[B_indptr[h]]] <= 0:
+                    continue
+                ss = step_size * d[h]
+                norm = 0.0
+                for j in range(B_indptr[h], B_indptr[h + 1]):
+                    j_idx = B_indices[j]
+                    norm += x[j_idx] ** 2
+                norm = np.sqrt(norm)
+                if norm > alpha * ss:
+                    for j in range(B_indptr[h], B_indptr[h + 1]):
+                        j_idx = B_indices[j]
+                        x[j_idx] *= 1 - alpha * ss / norm
+                else:
+                    for j in range(B_indptr[h], B_indptr[h + 1]):
+                        j_idx = B_indices[j]
+                        x[j_idx] = 0.0
+
+        return _prox_gl, B
+
+
 class FusedLasso:
     """
     Fused Lasso penalty
