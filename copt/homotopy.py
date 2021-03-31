@@ -1,4 +1,5 @@
 """Homotopy Methods. Currently, Homotopy Conditional Gradient Methods (a.k.a. Frank-Wolfe)"""
+#%%
 
 import os, sys
 import warnings
@@ -11,7 +12,6 @@ from scipy import io as sio
 import copt
 from copt import utils
 from copt import datasets
-
 
 EPS = np.finfo(np.float32).eps
 
@@ -66,7 +66,8 @@ def full_digits():
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
 
-C_mat, opt_val = reduced_digits()
+# C_mat, opt_val = reduced_digits()
+C_mat, opt_val = full_digits()
 
 class LinearObjective:
     def __init__(self, M):
@@ -192,7 +193,7 @@ minimize_homotopy_cgm(
     beta0,
     tol = 0,
     callback=cb,
-    max_iter=int(1e5)
+    max_iter=int(1e4)
 )
 
 import matplotlib.pyplot as plt
@@ -215,6 +216,8 @@ ax2.set_ylabel('feasibility convergence')
 ax2.grid(True)
 
 plt.show()
+
+# %%
 
 def test_linear_objective():
     # TODO dependency on C_mat
@@ -248,3 +251,4 @@ def test_linear_objective():
     assert check(sol.x) < 0.4
 
 test_linear_objective()
+
