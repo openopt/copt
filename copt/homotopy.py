@@ -53,15 +53,18 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
 
     # TODO return something
 
-# TODO refactor this dataset stuff
+from pathlib import Path
+DATA_DIR = os.environ.get(
+    "COPT_DATA_DIR", os.path.join(os.path.expanduser("~"), "copt_data")
+)
 def reduced_digits():
-    mat = sio.loadmat(os.path.join(datasets.DATA_DIR, "sdp_mnist", "reduced_clustering_mnist_digits.mat"))
+    mat = sio.loadmat(Path(DATA_DIR) / "sdp_mnist" / "reduced_clustering_mnist_digits.mat")
     C = mat['Problem']['C'][0][0]
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
 
 def full_digits():
-    mat = sio.loadmat(os.path.join(datasets.DATA_DIR, "sdp_mnist", "full_clustering_mnist_digits.mat"))
+    mat = sio.loadmat(Path(DATA_DIR) / "sdp_mnist" / "full_clustering_mnist_digits.mat")
     C = mat['Problem']['C'][0][0]
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
@@ -152,6 +155,10 @@ class TraceFoo(copt.utils.Trace):
         self.trace_feasibility_dist = []
 
     def __call__(self, dl):
+        # TODO move all of this into the plotting code. Only trace the most
+        # fundamental quantities that are needed to compute things later.
+
+        # TODO trace with frequency < 1
         x = dl['x']
         f_t = dl['f_t']
         smoothed_constraints = dl['smoothed_constraints']
