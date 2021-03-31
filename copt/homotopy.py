@@ -2,6 +2,7 @@
 
 import os, sys
 import warnings
+import json
 from collections import defaultdict
 import numpy as np
 from scipy import linalg
@@ -13,7 +14,6 @@ from copt import datasets
 
 
 EPS = np.finfo(np.float32).eps
-
 
 # https://arxiv.org/pdf/1804.08544.pdf
 
@@ -29,8 +29,8 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
         beta_k = beta0 / np.sqrt(it+2)
 
         g_beta_t_grad = np.zeros(x.shape, dtype=np.float)
-        for constraint in smoothed_constraints:
-            g_beta_t, constraint_grad = constraint.smoothed_g_grad(x, 1.)
+        for c in smoothed_constraints:
+            g_beta_t, constraint_grad = c.smoothed_g_grad(x, 1.)
             g_beta_t_grad += constraint_grad
 
         f_t, f_grad = objective_fun(x)
@@ -47,15 +47,6 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
         if callback is not None:
             if callback(locals()) is False:  # pylint: disable=g-bool-id-comparison
                 break
-
-        if it % 100 == 0:
-            print("step_size", step_size, "betak", beta_k, "f_t", np.abs(f_t-opt_val)/opt_val)
-            for constraint in smoothed_constraints:
-                name = type(constraint).__name__
-                if name == "RowEqualityConstraint":
-                    print("\t", name, constraint.feasibility_dist_squared(x)/linalg.norm(constraint.offset))
-                else:
-                    print("\t", name, constraint.feasibility_dist_squared(x))
 
     if callback is not None:
         callback(locals())
@@ -117,6 +108,9 @@ class RowEqualityConstraint:
         z = np.matmul(X, self.operator)
         return np.sum((z-self.offset) ** 2)
 
+    def relative_feasibility_dist_squared(self, x):
+        return self.feasibility_dist_squared(x)/linalg.norm(self.offset)
+
     def smoothed(self, x, beta):
         return .5/beta * self.feasibility_dist_squared(x)
 
@@ -140,11 +134,38 @@ class ElementWiseInequalityConstraint:
         infeasible_vals = x[(x - self.offset) < 0]
         return np.sum(infeasible_vals**2)
 
+    def relative_feasibility_dist_squared(self, x):
+        # We don't want to count this in our empirical analysis
+        return 0
+
     def smoothed(self, x, beta):
         return .5/beta * self.feasibility_dist_squared(x)
 
     def smoothed_g_grad(self, x, beta):
         return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
+
+class TraceFoo(copt.utils.Trace):
+    def __init__(self, f=None, freq=1):
+        super(TraceFoo, self).__init__(f, freq)
+        self.trace_relative_subopt = []
+        self.trace_feasibility_dist = []
+
+    def __call__(self, dl):
+        x = dl['x']
+        f_t = dl['f_t']
+        smoothed_constraints = dl['smoothed_constraints']
+        relative_subopt = np.abs(f_t-opt_val)/opt_val
+        total_feasibility_dist = sum(c.relative_feasibility_dist_squared(x) \
+            for c in smoothed_constraints)
+
+        self.trace_relative_subopt.append(relative_subopt)
+        self.trace_feasibility_dist.append(total_feasibility_dist)
+
+        it = dl['it']
+        if it % 100 == 0:
+            stats = dict(it=it, relative_subopt=relative_subopt, feasibility_dist=total_feasibility_dist)
+            print(json.dumps(stats))
+        
 
 linear_objective = LinearObjective(C_mat)
 
@@ -154,7 +175,9 @@ sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
 
 non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0)
 
-cb = copt.utils.Trace(linear_objective)
+# cb = copt.utils.Trace(linear_objective)
+cb = TraceFoo()
+
 n_labels = 10 # TODO (since it's MNIST)
 alpha = n_labels
 traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
@@ -169,8 +192,29 @@ minimize_homotopy_cgm(
     beta0,
     tol = 0,
     callback=cb,
-    max_iter=int(1e6)
+    max_iter=int(1e5)
 )
+
+import matplotlib.pyplot as plt
+fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+fig.suptitle('Homotopy Frank-Wolfe')
+
+cb.trace_relative_subopt
+cb.trace_feasibility_dist
+
+ax1.plot(cb.trace_relative_subopt, label='Homotopy FW')
+ax1.grid(True)
+ax1.set_xscale('log')
+ax1.set_yscale('log')
+ax1.set_ylabel('relative suboptimality')
+
+ax2.plot(cb.trace_feasibility_dist)
+ax2.set_xscale('log')
+ax2.set_yscale('log')
+ax2.set_ylabel('feasibility convergence')
+ax2.grid(True)
+
+plt.show()
 
 def test_linear_objective():
     # TODO dependency on C_mat
