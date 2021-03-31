@@ -69,8 +69,10 @@ def full_digits():
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
 
-# C_mat, opt_val = reduced_digits()
-C_mat, opt_val = full_digits()
+if False:
+    C_mat, opt_val = reduced_digits()
+else:
+    C_mat, opt_val = full_digits()
 
 class LinearObjective:
     def __init__(self, M):
@@ -148,6 +150,9 @@ class ElementWiseInequalityConstraint:
     def smoothed_g_grad(self, x, beta):
         return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
 
+# TODO remove
+# TODO frequency
+# TODO stats outfile
 class TraceFoo(copt.utils.Trace):
     def __init__(self, f=None, freq=1):
         super(TraceFoo, self).__init__(f, freq)
@@ -200,7 +205,7 @@ minimize_homotopy_cgm(
     beta0,
     tol = 0,
     callback=cb,
-    max_iter=int(1e4)
+    max_iter=int(1e6)
 )
 
 import matplotlib.pyplot as plt
@@ -222,7 +227,10 @@ ax2.set_yscale('log')
 ax2.set_ylabel('feasibility convergence')
 ax2.grid(True)
 
-plt.show()
+if False:
+    plt.show()
+else:
+    plt.savefig("mnist_experiment.pdf")
 
 # %%
 
