@@ -55,7 +55,7 @@ class L1Norm:
 
 class GroupL1:
     """
-    Group Lasso penalty
+    Group Lasso penalty for non-overlapping groups
 
     Args:
         alpha: float
@@ -63,99 +63,18 @@ class GroupL1:
 
         blocks: list of lists
 
-    """
-
-    def __init__(self, alpha, groups):
-        self.alpha = alpha
-        # groups need to be increasing
-        for i, g in enumerate(groups):
-            if not np.all(np.diff(g) == 1):
-                raise ValueError("Groups must be contiguous")
-            if i > 0 and groups[i - 1][-1] >= g[0]:
-                raise ValueError("Groups must be increasing")
-        self.groups = groups
-
-    def __call__(self, x):
-        return self.alpha * np.sum([np.linalg.norm(x[g]) for g in self.groups])
-
-    def prox(self, x, step_size):
-        out = x.copy()
-        for g in self.groups:
-
-            norm = np.linalg.norm(x[g])
-            if norm > self.alpha * step_size:
-                out[g] -= step_size * self.alpha * out[g] / norm
-            else:
-                out[g] = 0
-        return out
-
-    def prox_factory(self, n_features):
-        B_data = np.zeros(n_features)
-        B_indices = np.arange(n_features, dtype=np.int32)
-        B_indptr = np.zeros(n_features + 1, dtype=np.int32)
-
-        feature_pointer = 0
-        block_pointer = 0
-        for g in self.groups:
-            while feature_pointer < g[0]:
-                # non-penalized feature
-                B_data[feature_pointer] = -1.0
-                B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
-                feature_pointer += 1
-                block_pointer += 1
-            B_indptr[block_pointer + 1] = B_indptr[block_pointer]
-            for _ in g:
-                B_data[feature_pointer] = 1.0
-                B_indptr[block_pointer + 1] += 1
-                feature_pointer += 1
-            block_pointer += 1
-        for _ in range(feature_pointer, n_features):
-            B_data[feature_pointer] = -1.0
-            B_indptr[block_pointer + 1] = B_indptr[block_pointer] + 1
-            feature_pointer += 1
-            block_pointer += 1
-
-        B_indptr = B_indptr[: block_pointer + 1]
-        B = sparse.csr_matrix((B_data, B_indices, B_indptr))
-        alpha = self.alpha
-
-        @njit
-        def _prox_gl(x, i, indices, indptr, d, step_size):
-            for b in range(indptr[i], indptr[i + 1]):
-                h = indices[b]
-                if B_data[B_indices[B_indptr[h]]] <= 0:
-                    continue
-                ss = step_size * d[h]
-                norm = 0.0
-                for j in range(B_indptr[h], B_indptr[h + 1]):
-                    j_idx = B_indices[j]
-                    norm += x[j_idx] ** 2
-                norm = np.sqrt(norm)
-                if norm > alpha * ss:
-                    for j in range(B_indptr[h], B_indptr[h + 1]):
-                        j_idx = B_indices[j]
-                        x[j_idx] *= 1 - alpha * ss / norm
-                else:
-                    for j in range(B_indptr[h], B_indptr[h + 1]):
-                        j_idx = B_indices[j]
-                        x[j_idx] = 0.0
-
-        return _prox_gl, B
-
-
-class GroupL1nc:
-    """
-    Group Lasso penalty with NON-CONTIGUOUS and NON-OVERLAPPING groups
-
-    Args:
-        alpha: float
-            Constant multiplying this loss
-
-        blocks: list of lists
+        weights: (optional)
+            - If not passed, each group gets the same penalty (=1). (default)
+            - If 'nf', each groups gets a penalty equal to the square root of
+              the number of features indexed in it.
+            - If 'nfi', each group gets a penalty equal to the inverse of the
+              square root of the number of features indexed in it.
+            - If iterable, the i-th group gets a penalty equal to the i-th
+              entry of the passed iterable.
 
     """
 
-    def __init__(self, alpha, groups):
+    def __init__(self, alpha, groups, weights=None):
         self.alpha = alpha
 
         sum_groups = np.sum([len(g) for g in groups])
@@ -165,17 +84,34 @@ class GroupL1nc:
         n_unique = np.unique(all_indices).size
         if sum_groups != n_unique:
             raise ValueError('Groups must not overlap.')
-        self.groups = groups
+        self.groups = [list(g) for g in groups]
+
+        if weights is None:
+            self.weights = np.ones(len(self.groups), dtype=np.float32)
+        elif isinstance(weights, str):
+            if weights == 'nf':
+                self.weights = np.asarray([np.sqrt(len(g)) for g in
+                                           self.groups])
+            elif weights == 'nfi':
+                self.weights = np.asarray([1 / np.sqrt(len(g)) for g in
+                                           self.groups])
+        else:
+            if len(weights) != len(self.groups):
+                raise ValueError('Length of weights must be equal to number '
+                                 'of groups.')
+            self.weights = np.asarray(weights)
 
     def __call__(self, x):
-        return self.alpha * np.sum([np.linalg.norm(x[g]) for g in self.groups])
+        return self.alpha * np.sum([w * np.linalg.norm(x[g]) for w, g in
+                                    zip(self.weights, self.groups)])
 
     def prox(self, x, step_size):
         out = x.copy()
-        for g in self.groups:
+        for w, g in zip(self.weights, self.groups):
             norm = np.linalg.norm(x[g])
-            if norm > self.alpha * step_size:
-                out[g] -= step_size * self.alpha * out[g] / norm
+            r = w * self.alpha * step_size
+            if norm > r:
+                out[g] -= r * out[g] / norm
             else:
                 out[g] = 0
         return out
@@ -222,7 +158,7 @@ class GroupL1nc:
                     j_idx = B_indices[j]
                     norm += x[j_idx] ** 2
                 norm = np.sqrt(norm)
-                if norm > alpha * ss:
+                if norm > alpha * ss * self.weights[h]:
                     for j in range(B_indptr[h], B_indptr[h + 1]):
                         j_idx = B_indices[j]
                         x[j_idx] *= 1 - alpha * ss / norm

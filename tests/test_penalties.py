@@ -9,7 +9,6 @@ from copt import tv_prox
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
     copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
-    copt.penalty.GroupL1nc(1.0, np.array_split(np.arange(16), 5)),
     copt.penalty.TraceNorm(1.0, (4, 4)),
     copt.constraint.TraceBall(1.0, (4, 4)),
     copt.penalty.TotalVariation2D(1.0, (4, 4)),
@@ -18,76 +17,56 @@ proximal_penalties = [
 
 
 def test_GroupL1():
+    groups = [(0, 1), (1, 2)]
+    with np.testing.assert_raises(ValueError):
+        copt.penalty.GroupL1(1.0, groups)
+
     groups = [(0, 1), (2, 3)]
+    weights = [1, 2, 3]
+    with np.testing.assert_raises(ValueError):
+        copt.penalty.GroupL1(1.0, groups, weights)
+
     g1 = copt.penalty.GroupL1(1.0, groups)
+    x = np.array([1., 2, 3, 4])
+    gt = np.linalg.norm(x[[0, 1]]) + np.linalg.norm(x[[2, 3]])
+    np.testing.assert_almost_equal(g1(x), gt)
+
+    gt = np.array([1., 1])
+    np.testing.assert_almost_equal(g1.weights, gt)
+
+    g2 = copt.penalty.GroupL1(1.0, groups, 'nf')
+    gt = np.array([np.sqrt(2), np.sqrt(2)])
+    np.testing.assert_almost_equal(g2.weights, gt)
+
+    g3 = copt.penalty.GroupL1(1.0, groups, 'nfi')
+    gt = 1. / gt
+    np.testing.assert_almost_equal(g3.weights, gt)
+
+    gt = np.random.rand(len(groups))
+    g4 = copt.penalty.GroupL1(1.0, groups, gt)
+    np.testing.assert_almost_equal(g4.weights, gt)
+
     _, B = g1.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0],
-            ]
-        )
+    gt = np.array(
+        [
+            [1.0, 1.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, -1.0],
+        ]
     )
+    np.testing.assert_almost_equal(B.toarray(), gt)
 
     groups = [(0, 1), (3, 4)]
-    g2 = copt.penalty.GroupL1(1.0, groups)
-    _, B = g2.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 1.0],
-            ]
-        )
+    g5 = copt.penalty.GroupL1(1.0, groups)
+    _, B = g5.prox_factory(5)
+    gt = np.array(
+        [
+            [1.0, 1.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0, 1.0],
+            [0.0, 0.0, -1.0, 0.0, 0.0],
+        ]
     )
-
-
-#
-#     for blocks in [[(0, 1), (2, 3)], ]:
-#         pen = cp.utils.GroupL1(1., blocks)
-#         counter = 0
-#         for g in pen.groups:
-#             for j in g:
-#                 counter += 1
-#         assert counter == blocks.size
-#         assert pen.groups
-#         for g in pen.groups:
-#             assert np.unique(blocks[g]).size == 1
-
-
-def test_GroupL1nc():
-    groups = [(0, 1), (2, 3)]
-    g1 = copt.penalty.GroupL1nc(1.0, groups)
-    _, B = g1.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0],
-            ]
-        )
-    )
-
-    groups = [(0, 1), (3, 4)]
-    g2 = copt.penalty.GroupL1nc(1.0, groups)
-    _, B = g2.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 1.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0],
-            ]
-        )
-    )
+    np.testing.assert_almost_equal(B.toarray(), gt)
 
 
 def test_tv1_prox():
