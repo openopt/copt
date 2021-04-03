@@ -195,8 +195,8 @@ def test_vrtos_ogl():
     groups_2 = [np.arange(5, 10)]
     f = copt.loss.LogLoss(A, b, alpha)
     for beta in np.logspace(-3, 3, 3):
-        p_1 = copt.penalty.GroupL1(beta, groups_1)
-        p_2 = copt.penalty.GroupL1(beta, groups_2)
+        p_1 = copt.penalty.OGroupL1(beta, groups_1)
+        p_2 = copt.penalty.OGroupL1(beta, groups_2)
         L = cp.utils.get_max_lipschitz(A, "logloss") + alpha / density
 
         opt_vrtos = cp.minimize_vrtos(
