@@ -1,10 +1,10 @@
 import numpy as np
+import pytest
 from scipy import sparse
+
 import copt as cp
 import copt.loss
 import copt.penalty
-from copt import randomized
-import pytest
 
 np.random.seed(0)
 n_samples, n_features = 20, 10
@@ -188,37 +188,37 @@ def test_gl(groups):
             assert np.linalg.norm(grad_map) < 1e-6
 
 
-def test_vrtos_ogl():
-    """Test on overlapping group lasso"""
-    alpha = 1.0 / n_samples
-    groups_1 = [np.arange(8)]
-    groups_2 = [np.arange(5, 10)]
-    f = copt.loss.LogLoss(A, b, alpha)
-    for beta in np.logspace(-3, 3, 3):
-        p_1 = copt.penalty.OGroupL1(beta, groups_1)
-        p_2 = copt.penalty.OGroupL1(beta, groups_2)
-        L = cp.utils.get_max_lipschitz(A, "logloss") + alpha / density
-
-        opt_vrtos = cp.minimize_vrtos(
-            f.partial_deriv,
-            A,
-            b,
-            np.zeros(n_features),
-            1 / (3 * L),
-            alpha=alpha,
-            max_iter=200,
-            prox_1=p_1.prox_factory(n_features),
-            prox_2=p_2.prox_factory(n_features),
-        )
-
-        opt_tos = cp.minimize_three_split(
-            f.f_grad, np.zeros(n_features), prox_1=p_1.prox, prox_2=p_2.prox
-        )
-
-        norm = np.linalg.norm(opt_tos.x)
-        if norm < 1e-10:
-            norm = 1
-        assert np.linalg.norm(opt_vrtos.x - opt_tos.x) / norm < 1e-4
+# def test_vrtos_ogl():
+#     """Test on overlapping group lasso"""
+#     alpha = 1.0 / n_samples
+#     groups_1 = [np.arange(8)]
+#     groups_2 = [np.arange(5, 10)]
+#     f = copt.loss.LogLoss(A, b, alpha)
+#     for beta in np.logspace(-3, 3, 3):
+#         p_1 = copt.penalty.OGroupL1(beta, groups_1)
+#         p_2 = copt.penalty.OGroupL1(beta, groups_2)
+#         L = cp.utils.get_max_lipschitz(A, "logloss") + alpha / density
+#
+#         opt_vrtos = cp.minimize_vrtos(
+#             f.partial_deriv,
+#             A,
+#             b,
+#             np.zeros(n_features),
+#             1 / (3 * L),
+#             alpha=alpha,
+#             max_iter=200,
+#             prox_1=p_1.prox_factory(n_features),
+#             prox_2=p_2.prox_factory(n_features),
+#         )
+#
+#         opt_tos = cp.minimize_three_split(
+#             f.f_grad, np.zeros(n_features), prox_1=p_1.prox, prox_2=p_2.prox
+#         )
+#
+#         norm = np.linalg.norm(opt_tos.x)
+#         if norm < 1e-10:
+#             norm = 1
+#         assert np.linalg.norm(opt_vrtos.x - opt_tos.x) / norm < 1e-4
 
 
 @pytest.mark.parametrize("A_data", [A, A2])

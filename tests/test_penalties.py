@@ -9,7 +9,6 @@ from copt import tv_prox
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
     copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
-    copt.penalty.OGroupL1(1.0, np.array_split(np.arange(16), 5)),
     copt.penalty.TraceNorm(1.0, (4, 4)),
     copt.constraint.TraceBall(1.0, (4, 4)),
     copt.penalty.TotalVariation2D(1.0, (4, 4)),
@@ -99,48 +98,6 @@ def test_GroupL1():
         ]
     )
     np.testing.assert_almost_equal(B.toarray(), gt)
-
-
-def test_OverlappingGroupL1():
-    groups = [(0, 1), (2, 3)]
-    g1 = copt.penalty.OGroupL1(1.0, groups)
-    _, B = g1.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, -1.0],
-            ]
-        )
-    )
-
-    groups = [(0, 1), (3, 4)]
-    g2 = copt.penalty.OGroupL1(1.0, groups)
-    _, B = g2.prox_factory(5)
-    assert np.all(
-        B.toarray()
-        == np.array(
-            [
-                [1.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0, 1.0],
-            ]
-        )
-    )
-
-
-#     for blocks in [[(0, 1), (2, 3)], ]:
-#         pen = cp.utils.GroupL1(1., blocks)
-#         counter = 0
-#         for g in pen.groups:
-#             for j in g:
-#                 counter += 1
-#         assert counter == blocks.size
-#         assert pen.groups
-#         for g in pen.groups:
-#             assert np.unique(blocks[g]).size == 1
 
 
 def test_tv1_prox():
