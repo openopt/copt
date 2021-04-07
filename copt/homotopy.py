@@ -12,6 +12,10 @@ from scipy import io as sio
 import copt
 from copt import utils
 from copt import datasets
+import matplotlib.pyplot as plt
+
+# TODO XXX remove this
+np.random.seed(0)
 
 EPS = np.finfo(np.float32).eps
 
@@ -71,7 +75,7 @@ def full_digits():
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
 
-if False:
+if True:
     C_mat, opt_val = reduced_digits()
 else:
     C_mat, opt_val = full_digits()
@@ -150,7 +154,8 @@ class ElementWiseInequalityConstraint:
         return .5/beta * self.feasibility_dist_squared(x)
 
     def smoothed_g_grad(self, x, beta):
-        return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
+        # return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
+        return self.smoothed(x, beta), np.minimum(x-self.offset, 0)
 
 # TODO remove
 # TODO frequency
@@ -186,57 +191,67 @@ class TraceFoo(copt.utils.Trace):
             print(json.dumps(stats))
             print(json.dumps(stats), file=stats_file)
 
-linear_objective = LinearObjective(C_mat)
-
-sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
-                                                  np.ones(C_mat.shape[1]),
-                                                  np.ones(C_mat.shape[1]))
-
-non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0)
-
-# cb = copt.utils.Trace(linear_objective)
-cb = TraceFoo()
-
-n_labels = 10 # TODO (since it's MNIST)
-alpha = n_labels
-traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
-x_init = np.zeros(C_mat.shape).flatten()
-beta0 = 1.
-
-minimize_homotopy_cgm(
-    linear_objective.f_grad,
-    [sum_to_one_row_constraint, non_negativity_constraint],
-    x_init,
-    traceball.lmo,
-    beta0,
-    tol = 0,
-    callback=cb,
-    max_iter=int(1e6)
-)
-
-import matplotlib.pyplot as plt
-fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-fig.suptitle('Homotopy Frank-Wolfe')
-
-cb.trace_relative_subopt
-cb.trace_feasibility_dist
-
-ax1.plot(cb.trace_relative_subopt, label='Homotopy FW')
-ax1.grid(True)
-ax1.set_xscale('log')
-ax1.set_yscale('log')
-ax1.set_ylabel('relative suboptimality')
-
-ax2.plot(cb.trace_feasibility_dist)
-ax2.set_xscale('log')
-ax2.set_yscale('log')
-ax2.set_ylabel('feasibility convergence')
-ax2.grid(True)
-
 if False:
-    plt.show()
-else:
-    plt.savefig("mnist_experiment.pdf")
+    linear_objective = LinearObjective(C_mat)
+
+    sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
+                                                    np.ones(C_mat.shape[1]),
+                                                    np.ones(C_mat.shape[1]))
+
+    non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0)
+
+    # cb = copt.utils.Trace(linear_objective)
+    cb = TraceFoo()
+
+    n_labels = 10 # TODO (since it's MNIST)
+    alpha = n_labels
+    traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
+    x_init = np.zeros(C_mat.shape).flatten()
+    beta0 = 1.
+
+    minimize_homotopy_cgm(
+        linear_objective.f_grad,
+        [sum_to_one_row_constraint, non_negativity_constraint],
+        x_init,
+        traceball.lmo,
+        beta0,
+        tol = 0,
+        callback=cb,
+        max_iter=int(5e3)
+    )
+
+    if True:
+        fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+        fig.suptitle('Homotopy Frank-Wolfe')
+
+        cb.trace_relative_subopt
+        cb.trace_feasibility_dist
+
+        ax1.plot(cb.trace_relative_subopt, label='Homotopy FW')
+        ax1.grid(True)
+        ax1.set_xscale('log')
+        ax1.set_yscale('log')
+        ax1.set_ylabel('relative suboptimality')
+
+        ax2.plot(cb.trace_feasibility_dist)
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.set_ylabel('feasibility convergence')
+        ax2.grid(True)
+    else:
+        fig, ax = plt.subplots()
+        fig.suptitle('Homotopy Frank-Wolfe')
+        ax.plot(cb.trace_relative_subopt, label='Homotopy FW')
+        ax.grid(True)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylabel('relative suboptimality')
+
+
+    if True:
+        plt.show()
+    else:
+        plt.savefig("mnist_experiment.pdf")
 
 # %%
 
@@ -271,11 +286,59 @@ def test_linear_objective():
     assert check(x_init) > 0.4
     assert check(sol.x) < 0.4
 
+test_linear_objective()
+
+# def test_row_equality_constraints():
+#     # TODO set C_mat randomly
+#     sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
+#                                                   np.ones(C_mat.shape[1]),
+#                                                   np.ones(C_mat.shape[1]))
+
+#     beta = 1.
+#     x = np.zeros(C_mat.shape)
+#     x = x.flatten()
+#     sum_to_one_row_constraint.smoothed(x, beta)
+
+#     val, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
+
+#     t = 1e-6
+#     # vec = np.random.rand(*grad.shape)
+#     vec = np.zeros(grad.shape)
+#     vec[0] = 1
+#     v1, _ = sum_to_one_row_constraint.smoothed_g_grad(x + t*vec, beta)
+#     v2, _ = sum_to_one_row_constraint.smoothed_g_grad(x - t*vec, beta)
+
+#     print(
+#         np.linalg.norm(
+#             (v1-v2)/(2*t) -
+#             np.dot(grad, vec) * vec
+#         ))
+
 def test_row_equality_constraints():
+    # TODO set C_mat randomly
     sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]),
-                                                  np.ones(C_mat.shape[1])
+                                                  np.ones(C_mat.shape[1]))
+
+    beta = 1.
+    x = np.zeros(C_mat.shape)
+    x = x.flatten()
+
+    def f(x):
+        val, _ = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
+        return val
+
+    def g(x):
+        _, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
+        return grad
+
+    from scipy import optimize
+
+    for _ in range(100):
+        print(optimize.check_grad(f, g, np.random.randn(*x.shape)))
+
+#     val, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
 
 
-test_linear_objective()
+test_row_equality_constraints()
 
