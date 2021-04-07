@@ -24,12 +24,13 @@ EPS = np.finfo(np.float32).eps
 def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, max_iter, tol, callback):
     # TODO is this necessary?
     x0 = np.asanyarray(x0, dtype=np.float)
+    beta0 = np.asanyarray(beta0, dtype=np.float128)
     if tol < 0:
         raise ValueError("'tol' must be non-negative")
     x = x0.copy()
     
     for it in range(max_iter):
-        step_size = 2. / (it+2)
+        step_size = 2. / (it+2.)
         beta_k = beta0 / np.sqrt(it+2)
 
         g_beta_t_grad = np.zeros(x.shape, dtype=np.float)
@@ -42,11 +43,14 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
         f_t, f_grad = objective_fun(x)
         grad = beta_k*f_grad + g_beta_t_grad
 
+        # TODO understand this symmetrize step!!
+        # this is in some other code but I don't understand why.
+        # grad_square = grad.reshape(1000,1000) # TODO hard coded
+        # grad_square = .5*(grad_square + grad_square.T)
+        # grad = grad_square.flatten()
+
         active_set = None # vanilla FW
         update_direction, _, _, _ = lmo(-grad, x, active_set)
-        # TODO what is this update direction normalization???
-        # norm_update_direction = linalg.norm(update_direction)**2
-        norm_update_direction = update_direction
 
         x += step_size*update_direction
 
@@ -75,7 +79,7 @@ def full_digits():
     opt_val = mat['Problem']['opt_val'][0][0][0][0]
     return C, opt_val
 
-if True:
+if False:
     C_mat, opt_val = reduced_digits()
 else:
     C_mat, opt_val = full_digits()
@@ -104,6 +108,8 @@ class LinearObjective:
         return largest_eigv / self.M.shape[0]
 
 class RowEqualityConstraint:
+    # TODO write in some doc strings with some simple equations dictating what
+    # things should be.
     def __init__(self, shape, operator, offset):
         self.shape = shape
         # TODO "operator is vague"
@@ -116,23 +122,43 @@ class RowEqualityConstraint:
         return np.all(z == self.offset)
 
     def feasibility_dist_squared(self, x):
+        # TODO customize this doc string to this particular constraint
+        '''1/2 * ||A(X) - b||^2'''
         X = x.reshape(self.shape)
         z = np.matmul(X, self.operator)
-        return np.sum((z-self.offset) ** 2)
+        return .5*np.sum((z-self.offset) ** 2)
+
+    def grad_feasibility_dist_squared(self, x):
+        '''returns a tuple (dist_squared, gradient)'''
+        X = x.reshape(self.shape)
+        z = np.matmul(X, self.operator)
+        grad = np.outer((z-self.offset), self.offset)
+        return self.feasibility_dist_squared(x), grad.flatten()
+
+    def grad(self, x):
+        # TODO XXX remove this 
+        X = x.reshape(self.shape)
+
+        v = self.operator
+        w = self.offset
+        t_0 = ((X).dot(v) - w)
+        functionValue = .5*np.linalg.norm(t_0) ** 2
+        gradient = np.multiply.outer(t_0, v)
+
+        return functionValue, gradient.flatten()
 
     def relative_feasibility_dist_squared(self, x):
+        # TODO rename this trace and implement for the other thing. What's
+        # relevant is that this is whatever we want to be tracking.
         return self.feasibility_dist_squared(x)/linalg.norm(self.offset)
 
     def smoothed(self, x, beta):
-        return .5/beta * self.feasibility_dist_squared(x)
+        return 1/beta * self.feasibility_dist_squared(x)
 
     def smoothed_g_grad(self, x, beta):
-        X = x.reshape(self.shape)
-        z = np.matmul(X, self.operator)
-        grad = 1./beta * np.outer((z-self.offset), self.offset)
-
-        g_beta_val = self.smoothed(x, beta)
-        return g_beta_val, grad.flatten()
+        return self.grad(x)
+        # val, grad = self.grad_feasibility_dist_squared(x)
+        # return 1/beta * val, 1/beta * grad.flatten()
 
 class ElementWiseInequalityConstraint:
     def __init__(self, shape, offset):
@@ -144,7 +170,7 @@ class ElementWiseInequalityConstraint:
 
     def feasibility_dist_squared(self, x):
         infeasible_vals = x[(x - self.offset) < 0]
-        return np.sum(infeasible_vals**2)
+        return np.linalg.norm(infeasible_vals)**2
 
     def relative_feasibility_dist_squared(self, x):
         # We don't want to count this in our empirical analysis
@@ -155,7 +181,11 @@ class ElementWiseInequalityConstraint:
 
     def smoothed_g_grad(self, x, beta):
         # return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
-        return self.smoothed(x, beta), np.minimum(x-self.offset, 0)
+        # return self.smoothed(x, beta), np.minimum(x-self.offset, 0)
+        val = .5*self.feasibility_dist_squared(x)
+        grad = np.zeros(x.shape)
+        grad[x<self.offset] = x[x<self.offset]
+        return val, grad
 
 # TODO remove
 # TODO frequency
@@ -191,7 +221,7 @@ class TraceFoo(copt.utils.Trace):
             print(json.dumps(stats))
             print(json.dumps(stats), file=stats_file)
 
-if False:
+if True:
     linear_objective = LinearObjective(C_mat)
 
     sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
@@ -217,7 +247,7 @@ if False:
         beta0,
         tol = 0,
         callback=cb,
-        max_iter=int(5e3)
+        max_iter=int(1800)
     )
 
     if True:
@@ -255,38 +285,38 @@ if False:
 
 # %%
 
-def test_linear_objective():
-    # TODO dependency on C_mat
-    linear_objective = LinearObjective(C_mat)
-    cb = copt.utils.Trace(linear_objective)
-    alpha = 3.
-    traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
+# def test_linear_objective():
+#     # TODO dependency on C_mat
+#     linear_objective = LinearObjective(C_mat)
+#     cb = copt.utils.Trace(linear_objective)
+#     alpha = 3.
+#     traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
 
-    x_init = np.zeros(C_mat.shape)
-    x_init = x_init.flatten()
+#     x_init = np.zeros(C_mat.shape)
+#     x_init = x_init.flatten()
 
-    sol = copt.minimize_frank_wolfe(
-        linear_objective.f_grad,
-        x_init,
-        traceball.lmo,
-        tol=0,
-        lipschitz=linear_objective.lipschitz,
-        callback=cb,
-        step="sublinear",
-        max_iter=1000,
-    )
+#     sol = copt.minimize_frank_wolfe(
+#         linear_objective.f_grad,
+#         x_init,
+#         traceball.lmo,
+#         tol=0,
+#         lipschitz=linear_objective.lipschitz,
+#         callback=cb,
+#         step="sublinear",
+#         max_iter=1000,
+#     )
 
-    def check(x):
-        ss = 1 / linear_objective.lipschitz
-        _,grad = linear_objective.f_grad(x)
-        # this is the proximal mapping, zero at optimum
-        grad_map = (x - traceball.prox(x - ss * grad, ss)) / ss
-        return np.linalg.norm(grad_map)
+#     def check(x):
+#         ss = 1 / linear_objective.lipschitz
+#         _,grad = linear_objective.f_grad(x)
+#         # this is the proximal mapping, zero at optimum
+#         grad_map = (x - traceball.prox(x - ss * grad, ss)) / ss
+#         return np.linalg.norm(grad_map)
 
-    assert check(x_init) > 0.4
-    assert check(sol.x) < 0.4
+#     assert check(x_init) > 0.4
+#     assert check(sol.x) < 0.4
 
-test_linear_objective()
+# test_linear_objective()
 
 # def test_row_equality_constraints():
 #     # TODO set C_mat randomly
@@ -314,31 +344,33 @@ test_linear_objective()
 #             np.dot(grad, vec) * vec
 #         ))
 
-def test_row_equality_constraints():
-    # TODO set C_mat randomly
-    sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
-                                                  np.ones(C_mat.shape[1]),
-                                                  np.ones(C_mat.shape[1]))
 
-    beta = 1.
-    x = np.zeros(C_mat.shape)
-    x = x.flatten()
 
-    def f(x):
-        val, _ = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
-        return val
 
-    def g(x):
-        _, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
-        return grad
+    # # TODO set C_mat randomly
+    # sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
+    #                                               np.ones(C_mat.shape[1]),
+    #                                               np.ones(C_mat.shape[1]))
 
-    from scipy import optimize
+    # beta = 1.
+    # x = np.zeros(C_mat.shape)
+    # x = x.flatten()
 
-    for _ in range(100):
-        print(optimize.check_grad(f, g, np.random.randn(*x.shape)))
+    # def f(x):
+    #     val, _ = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
+    #     return val
+
+    # def g(x):
+    #     _, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
+    #     return grad
+
+    # from scipy import optimize
+
+    # for _ in range(3):
+    #     print(optimize.check_grad(f, g, np.random.randn(*x.shape)))
 
 #     val, grad = sum_to_one_row_constraint.smoothed_g_grad(x, beta)
 
 
-test_row_equality_constraints()
+# test_row_equality_constraints()
 
