@@ -30,6 +30,8 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
 
         g_beta_t_grad = np.zeros(x.shape, dtype=np.float)
         for c in smoothed_constraints:
+            # TODO remove this beta argument since maybe it is more numerically
+            # stable to move it around (and avoid double divisions.)
             g_beta_t, constraint_grad = c.smoothed_g_grad(x, 1.)
             g_beta_t_grad += constraint_grad
 
@@ -153,6 +155,8 @@ class ElementWiseInequalityConstraint:
 # TODO remove
 # TODO frequency
 # TODO stats outfile
+checkpoint_dir = Path(".")
+stats_file = open(checkpoint_dir / 'stats.txt', 'a', buffering=1) # TODO What about closing this file?
 class TraceFoo(copt.utils.Trace):
     def __init__(self, f=None, freq=1):
         super(TraceFoo, self).__init__(f, freq)
@@ -164,6 +168,8 @@ class TraceFoo(copt.utils.Trace):
         # fundamental quantities that are needed to compute things later.
 
         # TODO trace with frequency < 1
+
+        # TODO trace time as well?
         x = dl['x']
         f_t = dl['f_t']
         smoothed_constraints = dl['smoothed_constraints']
@@ -178,7 +184,7 @@ class TraceFoo(copt.utils.Trace):
         if it % 100 == 0:
             stats = dict(it=it, relative_subopt=relative_subopt, feasibility_dist=total_feasibility_dist)
             print(json.dumps(stats))
-        
+            print(json.dumps(stats), file=stats_file)
 
 linear_objective = LinearObjective(C_mat)
 
@@ -264,6 +270,12 @@ def test_linear_objective():
 
     assert check(x_init) > 0.4
     assert check(sol.x) < 0.4
+
+def test_row_equality_constraints():
+    sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
+                                                  np.ones(C_mat.shape[1]),
+                                                  np.ones(C_mat.shape[1])
+
 
 test_linear_objective()
 
