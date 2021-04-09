@@ -221,7 +221,7 @@ class TraceFoo(copt.utils.Trace):
             print(json.dumps(stats))
             print(json.dumps(stats), file=stats_file)
 
-if True:
+if False:
     linear_objective = LinearObjective(C_mat)
 
     sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
