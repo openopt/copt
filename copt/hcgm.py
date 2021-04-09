@@ -32,6 +32,7 @@ x = x0.copy()
 n_iter = int(1e5)
 beta0 = 1.
 stats = []
+ut, vt = None,None
 for it in range(n_iter):
     step_size = 2 / (it+2)
     beta_k = beta0/np.sqrt(it+2)
@@ -39,8 +40,11 @@ for it in range(n_iter):
     grad = beta_k*D_mat + At(A(x)-b) + At2(A2(x)-b2) + 1000*np.minimum(x,0)
     grad = .5 * (grad+grad.T)
 
-    ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9)
-    vertex = k*np.outer(ut,vt)
+    # ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
+    _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
+    ut = ut.real
+    # vertex = k*np.outer(ut,vt)
+    vertex = k*np.outer(ut,ut)
 
     x = (1-step_size)*x + step_size*vertex
 
@@ -57,6 +61,7 @@ for it in range(n_iter):
     
     if it % 100 == 0:
         print(stat)
+        # print('x', x[0,0])
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots()
