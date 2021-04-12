@@ -7,6 +7,8 @@ import scipy.linalg as linalg
 import scipy.sparse.linalg as slinalg
 import json
 
+import copt.constraint
+
 # mat = sio.loadmat("/Users/gideon/projects/SHCGM/Clustering/kmeans_sdp/data/data_features.mat")
 mat = sio.loadmat("/Users/gideon/projects/SHCGM/Clustering/mydata.mat")
 digits = mat['digits'].astype(np.float)
@@ -26,10 +28,20 @@ A2 = lambda x: np.sum(x,axis=0).reshape(dim,1)
 At = lambda y: matlib.repmat(y,dim,1).T
 At2 = lambda y: matlib.repmat(y,1,dim).T
 
-x0 = np.zeros((dim,dim))
+x0 = np.zeros((dim,dim)).flatten()
+
+alpha = k
+traceball = copt.constraint.TraceBall(alpha, (dim,dim))
+lmo = traceball.lmo
+
+def smoothed_constraints_gradient(x, operator, offset):
+    X = x.reshape((dim,dim))
+    mapped = X.dot(operator) # Ax
+    val = .5*np.linalg.norm(Ax-offset)
+    return val, grad
 
 x = x0.copy()
-n_iter = int(1e5)
+n_iter = int(300)
 beta0 = 1.
 stats = []
 ut, vt = None,None
@@ -37,21 +49,28 @@ for it in range(n_iter):
     step_size = 2 / (it+2)
     beta_k = beta0/np.sqrt(it+2)
 
-    grad = beta_k*D_mat + At(A(x)-b) + At2(A2(x)-b2) + 1000*np.minimum(x,0)
+    X = x.reshape((dim,dim))
+    grad = beta_k*D_mat + At(A(X)-b) + At2(A2(X)-b2) + 1000*np.minimum(X,0)
     grad = .5 * (grad+grad.T)
+    grad = grad.flatten()
 
-    # ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
-    _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
-    ut = ut.real
-    # vertex = k*np.outer(ut,vt)
-    vertex = k*np.outer(ut,ut)
-
-    x = (1-step_size)*x + step_size*vertex
+    if False:
+        # custom LMO
+        ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
+        # _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
+        # ut = ut.real
+        vertex = k*np.outer(ut,vt)
+        # vertex = k*np.outer(ut,ut)
+        x = (1-step_size)*x + step_size*vertex
+    else:
+        # copt lmo
+        update_direction,_,_,_ = lmo(-grad, x, None)
+        x += step_size*update_direction
 
     objective = np.dot(D_mat.flatten(), x.flatten())
     objective = np.abs(objective-optval) / np.abs(optval)
-    feasibility1 = np.linalg.norm(A(x)-b) / np.linalg.norm(b)
-    feasibility2 = np.linalg.norm(np.minimum(x,0), 'fro')
+    feasibility1 = np.linalg.norm(A(x.reshape((dim,dim)))-b) / np.linalg.norm(b)
+    feasibility2 = np.linalg.norm(np.minimum(x.reshape((dim,dim)),0), 'fro')
 
     stat = dict(iter=it, objective=objective, feasibility1=feasibility1, feasibility2=feasibility2)
     stats.append(stat)
