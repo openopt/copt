@@ -36,12 +36,15 @@ lmo = traceball.lmo
 
 def smoothed_constraints_gradient(x, operator, offset):
     X = x.reshape((dim,dim))
-    mapped = X.dot(operator) # Ax
-    val = .5*np.linalg.norm(Ax-offset)
+    v = operator
+    w = offset
+    t_0 = X.dot(v) - w
+    val = np.linalg.norm(t_0) ** 2
+    grad = 2*np.multiply.outer(t_0, v)
     return val, grad
 
 x = x0.copy()
-n_iter = int(300)
+n_iter = int(101)
 beta0 = 1.
 stats = []
 ut, vt = None,None
@@ -50,18 +53,22 @@ for it in range(n_iter):
     beta_k = beta0/np.sqrt(it+2)
 
     X = x.reshape((dim,dim))
-    grad = beta_k*D_mat + At(A(X)-b) + At2(A2(X)-b2) + 1000*np.minimum(X,0)
+    # grad = beta_k*D_mat + At(A(X)-b) + At2(A2(X)-b2) + 1000*np.minimum(X,0)
+    g1 = At(A(X)-b) + At2(A2(X)-b2)
+    _,g2 = smoothed_constraints_gradient(x,np.ones(dim),np.ones(dim))
+    grad = beta_k*D_mat + g1 + 1000*np.minimum(X,0)
     grad = .5 * (grad+grad.T)
-    grad = grad.flatten()
+    # grad = grad.flatten()
 
-    if False:
+    if True:
         # custom LMO
-        ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
-        # _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
-        # ut = ut.real
-        vertex = k*np.outer(ut,vt)
-        # vertex = k*np.outer(ut,ut)
-        x = (1-step_size)*x + step_size*vertex
+        # ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
+        _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
+        ut = ut.real
+        # vertex = k*np.outer(ut,vt)
+        vertex = k*np.outer(ut,ut)
+        X = (1-step_size)*X + step_size*vertex
+        x = X.flatten()
     else:
         # copt lmo
         update_direction,_,_,_ = lmo(-grad, x, None)
@@ -82,23 +89,25 @@ for it in range(n_iter):
         print(stat)
         # print('x', x[0,0])
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-ax.plot([s['objective'] for s in stats])
-ax.set_xscale('log')
-ax.set_yscale('log')
-fig.suptitle('objective')
 
-fig, ax = plt.subplots()
-ax.plot([s['feasibility1'] for s in stats])
-ax.set_xscale('log')
-ax.set_yscale('log')
-fig.suptitle('feasibility 1')
+if False:
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.plot([s['objective'] for s in stats])
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    fig.suptitle('objective')
 
-fig, ax = plt.subplots()
-ax.plot([s['feasibility2'] for s in stats])
-ax.set_xscale('log')
-ax.set_yscale('log')
-fig.suptitle('feasibility 2')
+    fig, ax = plt.subplots()
+    ax.plot([s['feasibility1'] for s in stats])
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    fig.suptitle('feasibility 1')
 
-plt.show()
+    fig, ax = plt.subplots()
+    ax.plot([s['feasibility2'] for s in stats])
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    fig.suptitle('feasibility 2')
+
+    plt.show()
