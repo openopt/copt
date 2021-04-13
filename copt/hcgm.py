@@ -20,13 +20,12 @@ D_mat = np.square(squareform(pdist(digits.T)))
 
 dim,dim = D_mat.shape
 
-b = np.ones(dim).reshape(1,dim)
-b2 = np.ones(dim).reshape(dim,1)
-
-A = lambda x: np.sum(x,axis=1).reshape(1,dim)
-A2 = lambda x: np.sum(x,axis=0).reshape(dim,1)
-At = lambda y: matlib.repmat(y,dim,1).T
-At2 = lambda y: matlib.repmat(y,1,dim).T
+# b = np.ones(dim).reshape(1,dim)
+# b2 = np.ones(dim).reshape(dim,1)
+# A = lambda x: np.sum(x,axis=1).reshape(1,dim)
+# A2 = lambda x: np.sum(x,axis=0).reshape(dim,1)
+# At = lambda y: matlib.repmat(y,dim,1).T
+# At2 = lambda y: matlib.repmat(y,1,dim).T
 
 x0 = np.zeros((dim,dim)).flatten()
 
@@ -40,27 +39,30 @@ def smoothed_constraints_gradient(x, operator, offset):
     w = offset
     t_0 = X.dot(v) - w
     val = np.linalg.norm(t_0) ** 2
-    grad = 2*np.multiply.outer(t_0, v)
+    grad = 2*np.outer(t_0, v)
     return val, grad
 
 x = x0.copy()
-n_iter = int(101)
+n_iter = int(1e6)
 beta0 = 1.
 stats = []
 ut, vt = None,None
+
+normb = np.linalg.norm(np.ones(dim))
+
 for it in range(n_iter):
     step_size = 2 / (it+2)
     beta_k = beta0/np.sqrt(it+2)
 
     X = x.reshape((dim,dim))
     # grad = beta_k*D_mat + At(A(X)-b) + At2(A2(X)-b2) + 1000*np.minimum(X,0)
-    g1 = At(A(X)-b) + At2(A2(X)-b2)
-    _,g2 = smoothed_constraints_gradient(x,np.ones(dim),np.ones(dim))
-    grad = beta_k*D_mat + g1 + 1000*np.minimum(X,0)
+    # g1 = At(A(X)-b) + At2(A2(X)-b2)
+    _,g2 = smoothed_constraints_gradient(x, np.ones(dim), np.ones(dim))
+    grad = beta_k*D_mat + g2 + 1000*np.minimum(X,0)
     grad = .5 * (grad+grad.T)
     # grad = grad.flatten()
 
-    if True:
+    if False:
         # custom LMO
         # ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
         _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
@@ -76,7 +78,10 @@ for it in range(n_iter):
 
     objective = np.dot(D_mat.flatten(), x.flatten())
     objective = np.abs(objective-optval) / np.abs(optval)
-    feasibility1 = np.linalg.norm(A(x.reshape((dim,dim)))-b) / np.linalg.norm(b)
+    # feasibility1 = np.linalg.norm(A(x.reshape((dim,dim)))-b) / np.linalg.norm(b)
+    feasibility1 = np.linalg.norm(
+        x.reshape((dim,dim)).dot(np.ones(dim)) - np.ones(dim)
+    ) / normb
     feasibility2 = np.linalg.norm(np.minimum(x.reshape((dim,dim)),0), 'fro')
 
     stat = dict(iter=it, objective=objective, feasibility1=feasibility1, feasibility2=feasibility2)
@@ -90,7 +95,7 @@ for it in range(n_iter):
         # print('x', x[0,0])
 
 
-if False:
+if True:
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     ax.plot([s['objective'] for s in stats])
