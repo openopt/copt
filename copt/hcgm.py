@@ -43,7 +43,7 @@ def smoothed_constraints_gradient(x, operator, offset):
     return val, grad
 
 x = x0.copy()
-n_iter = int(1e6)
+n_iter = int(1e5)
 beta0 = 1.
 stats = []
 ut, vt = None,None
@@ -62,7 +62,7 @@ for it in range(n_iter):
     grad = .5 * (grad+grad.T)
     # grad = grad.flatten()
 
-    if False:
+    if True:
         # custom LMO
         # ut, _, vt = slinalg.svds(-grad, k=1, tol=1e-9, v0=ut)
         _,ut = slinalg.eigs(-grad, k=1, tol=1e-9, v0=ut, which='LR')
