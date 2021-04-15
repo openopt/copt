@@ -226,11 +226,15 @@ def euclidean_proj_l1ball(v, s=1):
 
 
 class TraceBall:
-    """Projection onto the trace (aka nuclear) norm, sum of singular values
+    r"""Projection onto the trace (aka nuclear) norm, sum of singular values
+
+    .. math::
+        {M | tr(M) \leq \alpha}
     
     Args:
+        alpha: upper-bound for the trace norm
         use_eigs: use an eigenvalue solver rather than an SVD solver. This
-        can be more accurate than SVD, but requires that `u` be square.
+            can be more accurate than SVD, but requires that `u` be square.
     """
 
     is_separable = False
