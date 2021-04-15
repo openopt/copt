@@ -276,3 +276,55 @@ class TraceBall:
         vt = ut
         vertex = self.alpha * np.outer(ut, vt).ravel()
         return vertex - x, None, None, 1.
+
+
+class RowEqualityConstraint:
+    # TODO write in some doc strings with some simple equations dictating what
+    # things should be.
+    def __init__(self, shape, operator, offset, name='row_equality_constraint'):
+        self.shape = shape
+        self.operator = operator
+        self.offset = offset
+        self.name = name
+        self.offset_norm = np.linalg.norm(self.offset)
+
+    def __call__(self, x):
+        X = x.reshape(self.shape)
+        z = np.matmul(X, self.operator)
+        return np.all(z == self.offset)
+
+    def smoothed_grad(self, x):
+        X = x.reshape(self.shape)
+        # v = self.operator
+        # w = self.offset
+        # err = X.dot(v) - w
+        err = X.dot(self.operator) - self.offset
+        val = np.linalg.norm(err) ** 2
+        grad = 2*np.outer(err, self.operator)
+        return val, grad.flatten()
+
+    def feasibility(self, x):
+        X = x.reshape(self.shape)
+        err = X.dot(self.operator) - self.offset
+        val = np.linalg.norm(err)
+        return val / self.offset_norm
+
+
+class ElementWiseInequalityConstraint:
+    def __init__(self, shape, offset, beta_scaling=1000, name='elementwise_inequality_constraint'):
+        self.shape = shape
+        self.offset = offset
+        self.beta_scaling = beta_scaling
+        self.name = name
+
+    def __call__(self, x):
+        return np.all(x >= self.offset)
+
+    def smoothed_grad(self, x):
+        the_min = np.minimum(x, 0)
+        val = np.linalg.norm(the_min)**2
+        grad = the_min
+        return val, self.beta_scaling*grad
+
+    def feasibility(self, x):
+        return np.linalg.norm(np.minimum(x, 0))
