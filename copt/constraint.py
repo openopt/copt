@@ -269,6 +269,10 @@ class TraceBall:
           max_step_size: 1. for a Frank-Wolfe step.
     """
         u_mat = u.reshape(self.shape)
-        ut, _, vt = splinalg.svds(u_mat, k=1)
+        # ut, _, vt = splinalg.svds(u_mat, k=1)
+        # _,ut = splinalg.eigs(u_mat, k=1, tol=1e-9, v0=u, which='LR')
+        _,ut = splinalg.eigs(u_mat, k=1, tol=1e-9, which='LR')
+        ut = ut.real
+        vt = ut
         vertex = self.alpha * np.outer(ut, vt).ravel()
         return vertex - x, None, None, 1.
