@@ -226,14 +226,20 @@ def euclidean_proj_l1ball(v, s=1):
 
 
 class TraceBall:
-    """Projection onto the trace (aka nuclear) norm, sum of singular values"""
+    """Projection onto the trace (aka nuclear) norm, sum of singular values
+    
+    Args:
+        use_eigs: use an eigenvalue solver rather than an SVD solver. This
+        can be more accurate than SVD, but requires that `u` be square.
+    """
 
     is_separable = False
 
-    def __init__(self, alpha, shape):
+    def __init__(self, alpha, shape, use_eigs=False):
         assert len(shape) == 2
         self.shape = shape
         self.alpha = alpha
+        self.use_eigs = use_eigs
 
     def __call__(self, x):
         X = x.reshape(self.shape)
@@ -263,24 +269,25 @@ class TraceBall:
           active_set: no effect here.
           
         Returns:
-          update_direction: s - x, where s is the vertex of the constraint most correlated with u
+          update_direction: s - x, where s is the vertex of the constraint
+            most correlated with u
           None: not used here
           None: not used here
           max_step_size: 1. for a Frank-Wolfe step.
-    """
+        """
         u_mat = u.reshape(self.shape)
-        # ut, _, vt = splinalg.svds(u_mat, k=1)
-        # _,ut = splinalg.eigs(u_mat, k=1, tol=1e-9, v0=u, which='LR')
-        _,ut = splinalg.eigs(u_mat, k=1, tol=1e-9, which='LR')
-        ut = ut.real
-        vt = ut
-        vertex = self.alpha * np.outer(ut, vt).ravel()
+        if self.use_eigs:
+            _, ut = splinalg.eigs(u_mat, k=1, tol=1e-9, which='LR')
+            ut = ut.real
+            vertex = self.alpha * np.outer(ut, ut).ravel()
+        else:
+            # use svd solver
+            ut, _, vt = splinalg.svds(u_mat, k=1)
+            vertex = self.alpha * np.outer(ut, vt).ravel()
         return vertex - x, None, None, 1.
 
 
 class RowEqualityConstraint:
-    # TODO write in some doc strings with some simple equations dictating what
-    # things should be.
     def __init__(self, shape, operator, offset, name='row_equality_constraint'):
         self.shape = shape
         self.operator = operator
@@ -295,9 +302,6 @@ class RowEqualityConstraint:
 
     def smoothed_grad(self, x):
         X = x.reshape(self.shape)
-        # v = self.operator
-        # w = self.offset
-        # err = X.dot(v) - w
         err = X.dot(self.operator) - self.offset
         val = np.linalg.norm(err) ** 2
         grad = 2*np.outer(err, self.operator)

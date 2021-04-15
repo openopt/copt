@@ -56,7 +56,7 @@ class HomotopyTrace(copt.utils.Trace):
         if it % 100 == 0:
             print(json.dumps(stats))
 
-if True:
+if False:
     C_mat, n_labels, opt_val = reduced_digits()
 else:
     C_mat, n_labels, opt_val = full_digits()
@@ -68,7 +68,7 @@ non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0,
                                                             name='nonnegativity')
 
 alpha = n_labels
-traceball = copt.constraint.TraceBall(alpha, C_mat.shape)
+traceball = copt.constraint.TraceBall(alpha, C_mat.shape, use_eigs=True)
 x_init = np.zeros(C_mat.shape).flatten()
 beta0 = 1.
 
@@ -79,6 +79,7 @@ with open('stats.txt', 'a', buffering=1) as statsfile:
         linear_objective.f_grad,
         [sum_to_one_row_constraint, non_negativity_constraint],
         x_init,
+        C_mat.shape,
         traceball.lmo,
         beta0,
         tol = 0,

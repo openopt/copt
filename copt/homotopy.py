@@ -16,7 +16,7 @@ EPS = np.finfo(np.float32).eps
 
 # https://arxiv.org/pdf/1804.08544.pdf
 
-def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, max_iter, tol, callback):
+def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape, lmo, beta0, max_iter, tol, callback):
     # TODO is this necessary?
     x0 = np.asanyarray(x0, dtype=np.float)
     beta0 = np.asanyarray(beta0, dtype=np.float128)
@@ -32,9 +32,9 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
         f_t, f_grad = objective_fun(x)
         grad = beta_k*f_grad + total_constraint_grad
 
-        # TODO understand this symmetrize step!!
-        # this is in some other code but I don't understand why.
-        grad_square = grad.reshape(1000,1000) # TODO hard coded
+        # symmetrize gradient. This can be beneficial if the LMO is slightly
+        # less accurate (e.g. svd instead of eig solver)
+        grad_square = grad.reshape(shape) # TODO hard coded
         grad_square = .5*(grad_square + grad_square.T)
         grad = grad_square.flatten()
 
