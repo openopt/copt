@@ -45,9 +45,9 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, lmo, beta0, m
 
         # TODO understand this symmetrize step!!
         # this is in some other code but I don't understand why.
-        # grad_square = grad.reshape(1000,1000) # TODO hard coded
-        # grad_square = .5*(grad_square + grad_square.T)
-        # grad = grad_square.flatten()
+        grad_square = grad.reshape(1000,1000) # TODO hard coded
+        grad_square = .5*(grad_square + grad_square.T)
+        grad = grad_square.flatten()
 
         active_set = None # vanilla FW
         update_direction, _, _, _ = lmo(-grad, x, active_set)
@@ -136,16 +136,25 @@ class RowEqualityConstraint:
         return self.feasibility_dist_squared(x), grad.flatten()
 
     def grad(self, x):
-        # TODO XXX remove this 
         X = x.reshape(self.shape)
-
         v = self.operator
         w = self.offset
-        t_0 = ((X).dot(v) - w)
-        functionValue = .5*np.linalg.norm(t_0) ** 2
-        gradient = np.multiply.outer(t_0, v)
+        t_0 = X.dot(v) - w
+        val = np.linalg.norm(t_0) ** 2
+        grad = 2*np.outer(t_0, v)
+        return val, grad.flatten()
 
-        return functionValue, gradient.flatten()
+    # def grad(self, x):
+    #     # TODO XXX remove this 
+    #     X = x.reshape(self.shape)
+
+    #     v = self.operator
+    #     w = self.offset
+    #     t_0 = ((X).dot(v) - w)
+    #     functionValue = .5*np.linalg.norm(t_0) ** 2
+    #     gradient = np.multiply.outer(t_0, v)
+
+    #     return functionValue, gradient.flatten()
 
     def relative_feasibility_dist_squared(self, x):
         # TODO rename this trace and implement for the other thing. What's
@@ -169,8 +178,7 @@ class ElementWiseInequalityConstraint:
         return np.all(x >= self.offset)
 
     def feasibility_dist_squared(self, x):
-        infeasible_vals = x[(x - self.offset) < 0]
-        return np.linalg.norm(infeasible_vals)**2
+        return np.linalg.norm(np.minimum(x,0))**2
 
     def relative_feasibility_dist_squared(self, x):
         # We don't want to count this in our empirical analysis
@@ -180,12 +188,16 @@ class ElementWiseInequalityConstraint:
         return .5/beta * self.feasibility_dist_squared(x)
 
     def smoothed_g_grad(self, x, beta):
-        # return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
-        # return self.smoothed(x, beta), np.minimum(x-self.offset, 0)
-        val = .5*self.feasibility_dist_squared(x)
-        grad = np.zeros(x.shape)
-        grad[x<self.offset] = x[x<self.offset]
-        return val, grad
+        the_min = np.minimum(x,0)
+        val = np.linalg.norm(the_min)**2
+        grad = the_min
+        return val, 1000*grad # TODO hard coded, perhaps implement this as a 1/beta_scaling
+        # # return self.smoothed(x, beta), 1000*np.minimum(x-self.offset, 0)
+        # # return self.smoothed(x, beta), np.minimum(x-self.offset, 0)
+        # val = .5*self.feasibility_dist_squared(x)
+        # grad = np.zeros(x.shape)
+        # grad[x<self.offset] = x[x<self.offset]
+        # return val, grad
 
 # TODO remove
 # TODO frequency
@@ -209,19 +221,26 @@ class TraceFoo(copt.utils.Trace):
         f_t = dl['f_t']
         smoothed_constraints = dl['smoothed_constraints']
         relative_subopt = np.abs(f_t-opt_val)/opt_val
-        total_feasibility_dist = sum(c.relative_feasibility_dist_squared(x) \
-            for c in smoothed_constraints)
+        # total_feasibility_dist = (c.relative_feasibility_dist_squared(x) \
+        #     for c in smoothed_constraints)
+
+        dim = 1000
+        normb = np.linalg.norm(np.ones(dim))
+        feasibility1 = np.linalg.norm(
+            x.reshape((dim,dim)).dot(np.ones(dim)) - np.ones(dim)
+        ) / normb
+        feasibility2 = np.linalg.norm(np.minimum(x.reshape((dim,dim)),0), 'fro')
 
         self.trace_relative_subopt.append(relative_subopt)
-        self.trace_feasibility_dist.append(total_feasibility_dist)
+        # self.trace_feasibility_dist.append(total_feasibility_dist)
 
         it = dl['it']
+        stats = dict(it=it, objective=relative_subopt, feasibility1=feasibility1, feasibility2=feasibility2)
+        print(json.dumps(stats), file=stats_file)
         if it % 100 == 0:
-            stats = dict(it=it, relative_subopt=relative_subopt, feasibility_dist=total_feasibility_dist)
             print(json.dumps(stats))
-            print(json.dumps(stats), file=stats_file)
 
-if False:
+if True:
     linear_objective = LinearObjective(C_mat)
 
     sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
@@ -247,41 +266,41 @@ if False:
         beta0,
         tol = 0,
         callback=cb,
-        max_iter=int(1800)
+        max_iter=int(1e5)
     )
 
-    if True:
-        fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-        fig.suptitle('Homotopy Frank-Wolfe')
+    # if False:
+    #     fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+    #     fig.suptitle('Homotopy Frank-Wolfe')
 
-        cb.trace_relative_subopt
-        cb.trace_feasibility_dist
+    #     cb.trace_relative_subopt
+    #     cb.trace_feasibility_dist
 
-        ax1.plot(cb.trace_relative_subopt, label='Homotopy FW')
-        ax1.grid(True)
-        ax1.set_xscale('log')
-        ax1.set_yscale('log')
-        ax1.set_ylabel('relative suboptimality')
+    #     ax1.plot(cb.trace_relative_subopt, label='Homotopy FW')
+    #     ax1.grid(True)
+    #     ax1.set_xscale('log')
+    #     ax1.set_yscale('log')
+    #     ax1.set_ylabel('relative suboptimality')
 
-        ax2.plot(cb.trace_feasibility_dist)
-        ax2.set_xscale('log')
-        ax2.set_yscale('log')
-        ax2.set_ylabel('feasibility convergence')
-        ax2.grid(True)
-    else:
-        fig, ax = plt.subplots()
-        fig.suptitle('Homotopy Frank-Wolfe')
-        ax.plot(cb.trace_relative_subopt, label='Homotopy FW')
-        ax.grid(True)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylabel('relative suboptimality')
+    #     ax2.plot(cb.trace_feasibility_dist)
+    #     ax2.set_xscale('log')
+    #     ax2.set_yscale('log')
+    #     ax2.set_ylabel('feasibility convergence')
+    #     ax2.grid(True)
+    # elif False:
+    #     fig, ax = plt.subplots()
+    #     fig.suptitle('Homotopy Frank-Wolfe')
+    #     ax.plot(cb.trace_relative_subopt, label='Homotopy FW')
+    #     ax.grid(True)
+    #     ax.set_xscale('log')
+    #     ax.set_yscale('log')
+    #     ax.set_ylabel('relative suboptimality')
 
 
-    if True:
-        plt.show()
-    else:
-        plt.savefig("mnist_experiment.pdf")
+    # if False:
+    #     plt.show()
+    # else:
+    #     plt.savefig("mnist_experiment.pdf")
 
 # %%
 
