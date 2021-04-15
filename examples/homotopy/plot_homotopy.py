@@ -56,7 +56,7 @@ class HomotopyTrace(copt.utils.Trace):
         if it % 100 == 0:
             print(json.dumps(stats))
 
-if False:
+if True:
     C_mat, n_labels, opt_val = reduced_digits()
 else:
     C_mat, n_labels, opt_val = full_digits()
@@ -66,9 +66,8 @@ sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]), np.ones(C_mat.shape[1]), name='sum_to_one')
 non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0,
                                                             name='nonnegativity')
+traceball = copt.constraint.TraceBall(n_labels, C_mat.shape, use_eigs=True)
 
-alpha = n_labels
-traceball = copt.constraint.TraceBall(alpha, C_mat.shape, use_eigs=True)
 x_init = np.zeros(C_mat.shape).flatten()
 beta0 = 1.
 
@@ -86,3 +85,22 @@ with open('stats.txt', 'a', buffering=1) as statsfile:
         callback=cb,
         max_iter=int(1e5)
     )
+
+# plotting
+with open('stats.txt', 'r') as f:
+    stats = [json.loads(line) for line in f.readlines()]
+
+fig, axs = plt.subplots(nrows=1,ncols=3,sharex=True,figsize=(21,7))
+
+axs[0].loglog([s['objective'] for s in stats])
+axs[1].loglog([s['sum_to_one'] for s in stats])
+axs[2].loglog([s['nonnegativity'] for s in stats])
+
+for ax,name in zip(axs,["objective", "sum_to_one", "nonnegativity"]):
+    ax.set_title(name)
+
+for ax in axs:
+    ax.grid(True)
+
+plt.show()
+
