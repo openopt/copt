@@ -336,6 +336,32 @@ class TraceBall:
 
 
 class RowEqualityConstraint:
+    """Row equality constraint for a matrix-valued decision variable.
+    Homotopy smoothing is also implemented.
+
+    Row equality constraints are of the form
+
+    ..math::
+        Xv = b
+
+    where we call :math:`v` an operator since it maps the decision variable
+    :math:`X` to a vector.
+
+    Homotopy smoothing changes this constraint into a distance of the current
+    :math:`X` to the `offset` value, :math:`b`:
+
+    ..math::
+        \|Xv - b\|^2
+
+    Args:
+      shape: tuple of ints (n,m)
+        Describes the underlying of the decision variable x.
+      operator: vector of size (m,)
+      offset: vector of size (n,)
+      name: string, optional
+        Used by other codes (e.g. trace objects) to identify this particular
+        constraint.
+    """
     def __init__(self, shape, operator, offset, name='row_equality_constraint'):
         self.shape = shape
         self.operator = operator
@@ -349,6 +375,12 @@ class RowEqualityConstraint:
         return np.all(z == self.offset)
 
     def smoothed_grad(self, x):
+        """Returns the value and the gradient of the homotopy smoothed
+        constraint.
+
+        Args:
+          x: decision variable
+        """
         X = x.reshape(self.shape)
         err = X.dot(self.operator) - self.offset
         val = np.linalg.norm(err) ** 2
@@ -356,6 +388,13 @@ class RowEqualityConstraint:
         return val, grad.flatten()
 
     def feasibility(self, x):
+        """Returns a normalized distance of the current iterate, x, to the
+        constraint specified by the offset. Intended usage is for tracking
+        the progress of the algorithm (e.g. by a trace object)
+
+        Args:
+          x: decision variable
+        """
         X = x.reshape(self.shape)
         err = X.dot(self.operator) - self.offset
         val = np.linalg.norm(err)
