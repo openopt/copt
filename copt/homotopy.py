@@ -47,7 +47,7 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
           Maximum number of iterations.
 
         tol: float
-          Tolerance for the objective function.
+          Tolerance for the objective and homotopy smoothed constraints.
 
         callback: callable, optional
           Callback to execute at each iteration. If the callable returns False
@@ -92,8 +92,8 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
         active_set = None # vanilla FW
         update_direction, _, _, _ = lmo(-grad, x, active_set)
 
-        if f_t < tol:
-            # TODO should constraints also be compared to tol?
+        feasibilities = [c(x) < tol for c in smoothed_constraints]
+        if f_t < tol and np.all(feasibilities):
             break
 
         x += step_size*update_direction
