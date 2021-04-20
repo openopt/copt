@@ -402,6 +402,21 @@ class RowEqualityConstraint:
 
 
 class ElementWiseInequalityConstraint:
+    """Element-wise inequality constraint for vector or matrix-valued
+    decision variables. Homotopy smoothing is also implemented.
+
+    ..math::
+        X_{ij} \geq c
+
+    where :math:`c\in\mathbb R`
+
+    Homotopy changes this constraint into a simple distance 
+
+    ..math::
+        \|X - c\|^2
+    
+    which is used to compute gradients and feasibility
+    """
     def __init__(self, shape, offset, beta_scaling=1000, name='elementwise_inequality_constraint'):
         self.shape = shape
         self.offset = offset
@@ -412,10 +427,17 @@ class ElementWiseInequalityConstraint:
         return np.all(x >= self.offset)
 
     def smoothed_grad(self, x):
-        the_min = np.minimum(x, 0)
+        """Returns the value and gradient (flattened) of the smoothed
+        constraint, i.e. (np.float-like, np.array-like).
+
+        Args:
+          x: decision variable
+        """
+        the_min = np.minimum(x, self.offset)
         val = np.linalg.norm(the_min)**2
         grad = the_min
         return val, self.beta_scaling*grad
 
     def feasibility(self, x):
-        return np.linalg.norm(np.minimum(x, 0))
+        the_min = np.minimum(x, self.offset)
+        return np.linalg.norm(the_min)
