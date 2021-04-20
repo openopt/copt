@@ -278,16 +278,14 @@ class TraceBall:
         alpha: float
             radius of the ball.
 
-        use_eigs: use an eigenvalue solver rather than an SVD solver. This
-            can be more accurate than SVD, but requires that `u` be square.
     """
+
     is_separable = False
 
-    def __init__(self, alpha, shape, use_eigs=False):
+    def __init__(self, alpha, shape):
         assert len(shape) == 2
         self.shape = shape
         self.alpha = alpha
-        self.use_eigs = use_eigs
 
     def __call__(self, x):
         X = x.reshape(self.shape)
@@ -307,31 +305,24 @@ class TraceBall:
 
     def lmo(self, u, x, active_set=None):
         """Linear Minimization Oracle.
-
+        
         Return s - x with s solving the linear problem
             max_{||s||_nuc <= alpha} <u, s>
-
+        
         Args:
           u: usually -gradient
           x: usually the iterate of the considered algorithm
           active_set: no effect here.
-
+          
         Returns:
-          update_direction: s - x, where s is the vertex of the constraint
-            most correlated with u
+          update_direction: s - x, where s is the vertex of the constraint most correlated with u
           None: not used here
           None: not used here
           max_step_size: 1. for a Frank-Wolfe step.
         """
         u_mat = u.reshape(self.shape)
-        if self.use_eigs:
-            _, ut = splinalg.eigs(u_mat, k=1, tol=1e-9, which='LR')
-            ut = ut.real
-            vertex = self.alpha * np.outer(ut, ut).ravel()
-        else:
-            # use svd solver
-            ut, _, vt = splinalg.svds(u_mat, k=1)
-            vertex = self.alpha * np.outer(ut, vt).ravel()
+        ut, _, vt = splinalg.svds(u_mat, k=1)
+        vertex = self.alpha * np.outer(ut, vt).ravel()
         return vertex - x, None, None, 1.
 
 
@@ -414,7 +405,7 @@ class ElementWiseInequalityConstraint:
 
     ..math::
         \|X - c\|^2
-    
+
     which is used to compute gradients and feasibility
     """
     def __init__(self, shape, offset, beta_scaling=1000, name='elementwise_inequality_constraint'):
@@ -441,3 +432,4 @@ class ElementWiseInequalityConstraint:
     def feasibility(self, x):
         the_min = np.minimum(x, self.offset)
         return np.linalg.norm(the_min)
+
