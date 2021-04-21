@@ -326,6 +326,67 @@ class TraceBall:
         return vertex - x, None, None, 1.
 
 
+class TraceSpectrahedron:
+    """Projection of a square matrix onto the set of positive-semidefinite
+    matrices with bounded trace norm.
+
+    Args:
+        alpha: float
+            radius of the spectrahedron.
+        dim: int
+            The ambient space is of dimension dim x dim
+    """
+    def __init__(self, alpha, dim):
+        self.alpha = alpha
+        self.dim = dim
+        self._shape = (dim,dim)
+
+    def __call__(self, x):
+        X = x.reshape(self._shape)
+        eigvals = linalg.eigvals(X).real
+        is_psd = np.all(eigvals >= 0)
+        is_in_ball = eigvals.sum() < self.alpha
+        if is_psd and is_in_ball:
+            0
+        else:
+            return np.inf
+
+    def prox(self, x, step_size):
+        X = x.reshape(self._shape)
+        U, s, Vt = linalg.eig(X)
+        s_psd = np.maximum(s, 0)
+        s_psd_threshold = euclidean_proj_l1ball(s_psd, self.alpha) 
+        return (U * s_threshold).dot(Vt).ravel()
+
+    def lmo(self, u, x, active_set=None):
+        r"""Linear Maximization Oracle.
+
+        Returns s - x with s solving the following
+            max_{s\in D} <u,s> 
+            where D := {X | X is p.s.d.;  ||X||_nuc <= alpha}
+
+        Args:
+          u: usually -gradient
+          x: usually the iterate of the considered algorithm
+          active_set: ignored
+
+        Returns:
+          update_direction: s - x, where s is the vertex of the constraint most correlated with u
+          None: not used here
+          None: not used here
+          max_step_size: 1. for a Frank-Wolfe step.
+        """
+        u_mat = u.reshape(self._shape)
+        u_mat = .5*(u_mat + u_mat.T) # symmetrize
+        s, ut = splinalg.eigsh(u_mat, k=1, which='LA')
+
+        if s < 0:
+            vertex = np.zeros(self._shape).ravel()
+        else:
+            vertex = self.alpha * np.outer(ut,ut).ravel()
+        return vertex - x, None, None, 1.
+
+
 class RowEqualityConstraint:
     """Row equality constraint for a matrix-valued decision variable.
     Homotopy smoothing is also implemented.
@@ -354,6 +415,7 @@ class RowEqualityConstraint:
         constraint.
     """
     def __init__(self, shape, operator, offset, name='row_equality_constraint'):
+        assert len(shape) == 2
         self.shape = shape
         self.operator = operator
         self.offset = offset
@@ -409,6 +471,7 @@ class ElementWiseInequalityConstraint:
     which is used to compute gradients and feasibility
     """
     def __init__(self, shape, offset, beta_scaling=1000, name='elementwise_inequality_constraint'):
+        assert len(shape) == 2
         self.shape = shape
         self.offset = offset
         self.beta_scaling = beta_scaling
