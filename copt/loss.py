@@ -298,7 +298,7 @@ class HuberLoss:
         return (s * s) / self.A.shape[0] + self.alpha
 
 
-class LinearObjective:
+class LinearLoss:
     r"""Linear objective function.
 
     A linear objective is defined as

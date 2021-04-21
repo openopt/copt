@@ -8,7 +8,7 @@ import scipy.io as sio
 from copt.constraint import (ElementWiseInequalityConstraint,
                              RowEqualityConstraint)
 from copt.homotopy import minimize_homotopy_cgm
-from copt.loss import LinearObjective
+from copt.loss import LinearLoss
 
 basepath = Path(".")
 def reduced_digits():
@@ -28,6 +28,18 @@ def full_digits():
     return C, n_labels, opt_val
 
 class HomotopyTrace(copt.utils.Trace):
+    """Trace callback for homotopy algorithms.
+
+    Tracks the relative objective optimality as well as the approximate
+    feasibility. This information is stored in `trace_relative_subopt` and
+    `trace_feasibilities`. It is also appended to the file if one is
+    specified.
+
+    Args:
+      stats_filehandle: File object
+        The file where json dictionaries of the tracked information are
+        written.
+    """
     def __init__(self, stats_filehandle=None, f=None, freq=1):
         super(HomotopyTrace, self).__init__(f, freq)
         self.trace_relative_subopt = []
@@ -61,12 +73,14 @@ if True:
 else:
     C_mat, n_labels, opt_val = full_digits()
 
-linear_objective = LinearObjective(C_mat, C_mat.shape)
+linear_objective = LinearLoss(C_mat, C_mat.shape)
 sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]), np.ones(C_mat.shape[1]), name='sum_to_one')
 non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0,
                                                             name='nonnegativity')
-traceball = copt.constraint.TraceBall(n_labels, C_mat.shape, use_eigs=True)
+
+# traceball = copt.constraint.TraceBall(n_labels, C_mat.shape)
+spectrahedron = copt.constraint.TraceSpectrahedron(n_labels, C_mat.shape[0])
 
 x_init = np.zeros(C_mat.shape).flatten()
 beta0 = 1.
@@ -79,7 +93,7 @@ with open('stats.txt', 'a', buffering=1) as statsfile:
         [sum_to_one_row_constraint, non_negativity_constraint],
         x_init,
         C_mat.shape,
-        traceball.lmo,
+        spectrahedron.lmo,
         beta0,
         tol = 0,
         callback=cb,
