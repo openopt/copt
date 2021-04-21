@@ -83,12 +83,6 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
         f_t, f_grad = objective_fun(x)
         grad = beta_k*f_grad + total_constraint_grad
 
-        # symmetrize gradient. This can be beneficial if the LMO is slightly
-        # less accurate (e.g. svd instead of eig solver)
-        grad_square = grad.reshape(shape)
-        grad_square = .5*(grad_square + grad_square.T)
-        grad = grad_square.flatten()
-
         active_set = None # vanilla FW
         update_direction, _, _, _ = lmo(-grad, x, active_set)
 
