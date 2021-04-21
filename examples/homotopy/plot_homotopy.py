@@ -10,22 +10,7 @@ from copt.constraint import (ElementWiseInequalityConstraint,
 from copt.homotopy import minimize_homotopy_cgm
 from copt.loss import LinearLoss
 
-basepath = Path(".")
-def reduced_digits():
-    mat = sio.loadmat(basepath / "data/reduced_clustering_mnist_digits.mat")
-    C = mat['Problem']['C'][0][0]
-    opt_val = mat['Problem']['opt_val'][0][0][0][0]
-    labels = mat['Problem']['labels'][0][0][0]
-    n_labels = len(np.unique(labels))
-    return C, n_labels, opt_val
-
-def full_digits():
-    mat = sio.loadmat(basepath / "data/full_clustering_mnist_digits.mat")
-    C = mat['Problem']['C'][0][0]
-    opt_val = mat['Problem']['opt_val'][0][0][0][0]
-    labels = mat['Problem']['labels'][0][0][0]
-    n_labels = len(np.unique(labels))
-    return C, n_labels, opt_val
+from copt.datasets import load_sdp_mnist
 
 class HomotopyTrace(copt.utils.Trace):
     """Trace callback for homotopy algorithms.
@@ -68,10 +53,7 @@ class HomotopyTrace(copt.utils.Trace):
         if it % 100 == 0:
             print(json.dumps(stats))
 
-if True:
-    C_mat, n_labels, opt_val = reduced_digits()
-else:
-    C_mat, n_labels, opt_val = full_digits()
+C_mat, n_labels, opt_val = load_sdp_mnist(subset='reduced')
 
 linear_objective = LinearLoss(C_mat, C_mat.shape)
 sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,

@@ -465,3 +465,43 @@ def load_criteo(md5_check=True):
         X = sparse.csr_matrix((X_data, X_indices, X_indptr))
         y = np.load(data_target)
     return X, y
+
+def load_sdp_mnist(md5_check=True, subset='reduced', data_dir=DATA_DIR):
+    """Download (TODO) if necessary and return the preprocessed MNIST dataset as described in [MVW16].
+
+    Args:
+        md5_check: bool (TODO)
+        Whether to do an md5 check on the downloaded files.
+
+    Returns:
+        C : np.array-like
+        n_labels: int
+          the number of labels in this subset of the data
+        opt_val: float
+          the optimal objective value
+
+    References:
+        [MVW16] D. G. Mixon, S. Villar, and R. Ward, “Clustering subgaussian
+        mixtures by semidefinite programming,” May 2016.
+        <http://arxiv.org/abs/1602.06612>,
+        GitHub Repo: <https://github.com/solevillar/kmeans_sdp>
+    """
+    import scipy.io as sio # lazy import
+
+    if subset == 'reduced':
+        file_path = os.path.join(data_dir,
+                                 "sdp_mnist/reduced_clustering_mnist_digits.mat")
+    elif subset == 'full':
+        file_path = os.path.join(data_dir,
+                                 "sdp_mnist/full_clustering_mnist_digits.mat")
+    else:
+        raise ValueError("invalid dataset choice <" + subset + ">")
+
+    mat = sio.loadmat(file_path)
+    mat = sio.loadmat(file_path)
+
+    C = mat['Problem']['C'][0][0]
+    opt_val = mat['Problem']['opt_val'][0][0][0][0]
+    labels = mat['Problem']['labels'][0][0][0]
+    n_labels = len(np.unique(labels))
+    return C, n_labels, opt_val
