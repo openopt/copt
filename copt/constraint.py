@@ -493,6 +493,9 @@ class ElementWiseInequalityConstraint:
         return val, self.beta_scaling*grad
 
     def feasibility(self, x):
+        """Returns the norm of the elements of x which do not satisfy the
+        constraint. Elements which satisfy the constraint are not included.
+        """
         the_min = np.minimum(x, self.offset)
         return np.linalg.norm(the_min)
 
