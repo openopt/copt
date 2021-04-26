@@ -11,6 +11,7 @@ proximal_penalties = [
     copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
     copt.penalty.TraceNorm(1.0, (4, 4)),
     copt.constraint.TraceBall(1.0, (4, 4)),
+    copt.constraint.TraceSpectrahedron(1.0, 4),
     copt.penalty.TotalVariation2D(1.0, (4, 4)),
     copt.penalty.FusedLasso(1.0),
 ]

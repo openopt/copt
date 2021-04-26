@@ -327,36 +327,42 @@ class TraceBall:
 
 
 class TraceSpectrahedron:
-    """Projection of a square matrix onto the set of positive-semidefinite
-    matrices with bounded trace norm.
+    """Projection of a square, symmetric matrix onto the set of
+    positive-semidefinite matrices with bounded trace norm.
 
     Args:
         alpha: float
             radius of the spectrahedron.
         dim: int
             The ambient space is of dimension dim x dim
+
     """
     def __init__(self, alpha, dim):
+        assert type(dim) == int
         self.alpha = alpha
         self.dim = dim
         self._shape = (dim,dim)
 
     def __call__(self, x):
         X = x.reshape(self._shape)
-        eigvals = linalg.eigvals(X).real
-        is_psd = np.all(eigvals >= 0)
-        is_in_ball = eigvals.sum() < self.alpha
+        eigvals = linalg.eigvalsh(X)
+        # check that all non-zero eigenvalues are greater than zero
+        is_psd = np.all(eigvals[~np.isclose(0, eigvals)] > 0)
+        is_in_ball = eigvals.sum() <= self.alpha + np.finfo(np.float32).eps
         if is_psd and is_in_ball:
-            0
+            return 0
         else:
             return np.inf
 
     def prox(self, x, step_size):
         X = x.reshape(self._shape)
-        U, s, Vt = linalg.eig(X)
+        X = .5*(X + X.T)
+        s, U = linalg.eigh(X)
         s_psd = np.maximum(s, 0)
         s_psd_threshold = euclidean_proj_l1ball(s_psd, self.alpha) 
-        return (U * s_threshold).dot(Vt).ravel()
+        ret = (U * s_psd_threshold).dot(U.T).ravel()
+        assert np.all(ret == ret.T)
+        return ret
 
     def lmo(self, u, x, active_set=None):
         r"""Linear Maximization Oracle.
@@ -377,7 +383,7 @@ class TraceSpectrahedron:
           max_step_size: 1. for a Frank-Wolfe step.
         """
         u_mat = u.reshape(self._shape)
-        u_mat = .5*(u_mat + u_mat.T) # symmetrize
+        u_mat = .5*(u_mat + u_mat)
         s, ut = splinalg.eigsh(u_mat, k=1, which='LA')
 
         if s < 0:
