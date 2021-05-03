@@ -505,7 +505,6 @@ class ElementWiseInequalityConstraint:
     def __init__(self, shape, operator, offset, beta_scaling=1000.,
                  name='elementwise_inequality_constraint', eps=np.finfo(np.float32).eps):
         assert len(shape) == 2
-        assert operator.shape == shape
         self.offset = offset
         self.beta_scaling = beta_scaling
         self.name = name
