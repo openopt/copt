@@ -58,8 +58,7 @@ C_mat, n_labels, opt_val = load_sdp_mnist(subset='reduced')
 linear_objective = LinearLoss(C_mat, C_mat.shape)
 sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]), np.ones(C_mat.shape[1]), name='sum_to_one')
-non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, 0,
-                                                            name='nonnegativity')
+non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, None, None, name='nonnegativity')
 
 # traceball = copt.constraint.TraceBall(n_labels, C_mat.shape)
 spectrahedron = copt.constraint.TraceSpectrahedron(n_labels, C_mat.shape[0])
