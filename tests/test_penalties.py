@@ -4,7 +4,10 @@ import copt.constraint
 import copt.penalty
 from copt import tv_prox
 from numpy import testing
+import numpy.linalg as linalg
 import pytest
+
+from copt.constraint import ElementWiseInequalityConstraint, RowEqualityConstraint
 
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
@@ -143,3 +146,32 @@ def test_three_inequality(pen):
             - np.linalg.norm(xi - z) ** 2
         )
         assert lhs <= rhs, pen
+
+
+# TODO is there a way of unifying the homotopy tests in the same elegant way as
+# done above?
+
+def test_elementwise_homotopy_constraint():
+    n_features = 4
+    shape = (n_features, n_features)
+
+    for _ in range(10):
+        operator = np.random.randn(*shape)
+        offset = np.random.randn(1)[0]
+        constraint = ElementWiseInequalityConstraint(shape, operator, offset, beta_scaling=1.)
+
+        X = np.random.randn(*shape)
+        _, grad = constraint.smoothed_grad(X)
+
+        assert constraint(X-1000) == np.inf
+        assert constraint(X+1000) == 0
+        assert constraint(X-grad) == 0
+
+def test_row_homotopy_constraint():
+    n_features = 4
+    shape = (n_features, n_features)
+
+    for _ in range(10):
+        operator = np.random.randn(*shape)
+        offset = np.random.randn(n_features)
+        constraint = RowEqualityConstraint(shape, operator, offset, beta_scaling=1.)

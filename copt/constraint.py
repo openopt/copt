@@ -416,12 +416,19 @@ class RowEqualityConstraint:
         Describes the underlying of the decision variable x.
       operator: vector of size (m,)
       offset: vector of size (n,)
+      beta_scaling: ignored
       name: string, optional
         Used by other codes (e.g. trace objects) to identify this particular
         constraint.
     """
-    def __init__(self, shape, operator, offset, name='row_equality_constraint'):
+    def __init__(self, shape, operator, offset, beta_scaling=1.0, name='row_equality_constraint'):
+        # TODO incorporate beta_scaling.  Currently not done because it is only
+        # used by element wise constraints.
         assert len(shape) == 2
+        assert len(offset.shape) == 1
+        assert len(operator.shape) == 2
+        assert operator.shape[0] == shape[1]
+        assert offset.shape[0] == shape[0]
         self.shape = shape
         self.operator = operator
         self.offset = offset
@@ -431,7 +438,17 @@ class RowEqualityConstraint:
     def __call__(self, x):
         X = x.reshape(self.shape)
         z = np.matmul(X, self.operator)
-        return np.all(z == self.offset)
+        if np.all(z == self.offset):
+            return 0
+        else:
+            return np.inf
+
+    def apply_operator(self, x):
+        """Evaluates A(x).  In this case, `x * operator` where '*' denotes
+        matrix multiplication.
+        """
+        X = x.reshape(self.shape)
+        return X.dot(self.operator)
 
     def smoothed_grad(self, x):
         """Returns the value and the gradient of the homotopy smoothed
@@ -475,16 +492,29 @@ class ElementWiseInequalityConstraint:
         \|X - c\|^2
 
     which is used to compute gradients and feasibility
+
+    Args:
+      shape: 2-ple.
+        Shape of the underlying matrix.
+      operator: ignored
+      offset: ignored
+      beta_scaling: float
+        The relative scaling of this constraint with respect to other constraints.
     """
-    def __init__(self, shape, offset, beta_scaling=1000, name='elementwise_inequality_constraint'):
+    def __init__(self, shape, operator, offset, beta_scaling=1000.,
+                 name='elementwise_inequality_constraint', eps=np.finfo(np.float32).eps):
         assert len(shape) == 2
-        self.shape = shape
+        assert operator.shape == shape
         self.offset = offset
         self.beta_scaling = beta_scaling
         self.name = name
+        self.eps = eps
 
     def __call__(self, x):
-        return np.all(x >= self.offset)
+        if np.all(x + self.eps >= 0):
+            return 0
+        else:
+            return np.inf
 
     def smoothed_grad(self, x):
         """Returns the value and gradient (flattened) of the smoothed
@@ -493,15 +523,17 @@ class ElementWiseInequalityConstraint:
         Args:
           x: decision variable
         """
-        the_min = np.minimum(x, self.offset)
-        val = np.linalg.norm(the_min)**2
-        grad = the_min
+        mask = (x+self.eps>=0)
+        grad = x.copy()
+        grad[mask] = 0
+        val = linalg.norm(grad)**2
         return val, self.beta_scaling*grad
 
     def feasibility(self, x):
         """Returns the norm of the elements of x which do not satisfy the
         constraint. Elements which satisfy the constraint are not included.
         """
-        the_min = np.minimum(x, self.offset)
-        return np.linalg.norm(the_min)
-
+        mask = (x+self.eps>=0)
+        grad = x.copy()
+        grad[mask] = 0
+        return linalg.norm(grad)
