@@ -426,7 +426,7 @@ class RowEqualityConstraint:
         # used by element wise constraints.
         assert len(shape) == 2
         assert len(offset.shape) == 1
-        assert len(operator.shape) == 2
+        assert len(operator.shape) == 1
         assert operator.shape[0] == shape[1]
         assert offset.shape[0] == shape[0]
         self.shape = shape
@@ -461,7 +461,8 @@ class RowEqualityConstraint:
         err = X.dot(self.operator) - self.offset
         val = np.linalg.norm(err) ** 2
         grad = 2*np.outer(err, self.operator)
-        return val, grad.flatten()
+        # import ipdb; ipdb.set_trace()
+        return val, grad.ravel()
 
     def feasibility(self, x):
         """Returns a normalized distance of the current iterate, x, to the

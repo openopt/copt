@@ -1,13 +1,14 @@
-import numpy as np
 import copt as cp
 import copt.constraint
 import copt.penalty
-from copt import tv_prox
-from numpy import testing
+import numpy as np
 import numpy.linalg as linalg
 import pytest
-
-from copt.constraint import ElementWiseInequalityConstraint, RowEqualityConstraint
+from copt import tv_prox
+from copt.constraint import (ElementWiseInequalityConstraint,
+                             RowEqualityConstraint)
+from numpy import testing
+from scipy.sparse import linalg as splinalg
 
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
@@ -167,11 +168,22 @@ def test_elementwise_homotopy_constraint():
         assert constraint(X+1000) == 0
         assert constraint(X-grad) == 0
 
-def test_row_homotopy_constraint():
+def test_row_homotopy_lipschitz():
     n_features = 4
     shape = (n_features, n_features)
 
-    for _ in range(10):
-        operator = np.random.randn(*shape)
+    for _ in range(100):
+        operator = np.random.randn(n_features)
         offset = np.random.randn(n_features)
         constraint = RowEqualityConstraint(shape, operator, offset, beta_scaling=1.)
+
+        z = np.random.randn(*shape)
+        u = np.random.randn(*shape)
+        _,zg = constraint.smoothed_grad(z)
+        _,ug = constraint.smoothed_grad(u)
+
+        # check Lipschitz continuous gradient
+        L,_ = splinalg.eigsh(np.outer(operator, operator), k=1)
+        lhs = np.linalg.norm(zg - ug)
+        rhs = 2*L*np.linalg.norm(z - u)
+        assert lhs <= rhs
