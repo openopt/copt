@@ -53,7 +53,7 @@ class HomotopyTrace(copt.utils.Trace):
         if it % 100 == 0:
             print(json.dumps(stats))
 
-C_mat, n_labels, opt_val = load_sdp_mnist(subset='reduced')
+C_mat, n_labels, opt_val = load_sdp_mnist()
 
 linear_objective = LinearLoss(C_mat, C_mat.shape)
 sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,

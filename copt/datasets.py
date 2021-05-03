@@ -466,8 +466,9 @@ def load_criteo(md5_check=True):
         y = np.load(data_target)
     return X, y
 
-def load_sdp_mnist(md5_check=True, subset='reduced', data_dir=DATA_DIR):
-    """Download (TODO) if necessary and return the preprocessed MNIST dataset as described in [MVW16].
+def load_sdp_mnist(md5_check=True, data_dir=DATA_DIR, retry=True):
+    """Download (TODO) if necessary and return the preprocessed MNIST dataset
+    as described in [MVW16].
 
     Args:
         md5_check: bool (TODO)
@@ -486,22 +487,56 @@ def load_sdp_mnist(md5_check=True, subset='reduced', data_dir=DATA_DIR):
         <http://arxiv.org/abs/1602.06612>,
         GitHub Repo: <https://github.com/solevillar/kmeans_sdp>
     """
-    import scipy.io as sio # lazy import
+    # lazy imports
+    from zipfile import ZipFile
+    import shutil
+    import scipy.io as sio
+    from scipy.spatial.distance import pdist, squareform
 
-    if subset == 'reduced':
-        file_path = os.path.join(data_dir,
-                                 "sdp_mnist/reduced_clustering_mnist_digits.mat")
-    elif subset == 'full':
-        file_path = os.path.join(data_dir,
-                                 "sdp_mnist/full_clustering_mnist_digits.mat")
-    else:
-        raise ValueError("invalid dataset choice <" + subset + ">")
+    basedir = os.path.join(data_dir, "sdp_mnist")
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+
+    file_path = os.path.join(data_dir, "sdp_mnist/mnist_features.mat")
+
+    if not os.path.exists(file_path):
+        print("SDP MNIST data is not present in data folder. Downloading it...")
+        url = 'https://github.com/solevillar/kmeans_sdp/archive/1cbb36bf40b3ed5b370dcab83ad04903ed1baa2a.zip'
+        zipfile = os.path.join(basedir, "tmp.zip")
+        urllib.request.urlretrieve(url, zipfile)
+
+        repo_dir = 'kmeans_sdp-1cbb36bf40b3ed5b370dcab83ad04903ed1baa2a'
+        target = os.path.join(repo_dir, 'data/data_features.mat')
+        with ZipFile(zipfile, mode='r') as zip:
+            zip.extract(target, path=basedir)
+
+        print("Finished downloading")
+
+        os.replace(os.path.join(basedir, target), file_path)
+        shutil.rmtree(os.path.join(basedir, repo_dir))
+        os.remove(os.path.join(basedir, "tmp.zip"))
+
+        if md5_check:
+            h = hashlib.md5(open(file_path, "rb").read()).hexdigest()
+            hash = "45df108c75987b45f4d8eae3f7d89566"
+            if h != hash:
+                print("MD5 hashes do not coincide")
+                print("Removing file and trying again")
+                os.remove(file_path)
+                if retry:
+                    return load_sdp_mnist(retry=False)
+                else:
+                    raise Exception("Failed to download SDP MNIST")
 
     mat = sio.loadmat(file_path)
-    mat = sio.loadmat(file_path)
+    digits, onehot_labels = mat['digits'], mat['labels']
 
-    C = mat['Problem']['C'][0][0]
-    opt_val = mat['Problem']['opt_val'][0][0][0][0]
-    labels = mat['Problem']['labels'][0][0][0]
+    digits = np.double(digits)
+    D = squareform(pdist(digits.T))**2
+
+    labels = np.argmax(onehot_labels, axis=0)
     n_labels = len(np.unique(labels))
-    return C, n_labels, opt_val
+
+    opt_val = 77.206632951040206 # Obtained by running [MVW16]
+
+    return D, n_labels, opt_val
