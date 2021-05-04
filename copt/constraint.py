@@ -383,7 +383,7 @@ class TraceSpectrahedron:
           max_step_size: 1. for a Frank-Wolfe step.
         """
         u_mat = u.reshape(self._shape)
-        u_mat = .5*(u_mat + u_mat)
+        u_mat = .5*(u_mat + u_mat.T)
         s, ut = splinalg.eigsh(u_mat, k=1, which='LA')
 
         if s < 0:
