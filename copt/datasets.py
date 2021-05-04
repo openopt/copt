@@ -467,11 +467,10 @@ def load_criteo(md5_check=True):
     return X, y
 
 def load_sdp_mnist(md5_check=True, data_dir=DATA_DIR, retry=True):
-    """Download (TODO) if necessary and return the preprocessed MNIST dataset
-    as described in [MVW16].
+    """Download if necessary and return the preprocessed MNIST dataset as described in [MVW16].
 
     Args:
-        md5_check: bool (TODO)
+        md5_check: bool
         Whether to do an md5 check on the downloaded files.
 
     Returns:
@@ -531,12 +530,14 @@ def load_sdp_mnist(md5_check=True, data_dir=DATA_DIR, retry=True):
     mat = sio.loadmat(file_path)
     digits, onehot_labels = mat['digits'], mat['labels']
 
+    labels = np.argmax(onehot_labels, axis=0)
+    idxs = np.argsort(labels, kind='stable')
+
+    digits = digits[:, idxs]
     digits = np.double(digits)
     D = squareform(pdist(digits.T))**2
 
-    labels = np.argmax(onehot_labels, axis=0)
-    n_labels = len(np.unique(labels))
-
     opt_val = 77.206632951040206 # Obtained by running [MVW16]
 
+    n_labels = len(np.unique(labels))
     return D, n_labels, opt_val
