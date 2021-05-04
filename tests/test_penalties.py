@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as linalg
 import pytest
 from copt import tv_prox
-from copt.constraint import (ElementWiseInequalityConstraint,
+from copt.constraint import (NonnegativeConstraint,
                              RowEqualityConstraint)
 from numpy import testing
 from scipy.sparse import linalg as splinalg
@@ -159,7 +159,7 @@ def test_elementwise_homotopy_constraint():
     for _ in range(10):
         operator = np.random.randn(*shape)
         offset = np.random.randn(1)[0]
-        constraint = ElementWiseInequalityConstraint(shape, operator, offset, beta_scaling=1.)
+        constraint = NonnegativeConstraint(shape, operator, offset, beta_scaling=1.)
 
         X = np.random.randn(*shape)
         _, grad = constraint.smoothed_grad(X)

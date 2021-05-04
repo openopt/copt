@@ -5,7 +5,7 @@ import copt
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
-from copt.constraint import (ElementWiseInequalityConstraint,
+from copt.constraint import (NonnegativeConstraint,
                              RowEqualityConstraint)
 from copt.homotopy import minimize_homotopy_cgm
 from copt.loss import LinearLoss
@@ -58,9 +58,8 @@ C_mat, n_labels, opt_val = load_sdp_mnist()
 linear_objective = LinearLoss(C_mat, C_mat.shape)
 sum_to_one_row_constraint = RowEqualityConstraint(C_mat.shape,
                                                   np.ones(C_mat.shape[1]), np.ones(C_mat.shape[1]), name='sum_to_one')
-non_negativity_constraint = ElementWiseInequalityConstraint(C_mat.shape, None, None, name='nonnegativity')
+non_negativity_constraint = NonnegativeConstraint(C_mat.shape, None, None, name='nonnegativity')
 
-# traceball = copt.constraint.TraceBall(n_labels, C_mat.shape)
 spectrahedron = copt.constraint.TraceSpectrahedron(n_labels, C_mat.shape[0])
 
 x_init = np.zeros(C_mat.shape).flatten()

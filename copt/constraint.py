@@ -478,7 +478,7 @@ class RowEqualityConstraint:
         return val / self.offset_norm
 
 
-class ElementWiseInequalityConstraint:
+class NonnegativeConstraint:
     """Element-wise inequality constraint for vector or matrix-valued
     decision variables. Homotopy smoothing is also implemented.
 
@@ -503,15 +503,13 @@ class ElementWiseInequalityConstraint:
         The relative scaling of this constraint with respect to other constraints.
     """
     def __init__(self, shape, operator, offset, beta_scaling=1000.,
-                 name='elementwise_inequality_constraint', eps=np.finfo(np.float32).eps):
+                 name='elementwise_inequality_constraint'):
         assert len(shape) == 2
-        self.offset = offset
         self.beta_scaling = beta_scaling
         self.name = name
-        self.eps = eps
 
     def __call__(self, x):
-        if np.all(x + self.eps >= 0):
+        if np.all(x >= 0):
             return 0
         else:
             return np.inf
@@ -523,17 +521,13 @@ class ElementWiseInequalityConstraint:
         Args:
           x: decision variable
         """
-        mask = (x+self.eps>=0)
-        grad = x.copy()
-        grad[mask] = 0
-        val = linalg.norm(grad)**2
-        return val, self.beta_scaling*grad
+        the_min = np.minimum(x, 0)
+        val = linalg.norm(the_min)**2
+        return val, self.beta_scaling*the_min
 
     def feasibility(self, x):
         """Returns the norm of the elements of x which do not satisfy the
         constraint. Elements which satisfy the constraint are not included.
         """
-        mask = (x+self.eps>=0)
-        grad = x.copy()
-        grad[mask] = 0
-        return linalg.norm(grad)
+        the_min = np.minimum(x, 0)
+        return np.linalg.norm(the_min)
