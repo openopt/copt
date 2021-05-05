@@ -15,7 +15,6 @@ from copt import datasets, utils
 
 EPS = np.finfo(np.float32).eps
 
-# TODO :ref:`hcgm`
 def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
                           lmo, beta0, max_iter, tol, callback):
     r"""(H)omotopy CGM
@@ -39,7 +38,7 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
 
         shape: tuple
           The underlying shape of each iterate, e.g. (n,m) for an n x m matrix.
-        
+
         beta0: float
           Initial value for the smoothing parameter beta.
 
@@ -66,7 +65,10 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
 
     References:
         ..
-        [YURT2018] A. Yurtsever, O. Fercoq, F. Locatello, and V. Cevher. “A Conditional Gradient Framework for Composite Convex Minimization with Applications to Semidefinite Programming” <http://arxiv.org/abs/1804.08544> _ ICML 2018 
+        [YURT2018] A. Yurtsever, O. Fercoq, F. Locatello, and V. Cevher. "A
+        Conditional Gradient Framework for Composite Convex Minimization with
+        Applications to Semidefinite Programming," ICML 2018
+        <http://arxiv.org/abs/1804.08544>
     """
 
     x0 = np.asanyarray(x0, dtype=np.float)
@@ -74,7 +76,7 @@ def minimize_homotopy_cgm(objective_fun, smoothed_constraints, x0, shape,
     if tol < 0:
         raise ValueError("'tol' must be non-negative")
     x = x0.copy()
-    
+
     for it in range(max_iter):
         step_size = 2. / (it+2.)
         beta_k = beta0 / np.sqrt(it+2)
