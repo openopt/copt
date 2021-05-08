@@ -1,18 +1,13 @@
-from copt.datasets import load_sdp_mnist
-from copt.utils import Trace
-from copt.loss import LinearLoss
-from copt.homotopy import minimize_homotopy_cgm
-import copt as cp
 import copt.constraint
 import copt.penalty
 import numpy as np
-import numpy.linalg as linalg
-import pytest
-from copt import tv_prox
-from copt.constraint import (NonnegativeConstraint,
-                             RowEqualityConstraint, euclidean_proj_simplex)
-from numpy import testing
-from scipy.sparse import linalg as splinalg
+from copt.constraint import (NonnegativeConstraint, RowEqualityConstraint,
+                             euclidean_proj_simplex)
+from copt.datasets import load_sdp_mnist
+from copt.homotopy import minimize_homotopy_cgm
+from copt.loss import LinearLoss
+from copt.utils import Trace
+
 
 def test_homotopy():
     # TODO synthetic dataset here instead of a real one
