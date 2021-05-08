@@ -14,48 +14,6 @@ from copt.constraint import (NonnegativeConstraint,
 from numpy import testing
 from scipy.sparse import linalg as splinalg
 
-class HomotopyTrace(copt.utils.Trace):
-    """Trace callback for homotopy algorithms.
-
-    Tracks the relative objective optimality as well as the approximate
-    feasibility. This information is stored in `trace_relative_subopt` and
-    `trace_feasibilities`. It is also appended to the file if one is
-    specified.
-
-    Args:
-      stats_filehandle: File object
-        The file where json dictionaries of the tracked information are
-        written.
-    """
-    def __init__(self, stats_filehandle=None, f=None, freq=1):
-        super(HomotopyTrace, self).__init__(f, freq)
-        self.trace_relative_subopt = []
-        self.trace_feasibilities = []
-        self.statsfile = stats_filehandle
-
-    def __call__(self, dl):
-        it = dl['it']
-        x = dl['x']
-        f_t = dl['f_t']
-        smoothed_constraints = dl['smoothed_constraints']
-
-        relative_subopt = np.abs(f_t-opt_val)/opt_val
-        self.trace_relative_subopt.append(relative_subopt)
-
-        stats = dict(it=it, objective=relative_subopt)
-        self.trace_feasibilities.append([])
-        for c in smoothed_constraints:
-            feasibility = c.feasibility(x)
-            stats[c.name] = feasibility
-            self.trace_feasibilities[-1].append((c.name, feasibility))
-
-        if self.statsfile is not None:
-            print(json.dumps(stats), file=self.statsfile)
-
-        if it % 100 == 0:
-            print(json.dumps(stats))
-
-
 def test_homotopy():
     # TODO synthetic dataset here instead of a real one
     C_mat,n_labels,_ = load_sdp_mnist()
