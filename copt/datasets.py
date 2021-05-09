@@ -283,7 +283,7 @@ def load_news20(data_dir=DATA_DIR):
 
 
 def load_gisette(subset="full", data_dir=DATA_DIR):
-    """Download and return the covtype dataset.
+    """Download and return the gisette dataset.
 
     Properties:
         n_samples: 6000 (train)
