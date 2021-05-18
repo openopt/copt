@@ -412,7 +412,7 @@ class RowEqualityConstraint:
         \|Xv - b\|^2
 
     Args:
-      shape: tuple of ints (n,m)
+      shape: tuple of ints (n,n)
         Describes the underlying of the decision variable x.
       operator: vector of size (m,)
       offset: vector of size (n,)
@@ -434,6 +434,7 @@ class RowEqualityConstraint:
         self.offset = offset
         self.name = name
         self.offset_norm = np.linalg.norm(self.offset)
+        self.n_constraints = operator.shape[0]
 
     def __call__(self, x):
         X = x.reshape(self.shape)
@@ -443,12 +444,11 @@ class RowEqualityConstraint:
         else:
             return np.inf
 
-    def apply_operator(self, x):
+    def apply_adjoint(self, v):
         """Evaluates A(x).  In this case, `x * operator` where '*' denotes
         matrix multiplication.
         """
-        X = x.reshape(self.shape)
-        return X.dot(self.operator)
+        return np.outer(v, self.operator).ravel()
 
     def smoothed_grad(self, x):
         """Returns the value and the gradient of the homotopy smoothed
@@ -461,8 +461,13 @@ class RowEqualityConstraint:
         err = X.dot(self.operator) - self.offset
         val = np.linalg.norm(err) ** 2
         grad = 2*np.outer(err, self.operator)
-        # import ipdb; ipdb.set_trace()
         return val, grad.ravel()
+
+    def partial_smoothed_grad(self, x, batch):
+        X = x.reshape(self.shape)
+        err = X[batch].dot(self.operator) - self.offset[batch]
+        # TODO should there be a 2?
+        return 2*err, batch
 
     def feasibility(self, x):
         """Returns a normalized distance of the current iterate, x, to the
@@ -507,6 +512,7 @@ class NonnegativeConstraint:
         assert len(shape) == 2
         self.beta_scaling = beta_scaling
         self.name = name
+        self.n_constraints = shape[0]*shape[1]
 
     def __call__(self, x):
         if np.all(x >= 0):
@@ -524,6 +530,24 @@ class NonnegativeConstraint:
         the_min = np.minimum(x, 0)
         val = linalg.norm(the_min)**2
         return val, self.beta_scaling*the_min
+
+    def apply_adjoint(self, v):
+        return v
+    
+    def partial_smoothed_grad(self, x, batch):
+        return self.beta_scaling*np.minimum(x[batch],0), batch
+        # # TODO doesn't allow for batching without replacement
+        # neg_idxs = (x<0).nonzero()[0]
+
+        # # x is feasible, no gradient
+        # if len(neg_idxs) == 0:
+        #     return np.zeros(len(x)), np.arange(len(x))
+
+        # bs = min(len(neg_idxs), len(batch))
+        # # overwrite
+        # batch = np.random.choice(neg_idxs, bs, replace=False)
+        # the_min = x[batch]
+        # return self.beta_scaling*the_min, batch
 
     def feasibility(self, x):
         """Returns the norm of the elements of x which do not satisfy the
