@@ -47,7 +47,7 @@ If this software is useful for your research, please consider citing it as
       title        = {copt: composite optimization in Python},
       year         = 2020,
       DOI          = {10.5281/zenodo.1283339},
-      url={http://openopt.github.io/copt/}
+      url={http://openo.pt/copt/}
     }
 
 Development
