@@ -133,6 +133,9 @@ def minimize_three_split(
         ls = norm_incr > 1e-7 and line_search
         if ls:
             for it_ls in range(max_iter_backtracking):
+                x = prox_1(z - step_size * (u + grad_fk), step_size, *args_prox)
+                incr = x - z
+                norm_incr = np.linalg.norm(incr)                
                 rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
                 ls_tol = f_grad(x, return_gradient=False) - rhs
                 if ls_tol <= LS_EPS:
