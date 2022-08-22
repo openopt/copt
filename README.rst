@@ -5,7 +5,7 @@
 .. image:: https://zenodo.org/badge/46262908.svg
    :target: https://zenodo.org/badge/latestdoi/46262908
 .. image:: https://storage.googleapis.com/copt-doc/doc_status.svg
-   :target: http://openo.pt/copt/
+   :target: http://openopt.github.io/copt/
 .. image:: https://storage.googleapis.com/copt-doc/pylint.svg
    :target: https://storage.googleapis.com/copt-doc/pylint.txt
 
@@ -16,7 +16,7 @@ copt is an optimization library for Python. Its goal is to provide a high qualit
 
 
 
-`Docs <http://openo.pt/copt/>`_ | `Examples <http://openo.pt/copt/auto_examples/index.html>`_
+`Docs <http://openopt.github.io/copt/>`_ | `Examples <http://openopt.github.io/copt/auto_examples/index.html>`_
 
 
 
@@ -47,7 +47,7 @@ If this software is useful for your research, please consider citing it as
       title        = {copt: composite optimization in Python},
       year         = 2020,
       DOI          = {10.5281/zenodo.1283339},
-      url={http://openo.pt/copt/}
+      url={http://openopt.github.io/copt/}
     }
 
 Development
