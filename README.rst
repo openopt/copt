@@ -9,6 +9,9 @@
 .. image:: https://storage.googleapis.com/copt-doc/pylint.svg
    :target: https://storage.googleapis.com/copt-doc/pylint.txt
 
+
+Note: This package is no longer actively maintained. I won't be actively responding to issues. If you'd like to volunteer to maintain it, please drop me a line at f@bianp.net
+
 copt: composite optimization in Python
 =======================================
 
