@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel", "numpy", "scipy", "tqdm", "sklearn", "six"]  # PEP 518 specifications.
+requires = ["setuptools", "wheel", "numpy", "scipy", "tqdm", "scikit-learn", "six"]  # PEP 518 specifications.
