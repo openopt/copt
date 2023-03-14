@@ -11,3 +11,4 @@ __pycache__
 doc/modules/
 *code-workspace
 *.swp
+.DS_Store

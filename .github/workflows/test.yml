@@ -1,0 +1,39 @@
+name: Test suite
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+        pip install pytest-parallel scikit-image coveralls coverage pytest-cov scikit-learn h5py Pillow
+    - name: Check Dependencies
+      run: |
+        pipconflictchecker
+    - name: Lint
+      run: |
+        flake8 --ignore N802,N806,W503 --select W504 `find . -name \*.py | grep -v setup.py | grep -v __init__.py | grep -v /doc/`
+    - name: Test
+      with:
+        NUMBA_DISABLE_JIT: 1
+      run: |
+        cd && mkdir for_test && cd for_test && pytest --pyargs copt --cov-report term-missing --cov=copt --workers auto
+    - name: Coveralls
+        run: |
+          coveralls
