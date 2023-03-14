@@ -28,14 +28,14 @@ except ImportError:
                 return wrapper
 
             return inner_function
-    
+
     prange = range
 
 
 def build_func_grad(jac, fun, args, eps):
     if not callable(jac):
         if bool(jac):
-            fun = optimize.optimize.MemoizeJac(fun)
+            fun = optimize.MemoizeJac(fun)
             jac = fun.derivative
         elif jac == "2-point":
             jac = None
