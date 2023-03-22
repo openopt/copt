@@ -32,7 +32,7 @@ jobs:
     - name: Test
       with:
         NUMBA_DISABLE_JIT: 1
-      run: |
+        run: |
         cd && mkdir for_test && cd for_test && pytest --pyargs copt --cov-report term-missing --cov=copt --workers auto
     - name: Coveralls
       run: |
