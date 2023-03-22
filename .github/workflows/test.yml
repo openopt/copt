@@ -30,8 +30,6 @@ jobs:
       run: |
         flake8 --ignore N802,N806,W503 --select W504 `find . -name \*.py | grep -v setup.py | grep -v __init__.py | grep -v /doc/`
     - name: Test
-      with:
-        NUMBA_DISABLE_JIT: 1
       run: |
         cd && mkdir for_test && cd for_test && pytest --pyargs copt --cov-report term-missing --cov=copt --workers auto
     - name: Coveralls
