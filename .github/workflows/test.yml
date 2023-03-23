@@ -11,9 +11,6 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
 
-    env: NUMBA_DISABLE_JIT: 1
-    env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
     - name: Checkout repo
       uses: actions/checkout@v1
@@ -36,5 +33,4 @@ jobs:
       run: |
         pytest --cov-report term-missing --cov=copt
     - name: Coveralls
-      run: |
-        coveralls
+      uses: coverallsapp/github-action@v1
