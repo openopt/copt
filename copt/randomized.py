@@ -163,7 +163,7 @@ def minimize_saga(
     csr_blocks_1 = sparse.csr_matrix((bs_data, bs_indices, bs_indptr))
 
     # .. diagonal reweighting ..
-    d = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    d = np.array(csr_blocks_1.sum(0), dtype=float).ravel()
     idx = d != 0
     d[idx] = n_samples / d[idx]
     d[~idx] = 1
@@ -338,7 +338,7 @@ def minimize_svrg(
     csr_blocks_1 = sparse.csr_matrix((bs_data, bs_indices, bs_indptr))
 
     # .. diagonal reweighting ..
-    d = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    d = np.array(csr_blocks_1.sum(0), dtype=float).ravel()
     idx = d != 0
     d[idx] = n_samples / d[idx]
     d[~idx] = 1
@@ -588,12 +588,12 @@ def _factory_sparse_vrtos(
     csr_blocks_2 = sparse.csr_matrix((bs_2_data, bs_2_indices, bs_2_indptr))
 
     # .. diagonal reweighting ..
-    d1 = np.array(csr_blocks_1.sum(0), dtype=np.float).ravel()
+    d1 = np.array(csr_blocks_1.sum(0), dtype=float).ravel()
     idx = d1 != 0
     d1[idx] = n_samples / d1[idx]
     d1[~idx] = 1
 
-    d2 = np.array(csr_blocks_2.sum(0), dtype=np.float).ravel()
+    d2 = np.array(csr_blocks_2.sum(0), dtype=float).ravel()
     idx = d2 != 0
     d2[idx] = n_samples / d2[idx]
     d2[~idx] = 1
@@ -761,10 +761,10 @@ def minimize_sfw(
       x0: np.ndarray
           Starting point for optimization.
 
-      step_size: Step size for the optimization. should be one of 
+      step_size: Step size for the optimization. should be one of
           - callable: should return a tuple of floats.
           - 'sublinear': sets the step size as the default for `variant`.
-          - 'DR': uses the Demyanov-Rubinov step size scheme, using the Lipschitz estimate given in 
+          - 'DR': uses the Demyanov-Rubinov step size scheme, using the Lipschitz estimate given in
         the lipschitz parameter.
 
       lipschitz: None or float, optional
@@ -795,7 +795,7 @@ def minimize_sfw(
           'SAGA' is yet to be described.
           'MHK' is described in [MHK2020],
           'LF' is described in [LF2020].
-          
+
       lmo_variant: str in {'vanilla', 'pairwise'}
         Controls which variant of the LMO we're using.
         Using 'pairwise' will create and update an active set of vertices.
@@ -857,11 +857,11 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
         if lipschitz is None:
             raise ValueError('lipschitz needs to be specified with step_size="DR"')
         step_size_fun = step_size_DR
-        
+
 
     if lmo_variant == 'vanilla':
         active_set = None
-        
+
     elif lmo_variant == 'pairwise':
         active_set = defaultdict(float)
         active_set[x0_rep] = 1.
@@ -921,7 +921,7 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
                 step_size_x, _ = step_size_fun(locals())
 
             x += step_size_x * update_direction
-            
+
             if lmo_variant == 'pairwise':
                 update_active_set(active_set, fw_vertex_rep, away_vertex_rep,
                                   step_size_x)

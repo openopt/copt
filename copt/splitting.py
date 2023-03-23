@@ -74,7 +74,7 @@ def minimize_three_split(
 
       args_prox : tuple, optional
         Optional Extra arguments passed to the prox functions.
-      
+
       h_Lipschitz : float, optional
         If given, h is assumed to be Lipschitz continuous with constant h_Lipschitz.
 
@@ -118,7 +118,7 @@ def minimize_three_split(
         step_size = 1.0 / utils.init_lipschitz(f_grad, x0)
 
     z = prox_2(x0, step_size, *args_prox)
-    LS_EPS = np.finfo(np.float).eps
+    LS_EPS = np.finfo(float).eps
 
     fk, grad_fk = f_grad(z)
     x = prox_1(z - step_size * grad_fk, step_size, *args_prox)
@@ -135,7 +135,7 @@ def minimize_three_split(
             for it_ls in range(max_iter_backtracking):
                 x = prox_1(z - step_size * (u + grad_fk), step_size, *args_prox)
                 incr = x - z
-                norm_incr = np.linalg.norm(incr)                
+                norm_incr = np.linalg.norm(incr)
                 rhs = fk + grad_fk.dot(incr) + (norm_incr ** 2) / (2 * step_size)
                 ls_tol = f_grad(x, return_gradient=False) - rhs
                 if ls_tol <= LS_EPS:
