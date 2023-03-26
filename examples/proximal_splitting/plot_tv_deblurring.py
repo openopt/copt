@@ -15,10 +15,10 @@ import copt as cp
 
 np.random.seed(0)
 
-img = misc.face(gray=True).astype(np.float)
+img = misc.face(gray=True).astype(float)
 # resize
 img = np.array(Image.fromarray(img).resize((153, 115)))
-img = img.astype(np.float) / img.max()
+img = img.astype(float) / img.max()
 
 n_rows, n_cols = img.shape
 n_features = n_rows * n_cols

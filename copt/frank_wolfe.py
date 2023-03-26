@@ -22,7 +22,7 @@ def backtracking_step_size(
     norm_update_direction,
 ):
     """Backtracking step-size finding routine for FW-like algorithms
-    
+
     Args:
         x: array-like, shape (n_features,)
             Current iterate
@@ -101,7 +101,7 @@ def update_active_set(active_set,
     max_step_size = active_set[away_vertex_rep]
     active_set[fw_vertex_rep] += step_size
     active_set[away_vertex_rep] -= step_size
-    
+
     if active_set[away_vertex_rep] == 0.:
         # drop step: remove vertex from active set
         del active_set[away_vertex_rep]
@@ -147,7 +147,7 @@ def minimize_frank_wolfe(
     lmo: callable
       Takes as input a vector u of same size as x0 and returns both the update
       direction and the maximum admissible step-size.
-      
+
     x0_rep: immutable
         Is used to initialize the active set when variant == 'pairwise'.
 
@@ -224,7 +224,7 @@ def minimize_frank_wolfe(
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_sparse_benchmark.py`
     * :ref:`sphx_glr_auto_examples_frank_wolfe_plot_vertex_overlap.py`
   """
-    x0 = np.asanyarray(x0, dtype=np.float)
+    x0 = np.asanyarray(x0, dtype=float)
     if tol < 0:
         raise ValueError("Tol must be non-negative")
     x = x0.copy()
