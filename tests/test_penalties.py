@@ -1,16 +1,21 @@
-import numpy as np
 import copt as cp
 import copt.constraint
 import copt.penalty
-from copt import tv_prox
-from numpy import testing
+import numpy as np
+import numpy.linalg as linalg
 import pytest
+from copt import tv_prox
+from copt.constraint import (NonnegativeConstraint,
+                             RowEqualityConstraint)
+from numpy import testing
+from scipy.sparse import linalg as splinalg
 
 proximal_penalties = [
     copt.penalty.L1Norm(1.0),
     copt.penalty.GroupL1(1.0, np.array_split(np.arange(16), 5)),
     copt.penalty.TraceNorm(1.0, (4, 4)),
     copt.constraint.TraceBall(1.0, (4, 4)),
+    copt.constraint.TraceSpectrahedron(1.0, 4),
     copt.penalty.TotalVariation2D(1.0, (4, 4)),
     copt.penalty.FusedLasso(1.0),
 ]
@@ -142,3 +147,43 @@ def test_three_inequality(pen):
             - np.linalg.norm(xi - z) ** 2
         )
         assert lhs <= rhs, pen
+
+
+# TODO is there a way of unifying the homotopy tests in the same elegant way as
+# done above?
+
+def test_elementwise_homotopy_constraint():
+    n_features = 4
+    shape = (n_features, n_features)
+
+    for _ in range(10):
+        operator = np.random.randn(*shape)
+        offset = np.random.randn(1)[0]
+        constraint = NonnegativeConstraint(shape, operator, offset, beta_scaling=1.)
+
+        X = np.random.randn(*shape)
+        _, grad = constraint.smoothed_grad(X)
+
+        assert constraint(X-1000) == np.inf
+        assert constraint(X+1000) == 0
+        assert constraint(X-grad) == 0
+
+def test_row_homotopy_lipschitz():
+    n_features = 4
+    shape = (n_features, n_features)
+
+    for _ in range(100):
+        operator = np.random.randn(n_features)
+        offset = np.random.randn(n_features)
+        constraint = RowEqualityConstraint(shape, operator, offset, beta_scaling=1.)
+
+        z = np.random.randn(*shape)
+        u = np.random.randn(*shape)
+        _,zg = constraint.smoothed_grad(z)
+        _,ug = constraint.smoothed_grad(u)
+
+        # check Lipschitz continuous gradient
+        L,_ = splinalg.eigsh(np.outer(operator, operator), k=1)
+        lhs = np.linalg.norm(zg - ug)
+        rhs = 2*L*np.linalg.norm(z - u)
+        assert lhs <= rhs
