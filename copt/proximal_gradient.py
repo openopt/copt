@@ -121,7 +121,7 @@ def minimize_proximal_gradient(
         prox = _prox
 
     success = False
-    certificate = np.NaN
+    certificate = np.nan
 
     func_and_grad = utils.build_func_grad(jac, fun, args, eps)
 
