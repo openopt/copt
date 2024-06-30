@@ -288,7 +288,7 @@ def minimize_primal_dual(
         ss_ratio = tau / sigma
 
     fk, grad_fk = f_grad(x)
-    norm_incr = np.infty
+    norm_incr = np.inf
     x_next = x.copy()
 
     for it in range(max_iter):
