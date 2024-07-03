@@ -76,7 +76,7 @@ class L1Ball:
         if np.abs(x).sum() <= self.alpha:
             return 0
         else:
-            return np.infty
+            return np.inf
 
     def prox(self, x, step_size=None):
         """Projection onto the L-infinity ball.
