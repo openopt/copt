@@ -296,3 +296,32 @@ class HuberLoss:
     def lipschitz(self):
         s = splinalg.svds(self.A, k=1, return_singular_vectors=False)[0]
         return (s * s) / self.A.shape[0] + self.alpha
+
+
+class LinearLoss:
+    r"""Linear objective function.
+
+    A linear objective is defined as
+
+    .. math::
+        f(X) = \langle M,X \rangle
+
+    where :math:`\langle\cdot\rangle` is the dot product for
+    finite-dimensional vector and :math:`\tr(MX)` for matrices.
+    """
+    def __init__(self, M, shape):
+        self.shape = shape
+        self.m = M.flatten()
+
+    def __call__(self, X):
+        loss,_ = self.f_grad(X)
+        return loss
+
+    def f_grad(self, X):
+        x = X.flatten()
+        loss = np.dot(x, self.m)
+        return loss, self.m
+
+    @property
+    def lipschitz(self):
+        raise NotImplementedError
