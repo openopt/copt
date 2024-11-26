@@ -107,7 +107,7 @@ def fast_csr_vm(x, data, indptr, indices, d, idx):
     return res
 
 
-@njit(nogil=True)
+@njit(parallel=True)
 def fast_csr_mv(data, indptr, indices, x, idx):
     """
     Returns the matrix vector product M[idx] * x. M is described
@@ -121,10 +121,13 @@ def fast_csr_mv(data, indptr, indices, x, idx):
     """
 
     res = np.zeros(len(idx))
-    for i, row_idx in np.ndenumerate(idx):
-        for k, j in enumerate(range(indptr[row_idx], indptr[row_idx+1])):
+    for i in prange(len(idx)):
+        row_idx = idx[i]
+        res_i = 0.0
+        for j in range(indptr[row_idx], indptr[row_idx+1]):
             j_idx = indices[j]
-            res[i] += x[j_idx] * data[j]
+            res_i += x[j_idx] * data[j]
+        res[i] = res_i
     return res
 
 
