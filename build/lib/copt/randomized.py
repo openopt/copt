@@ -859,11 +859,9 @@ def minimize_sfw(
         :func:`sfw_importance_probs`, which computes them for the l1 ball.
         Only supported for the 'SAG' and 'SAGA' variants with batch_size=1,
         since the analysis and the without-replacement batch sampler both
-        assume unit batches. Psi(q) is derived for the 'SAG' estimator, whose
-        per-datapoint error decays at rate q_j. 'SAGA' rescales its correction
-        by 1/q_j so that its gradient estimate stays unbiased under non-uniform
-        sampling; these weights help it substantially in practice, but they are
-        not claimed to be variance-optimal for that estimator.
+        assume unit batches. The guarantee describes the 'SAG' estimator, whose
+        per-datapoint error decays at rate q_j; 'SAGA' rescales its correction
+        by 1/q_j and is accepted but not covered by it.
 
     Returns:
       opt: OptimizeResult
@@ -997,17 +995,9 @@ From Convex Minimization to Submodular Maximization" <https://arxiv.org/abs/1804
                 update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad_agg, x, active_set)
 
             elif variant == 'SAGA':
-                # SAGA's correction is 1/(n q_j) times the change in the sampled
-                # dual variable; with the 1/n already carried by dual_var that is
-                # a factor of 1/q_j, of which grad_agg supplied 1. Uniform
-                # sampling has q_j = 1/n and recovers the constant n - 1.
-                if sampling_probs is None:
-                    saga_scale = n_samples - 1
-                else:
-                    saga_scale = 1.0 / sampling_probs[batch_idx[0]] - 1.0
-                grad_est = utils.safe_sparse_add(grad_agg, saga_scale * utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
-                                                                                          A_data, A_indptr, A_indices,
-                                                                                          n_features, batch_idx))
+                grad_est = utils.safe_sparse_add(grad_agg, (n_samples - 1) * utils.fast_csr_vm(dual_var[batch_idx] - dual_var_prev,
+                                                                                               A_data, A_indptr, A_indices,
+                                                                                               n_features, batch_idx))
                 update_direction, fw_vertex_rep, away_vertex_rep, max_step_size = lmo(-grad_est, x, active_set)
 
             if step_size == 'DR':
